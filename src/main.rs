@@ -87,6 +87,10 @@ fn main() {
             let mut buf = [0; 100];
             let len = stdout.read(&mut buf).unwrap();
             println!("oskar stdout: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
+
+            if len == 0 {
+                break;
+            }
         }
     });
 
@@ -95,6 +99,10 @@ fn main() {
             let mut buf = [0; 100];
             let len = stderr.read(&mut buf).unwrap();
             println!("oskar stderr: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
+
+            if len == 0 {
+                break;
+            }
         }
     });
 
