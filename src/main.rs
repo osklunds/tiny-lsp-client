@@ -64,12 +64,6 @@ fn main() {
         params: to_send
     };
 
-    let json = serde_json::to_string(&req).unwrap();
-
-    let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-
-    println!("oskar: {:?}", full);
-
     let mut child = Command::new("rust-analyzer")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -80,7 +74,7 @@ fn main() {
     let mut stdout = child.stdout.take().unwrap();
     let mut stderr = child.stderr.take().unwrap();
 
-    let res = stdin.write(full.as_bytes());
+    let res = send_request(&req, &mut stdin);
     println!("oskar stdin: {:?}", res);
 
     thread::spawn(move || {
@@ -113,8 +107,6 @@ fn main() {
 
                 let parsed: Value = serde_json::from_str(&json).unwrap();
                 println!("oskar: {:?}", parsed);
-
-
             }
         }
     });
@@ -131,6 +123,10 @@ fn main() {
         }
     });
 
+    thread::sleep(Duration::from_secs(1));
+
+
+
     thread::sleep(Duration::from_secs(60));
 }
 
@@ -140,3 +136,12 @@ pub struct Request {
     pub method: String,
     pub params: serde_json::Value,
 }
+
+fn send_request<W: Write>(request: &Request, writer: &mut W) {
+    let json = serde_json::to_string(&request).unwrap();
+    let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
+    println!("oskar sending: {:?}", full);
+    writer.write(full.as_bytes()).unwrap();
+}
+
+    
