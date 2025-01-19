@@ -32,6 +32,8 @@ fn text_document_definition() {
 
     thread::sleep(Duration::from_secs(1));
 
+    // this might have to return id, to be used when comparing recv
+    // recv should not return Message. Just (usize, Response)
     connection.send_request(Params::TextDocumentDefinitionRequest(params));
     let response = connection.recv_response();
     println!("oskar: {:?}", response);
