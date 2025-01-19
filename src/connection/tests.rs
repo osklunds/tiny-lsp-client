@@ -30,6 +30,7 @@ fn text_document_definition() {
         }
     };
 
+    // todo: instead of sleep, do busy loop with 1ms
     thread::sleep(Duration::from_secs(1));
 
     // this might have to return id, to be used when comparing recv
