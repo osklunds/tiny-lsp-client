@@ -46,7 +46,7 @@ fn main() {
 
     let to_send = json!({
         "processId": null,
-        // "rootUri": "file:///home/oskar/own_repos/tiny-lsp-client",
+        "rootUri": "file:///home/oskar/own_repos/tiny-lsp-client",
         "capabilities": {
             "textDocument": {
                 "definition": {
