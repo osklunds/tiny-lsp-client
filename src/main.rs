@@ -4,8 +4,10 @@
 use std::process::{Command, Stdio};
 use std::io::Read;
 use std::io::Write;
+use serde::Deserialize;
+use serde::Serialize;
 
-fn main() {
+fn main2() {
     println!("Hello, world!");
 
     let mut child = Command::new("rust-analyzer")
@@ -32,3 +34,15 @@ fn other_fun() {
     println!("oskar: {:?}", "hej");
 }
 
+fn main() {
+    let string = "{\"id\": 2}";
+    let req = serde_json::from_str::<Request>(string).unwrap();
+    println!("oskar: {:?}", req);
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Request {
+    pub id: u32,
+    // pub method: String,
+    // pub params: serde_json::Value,
+}
