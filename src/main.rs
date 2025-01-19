@@ -74,8 +74,7 @@ fn main() {
     let mut stdout = child.stdout.take().unwrap();
     let mut stderr = child.stderr.take().unwrap();
 
-    let res = send_request(&req, &mut stdin);
-    println!("oskar stdin: {:?}", res);
+    send_request(&req, &mut stdin);
 
     thread::spawn(move || {
         let mut reader = std::io::BufReader::new(stdout);
@@ -125,6 +124,32 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
 
+    let init_noti = json!({
+        "method":"initialized",
+        "params":{}
+    });
+
+    send_json(&serde_json::to_string(&init_noti).unwrap(), &mut stdin);
+
+    thread::sleep(Duration::from_secs(1));
+
+    let find_def_params = json!({
+        "textDocument": {
+            "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/main.rs"
+        },
+        "position": {
+            "line": 26,
+            "character": 14
+        }
+    });
+
+    let find_def_req = Request {
+        id: 133,
+        method: "textDocument/definition".to_string(),
+        params: find_def_params
+    };
+            
+    send_request(&find_def_req, &mut stdin);
 
 
     thread::sleep(Duration::from_secs(60));
@@ -137,11 +162,15 @@ pub struct Request {
     pub params: serde_json::Value,
 }
 
-fn send_request<W: Write>(request: &Request, writer: &mut W) {
-    let json = serde_json::to_string(&request).unwrap();
+fn send_json<W: Write>(json: &str, writer: &mut W) {
     let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
     println!("oskar sending: {:?}", full);
     writer.write(full.as_bytes()).unwrap();
+}
+
+fn send_request<W: Write>(request: &Request, writer: &mut W) {
+    let json = serde_json::to_string(&request).unwrap();
+    send_json(&json, writer);
 }
 
     
