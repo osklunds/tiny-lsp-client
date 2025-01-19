@@ -21,15 +21,9 @@ fn main() {
     let res = stdin.write(b"hejhej\n");
     println!("oskar stdin: {:?}", res);
 
-
-
-    // let mut res = Vec::new();
-    // stdout.read_to_end(&mut res);
-    // println!("oskar stdout: {:?}", String::from_utf8(res));
-
-    let mut buf = [0; 100];
-    stderr.read_exact(&mut buf);
-    println!("oskar stderr: {:?}", String::from_utf8(buf.to_vec()));
+    let mut res = Vec::new();
+    stderr.read_to_end(&mut res);
+    println!("oskar stderr: {}", String::from_utf8(res).unwrap());
 
     other_fun();
 }
