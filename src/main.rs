@@ -12,6 +12,7 @@ use std::time::Duration;
 use std::io::BufRead;
 
 mod learning_tests;
+mod dummy;
 
 fn main2() {
     println!("Hello, world!");

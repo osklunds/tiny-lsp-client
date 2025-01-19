@@ -4,12 +4,13 @@
 use std::process::{Command, Stdio};
 use std::io::Read;
 use std::io::Write;
-use serde_json::{json, Value};
+use serde_json::{json, Value, Number};
 use serde::Deserialize;
 use serde::Serialize;
 use std::thread;
 use std::time::Duration;
 use std::io::BufRead;
+use std::sync::mpsc::{self, Sender, Receiver};
 
 #[test]
 fn rust_analyzer() {
@@ -44,6 +45,8 @@ fn rust_analyzer() {
 
     send_request(&initialize_request, &mut stdin);
 
+    let (stdout_tx, stdout_rx) = mpsc::channel();
+
     thread::spawn(move || {
         let mut reader = std::io::BufReader::new(stdout);
 
@@ -59,7 +62,7 @@ fn rust_analyzer() {
                 let header_value = parts[1];
 
                 let size = header_value.parse::<usize>().unwrap();
-                println!("oskar: {:?}", size);
+                // println!("oskar: {:?}", size);
 
                 let mut json_buf = Vec::new();
                 // todo: +2 might be related the the pops above. Anyway,
@@ -71,7 +74,9 @@ fn rust_analyzer() {
                 // println!("oskar: {}", json);
 
                 let parsed: Value = serde_json::from_str(&json).unwrap();
-                println!("oskar: {:?}", parsed);
+                // println!("oskar: {:?}", parsed);
+
+                stdout_tx.send(parsed).unwrap();
             }
         }
     });
@@ -81,14 +86,15 @@ fn rust_analyzer() {
             let mut buf = [0; 100];
             let len = stderr.read(&mut buf).unwrap();
             println!("oskar stderr: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
-
-            if len == 0 {
-                break;
-            }
         }
     });
 
-    thread::sleep(Duration::from_secs(1));
+    let initialize_response = stdout_rx.recv().unwrap();
+    assert_eq!(Value::Number(Number::from_u128(123).unwrap()), initialize_response["id"]);
+    let result = &initialize_response["result"];
+    let capabilities = &result["capabilities"];
+    assert_eq!(Value::Bool(true), capabilities["definitionProvider"]);
+    // println!("oskar: {}", initialize_response);
 
     let initialized_notification = json!({
         "method": "initialized",
@@ -97,27 +103,35 @@ fn rust_analyzer() {
 
     send_json(&serde_json::to_string(&initialized_notification).unwrap(), &mut stdin);
 
+    // To let indexing finish
     thread::sleep(Duration::from_secs(1));
 
     let find_definition_params = json!({
         "textDocument": {
-            "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/main.rs"
+            "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"
         },
         "position": {
-            "line": 26,
-            "character": 14
+            "line": 4,
+            "character": 4
         }
     });
 
-    let find_definition_req = Request {
+    let find_definition_request = Request {
         id: 133,
         method: "textDocument/definition".to_string(),
         params: find_definition_params
     };
             
-    send_request(&find_definition_req, &mut stdin);
+    send_request(&find_definition_request, &mut stdin);
+    let find_definition_response = stdout_rx.recv().unwrap();
+    assert_eq!(Value::Number(Number::from_u128(133).unwrap()), find_definition_response["id"]);
 
-    thread::sleep(Duration::from_secs(60));
+    let result_vec = &find_definition_response["result"];
+    let result = &result_vec[0];
+    let target_range = &result["targetSelectionRange"];
+    let start = &target_range["start"];
+    assert_eq!(Value::Number(Number::from_u128(7).unwrap()), start["line"]);
+    assert_eq!(Value::Number(Number::from_u128(3).unwrap()), start["character"]);
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -129,7 +143,7 @@ pub struct Request {
 
 fn send_json<W: Write>(json: &str, writer: &mut W) {
     let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-    println!("oskar sending: {:?}", full);
+    // println!("oskar sending: {:?}", full);
     writer.write(full.as_bytes()).unwrap();
 }
 
