@@ -25,7 +25,40 @@ enum Message {
 struct Request {
     pub id: u32,
     pub method: String,
-    pub params: serde_json::Value,
+    pub params: Params,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum Params {
+    TextDocumentDefinitionRequest(TextDocumentDefinitionRequest),
+    Untyped(serde_json::Value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct TextDocumentDefinitionRequest {
+    #[serde(rename = "textDocument")]
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct TextDocumentIdentifier {
+    pub uri: String
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename = "originSelectionRange")]
+struct OriginSelectionRange {
+    pub start: Position,
+    pub end: Position,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename = "start")]
+struct Position {
+    pub line: usize,
+    pub character: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -135,7 +168,7 @@ impl Connection {
         let initialize_request = Request {
             id: 0,
             method: "initialize".to_string(),
-            params: initialize_params
+            params: Params::Untyped(initialize_params)
         };
         let initialize_request = Message::Request(initialize_request);
         self.send_msg(initialize_request);
@@ -150,6 +183,23 @@ impl Connection {
         self.send_msg(initialized_notification);
     }
 
+    pub fn send_request(&self, params: Params) {
+        let request = Request {
+            id: 1234,
+            method: "textDocument/definition".to_string(), // todo: base on params
+            params
+        };
+        self.send_msg(Message::Request(request));
+    }
+
+    pub fn recv_response(&self) -> Response {
+        if let Message::Response(response) = self.recv_msg() {
+            response
+        } else {
+            panic!("hej")
+        }
+    }
+
     fn send_msg(&self, msg: Message) {
         self.sender.send(msg).unwrap();
     }
@@ -161,7 +211,7 @@ impl Connection {
 
 fn send_json<W: Write>(json: &str, writer: &mut W) {
     let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-    // println!("oskar sending: {}", full);
+    println!("Sent: {}", full);
     writer.write(full.as_bytes()).unwrap();
 }
 
@@ -190,7 +240,7 @@ fn recv(reader: &mut BufReader<ChildStdout>) -> Message {
     reader.read_exact(&mut json_buf);
     // println!("oskar: {:?}", json_buf);
     let json = String::from_utf8(json_buf).unwrap();
-    // println!("oskar: {}", json);
+    println!("Received: {}", json);
 
     let response = serde_json::from_str(&json).unwrap();
     Message::Response(response)
