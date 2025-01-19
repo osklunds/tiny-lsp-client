@@ -1,2 +1,2 @@
 
-# tiny-lsp-client
+* tiny-lsp-client
