@@ -35,7 +35,9 @@ fn other_fun() {
 }
 
 fn main() {
-    let string = "{\"id\": 2}";
+    let string = "{\"id\": 2,\
+                  \"method\": \"hej\",\
+                  \"params\": {\"sub-field\": 123}}";
     let req = serde_json::from_str::<Request>(string).unwrap();
     println!("oskar: {:?}", req);
 }
@@ -43,6 +45,6 @@ fn main() {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
     pub id: u32,
-    // pub method: String,
-    // pub params: serde_json::Value,
+    pub method: String,
+    pub params: serde_json::Value,
 }
