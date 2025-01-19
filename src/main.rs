@@ -4,11 +4,12 @@
 use std::process::{Command, Stdio};
 use std::io::Read;
 use std::io::Write;
-use serde_json::json;
+use serde_json::{json, Value};
 use serde::Deserialize;
 use serde::Serialize;
 use std::thread;
 use std::time::Duration;
+use std::io::BufRead;
 
 fn main2() {
     println!("Hello, world!");
@@ -83,13 +84,37 @@ fn main() {
     println!("oskar stdin: {:?}", res);
 
     thread::spawn(move || {
-        loop {
-            let mut buf = [0; 100];
-            let len = stdout.read(&mut buf).unwrap();
-            println!("oskar stdout: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
+        let mut reader = std::io::BufReader::new(stdout);
 
-            if len == 0 {
-                break;
+        loop {
+            let mut buf = String::new();
+            loop {
+                buf.clear();
+                reader.read_line(&mut buf).unwrap();
+                buf.pop();
+                buf.pop();
+                let parts: Vec<&str> = buf.split(": ").collect();
+                let header_name = parts[0];
+                let header_value = parts[1];
+
+                // println!("oskar: {:?}", header_name);
+
+                let size = header_value.parse::<usize>().unwrap();
+                println!("oskar: {:?}", size);
+
+                let mut json_buf = Vec::new();
+                // todo: +2 might be related the the pops above. Anyway,
+                // need to find out why
+                json_buf.resize(size+2, 0);
+                reader.read_exact(&mut json_buf);
+                // println!("oskar: {:?}", json_buf);
+                let json = String::from_utf8(json_buf).unwrap();
+                // println!("oskar: {}", json);
+
+                let parsed: Value = serde_json::from_str(&json).unwrap();
+                println!("oskar: {:?}", parsed);
+
+
             }
         }
     });
