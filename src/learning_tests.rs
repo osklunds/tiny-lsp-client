@@ -11,11 +11,8 @@ use std::thread;
 use std::time::Duration;
 use std::io::BufRead;
 
-mod learning_tests;
-
-fn main2() {
-    println!("Hello, world!");
-
+#[test]
+fn rust_analyzer() {
     let mut child = Command::new("rust-analyzer")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -26,28 +23,7 @@ fn main2() {
     let mut stdout = child.stdout.take().unwrap();
     let mut stderr = child.stderr.take().unwrap();
 
-    let res = stdin.write(b"hejhej\n");
-    println!("oskar stdin: {:?}", res);
-
-    let mut res = Vec::new();
-    stderr.read_to_end(&mut res);
-    println!("oskar stderr: {}", String::from_utf8(res).unwrap());
-
-    other_fun();
-}
-
-fn other_fun() {
-    println!("oskar: {:?}", "hej");
-}
-
-fn main() {
-    let string = "{\"id\": 2,\
-                  \"method\": \"hej\",\
-                  \"params\": {\"sub-field\": 123}}";
-    let req = serde_json::from_str::<Request>(string).unwrap();
-    println!("oskar: {:?}", req);
-
-    let to_send = json!({
+    let initialize_params = json!({
         "processId": null,
         "rootUri": "file:///home/oskar/own_repos/tiny-lsp-client",
         "capabilities": {
@@ -60,23 +36,13 @@ fn main() {
         }
     });
 
-    let req = Request {
+    let initialize_request = Request {
         id: 123,
         method: "initialize".to_string(),
-        params: to_send
+        params: initialize_params
     };
 
-    let mut child = Command::new("rust-analyzer")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn().unwrap();
-
-    let mut stdin = child.stdin.take().unwrap();
-    let mut stdout = child.stdout.take().unwrap();
-    let mut stderr = child.stderr.take().unwrap();
-
-    send_request(&req, &mut stdin);
+    send_request(&initialize_request, &mut stdin);
 
     thread::spawn(move || {
         let mut reader = std::io::BufReader::new(stdout);
@@ -91,8 +57,6 @@ fn main() {
                 let parts: Vec<&str> = buf.split(": ").collect();
                 let header_name = parts[0];
                 let header_value = parts[1];
-
-                // println!("oskar: {:?}", header_name);
 
                 let size = header_value.parse::<usize>().unwrap();
                 println!("oskar: {:?}", size);
@@ -126,16 +90,16 @@ fn main() {
 
     thread::sleep(Duration::from_secs(1));
 
-    let init_noti = json!({
-        "method":"initialized",
+    let initialized_notification = json!({
+        "method": "initialized",
         "params":{}
     });
 
-    send_json(&serde_json::to_string(&init_noti).unwrap(), &mut stdin);
+    send_json(&serde_json::to_string(&initialized_notification).unwrap(), &mut stdin);
 
     thread::sleep(Duration::from_secs(1));
 
-    let find_def_params = json!({
+    let find_definition_params = json!({
         "textDocument": {
             "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/main.rs"
         },
@@ -145,14 +109,13 @@ fn main() {
         }
     });
 
-    let find_def_req = Request {
+    let find_definition_req = Request {
         id: 133,
         method: "textDocument/definition".to_string(),
-        params: find_def_params
+        params: find_definition_params
     };
             
-    send_request(&find_def_req, &mut stdin);
-
+    send_request(&find_definition_req, &mut stdin);
 
     thread::sleep(Duration::from_secs(60));
 }
