@@ -7,6 +7,8 @@ use std::io::Write;
 use serde_json::json;
 use serde::Deserialize;
 use serde::Serialize;
+use std::thread;
+use std::time::Duration;
 
 fn main2() {
     println!("Hello, world!");
@@ -44,7 +46,7 @@ fn main() {
 
     let to_send = json!({
         "processId": null,
-        "rootUri": "file:///home/oskar/own_repos/tiny-lsp-client",
+        // "rootUri": "file:///home/oskar/own_repos/tiny-lsp-client",
         "capabilities": {
             "textDocument": {
                 "definition": {
@@ -80,9 +82,23 @@ fn main() {
     let res = stdin.write(full.as_bytes());
     println!("oskar stdin: {:?}", res);
 
-    let mut res = Vec::new();
-    stdout.read_to_end(&mut res);
-    println!("oskar stdout: {}", String::from_utf8(res).unwrap());
+    thread::spawn(move || {
+        loop {
+            let mut buf = [0; 100];
+            let len = stdout.read(&mut buf).unwrap();
+            println!("oskar stdout: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
+        }
+    });
+
+    thread::spawn(move || {
+        loop {
+            let mut buf = [0; 100];
+            let len = stderr.read(&mut buf).unwrap();
+            println!("oskar stderr: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
+        }
+    });
+
+    thread::sleep(Duration::from_secs(60));
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
