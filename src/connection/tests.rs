@@ -20,7 +20,7 @@ fn text_document_definition() {
 
     connection.initialize();
 
-    let params = TextDocumentDefinitionRequest {
+    let params = TextDocumentDefinitionRequestParams {
         text_document: TextDocumentIdentifier {
             uri: "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string()
         },
@@ -35,9 +35,12 @@ fn text_document_definition() {
 
     // this might have to return id, to be used when comparing recv
     // recv should not return Message. Just (usize, Response)
-    connection.send_request(Params::TextDocumentDefinitionRequest(params));
+    connection.send_request(Params::TextDocumentDefinitionRequestParams(params));
     let response = connection.recv_response();
-    let Result::TextDocumentDefinitionResponse(result) = &response.result else {
+    let Result::TextDocumentDefinitionResult(result) = &response.result else {
+        panic!();
+    };
+    let TextDocumentDefinitionResult::LocationLinkList(result) = &result else {
         panic!();
     };
     assert!(result.len() == 1);

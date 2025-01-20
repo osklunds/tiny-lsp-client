@@ -21,12 +21,12 @@ pub struct Request {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Params {
-    TextDocumentDefinitionRequest(TextDocumentDefinitionRequest),
+    TextDocumentDefinitionRequestParams(TextDocumentDefinitionRequestParams),
     Untyped(serde_json::Value)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TextDocumentDefinitionRequest {
+pub struct TextDocumentDefinitionRequestParams {
     #[serde(rename = "textDocument")]
     pub text_document: TextDocumentIdentifier,
     pub position: Position
@@ -35,13 +35,6 @@ pub struct TextDocumentDefinitionRequest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TextDocumentIdentifier {
     pub uri: String
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename = "originSelectionRange")]
-pub struct OriginSelectionRange {
-    pub start: Position,
-    pub end: Position,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -60,8 +53,14 @@ pub struct Response {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Result {
-    TextDocumentDefinitionResponse(Vec<LocationLink>),
+    TextDocumentDefinitionResult(TextDocumentDefinitionResult),
     Untyped(serde_json::Value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum TextDocumentDefinitionResult {
+    LocationLinkList(Vec<LocationLink>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
