@@ -47,7 +47,8 @@ pub struct Position {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
     pub id: u32,
-    pub result: Result,
+    pub result: Option<Result>,
+    pub error: Option<ResponseError>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -81,5 +82,11 @@ pub struct Range {
 pub struct Notification {
     pub method: String,
     pub params: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ResponseError {
+    pub code: isize, // todo: strongly typed enum
+    pub message: String
 }
 
