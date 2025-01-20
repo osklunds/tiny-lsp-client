@@ -2,6 +2,8 @@
 #[cfg(test)]
 mod tests;
 
+use crate::message::*;
+
 use std::process::{Command, Stdio, Child, ChildStdout};
 use std::io::Read;
 use std::io::Write;
@@ -12,87 +14,6 @@ use std::thread;
 use std::time::Duration;
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::{self, Sender, Receiver};
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-enum Message {
-    Request(Request),
-    Response(Response),
-    Notification(Notification)
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Request {
-    pub id: u32,
-    pub method: String,
-    pub params: Params,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-enum Params {
-    TextDocumentDefinitionRequest(TextDocumentDefinitionRequest),
-    Untyped(serde_json::Value)
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct TextDocumentDefinitionRequest {
-    #[serde(rename = "textDocument")]
-    pub text_document: TextDocumentIdentifier,
-    pub position: Position
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct TextDocumentIdentifier {
-    pub uri: String
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename = "originSelectionRange")]
-struct OriginSelectionRange {
-    pub start: Position,
-    pub end: Position,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename = "start")]
-struct Position {
-    pub line: usize,
-    pub character: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Response {
-    pub id: u32,
-    pub result: Result,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-enum Result {
-    TextDocumentDefinitionResponse(Vec<LocationLink>),
-    Untyped(serde_json::Value)
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct LocationLink {
-    #[serde(rename = "targetUri")]
-    pub target_uri: String,
-    #[serde(rename = "targetRange")]
-    pub target_range: Range,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Range {
-    pub start: Position,
-    pub end: Position
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Notification {
-    pub method: String,
-    pub params: serde_json::Value,
-}
 
 struct Connection {
     server_process: Child,

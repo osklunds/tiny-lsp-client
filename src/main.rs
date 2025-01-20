@@ -16,6 +16,7 @@ use std::sync::mpsc::{self, Sender, Receiver};
 mod learning_tests;
 mod dummy;
 mod connection;
+mod message;
 
 fn main() {
 
