@@ -37,5 +37,17 @@ fn text_document_definition() {
     // recv should not return Message. Just (usize, Response)
     connection.send_request(Params::TextDocumentDefinitionRequest(params));
     let response = connection.recv_response();
-    println!("oskar: {:?}", response);
+    let Result::TextDocumentDefinitionResponse(result) = &response.result else {
+        panic!();
+    };
+    assert!(result.len() == 1);
+
+    let location_link = &result[0];
+    let target_range = &location_link.target_range;
+    let start = &target_range.start;
+    let end = &target_range.end;
+    assert!(start.line == 7);
+    assert!(start.character == 0);
+    assert!(end.line == 9);
+    assert!(end.character == 1);
 }

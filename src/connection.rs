@@ -64,7 +64,28 @@ struct Position {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Response {
     pub id: u32,
-    pub result: serde_json::Value,
+    pub result: Result,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum Result {
+    TextDocumentDefinitionResponse(Vec<LocationLink>),
+    Untyped(serde_json::Value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct LocationLink {
+    #[serde(rename = "targetUri")]
+    pub target_uri: String,
+    #[serde(rename = "targetRange")]
+    pub target_range: Range,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Range {
+    pub start: Position,
+    pub end: Position
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
