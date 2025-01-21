@@ -20,7 +20,7 @@ fn text_document_definition() {
 
     connection.initialize();
 
-    let params = TextDocumentDefinitionRequestParams {
+    let params = DefinitionParams {
         text_document: TextDocumentIdentifier {
             uri: "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string()
         },
@@ -30,7 +30,7 @@ fn text_document_definition() {
         }
     };
 
-    let params = Params::TextDocumentDefinitionRequestParams(params);
+    let params = RequestParams::DefinitionParams(params);
 
     let mut result: Vec<LocationLink> = vec![];
     loop {
@@ -43,7 +43,7 @@ fn text_document_definition() {
         // to it indexing first. So try until succeeds.  rust-analyzer responds
         // with different results before it's ready depending on timing.
         if let Some(Result::TextDocumentDefinitionResult(r)) = &response.result {
-            if let TextDocumentDefinitionResult::LocationLinkList(r) = r {
+            if let DefinitionResult::LocationLinkList(r) = r {
                 if !r.is_empty() {
                     result = r.to_vec();
                     break;

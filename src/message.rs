@@ -15,18 +15,18 @@ pub enum Message {
 pub struct Request {
     pub id: u32,
     pub method: String,
-    pub params: Params,
+    pub params: RequestParams,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-pub enum Params {
-    TextDocumentDefinitionRequestParams(TextDocumentDefinitionRequestParams),
+pub enum RequestParams {
+    DefinitionParams(DefinitionParams),
     Untyped(serde_json::Value)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct TextDocumentDefinitionRequestParams {
+pub struct DefinitionParams {
     #[serde(rename = "textDocument")]
     pub text_document: TextDocumentIdentifier,
     pub position: Position
@@ -52,15 +52,21 @@ pub struct Response {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ResponseError {
+    pub code: isize, // todo: strongly typed enum
+    pub message: String
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Result {
-    TextDocumentDefinitionResult(TextDocumentDefinitionResult),
+    TextDocumentDefinitionResult(DefinitionResult),
     Untyped(serde_json::Value)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-pub enum TextDocumentDefinitionResult {
+pub enum DefinitionResult {
     LocationLinkList(Vec<LocationLink>),
 }
 
@@ -85,8 +91,29 @@ pub struct Notification {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ResponseError {
-    pub code: isize, // todo: strongly typed enum
-    pub message: String
+#[serde(untagged)]
+pub enum NotificationParams {
+    DidChangeTextDocumentParams(DidChangeTextDocumentParams),
+    Untyped(serde_json::Value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DidChangeTextDocumentParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: VersionedTextDocumentIdentifier,
+    #[serde(rename = "contentChanges")]
+    pub content_changes: Vec<TextDocumentContentChangeEvent>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VersionedTextDocumentIdentifier {
+    pub uri: String,
+    pub version: isize
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TextDocumentContentChangeEvent {
+    pub range: Range,
+    pub text: String
 }
 

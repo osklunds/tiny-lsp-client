@@ -110,7 +110,7 @@ impl Connection {
         let initialize_request = Request {
             id: 0,
             method: "initialize".to_string(),
-            params: Params::Untyped(initialize_params)
+            params: RequestParams::Untyped(initialize_params)
         };
         let initialize_request = Message::Request(initialize_request);
         self.send_msg(initialize_request);
@@ -125,7 +125,7 @@ impl Connection {
         self.send_msg(initialized_notification);
     }
 
-    pub fn send_request(&self, params: Params) {
+    pub fn send_request(&self, params: RequestParams) {
         let request = Request {
             id: 1234,
             method: "textDocument/definition".to_string(), // todo: base on params
