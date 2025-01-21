@@ -87,7 +87,7 @@ pub struct Range {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Notification {
     pub method: String,
-    pub params: serde_json::Value,
+    pub params: NotificationParams
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -101,13 +101,13 @@ pub enum NotificationParams {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DidOpenTextDocumentParams {
     #[serde(rename = "textDocument")]
-    pub text_document: VersionedTextDocumentIdentifier,
+    pub text_document: TextDocumentIdentifier,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DidCloseTextDocumentParams {
     #[serde(rename = "textDocument")]
-    pub text_document: VersionedTextDocumentIdentifier,
+    pub text_document: TextDocumentIdentifier,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

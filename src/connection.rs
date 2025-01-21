@@ -119,7 +119,7 @@ impl Connection {
 
         let initialized_notification = Notification {
             method: "initialized".to_string(),
-            params: json!({})
+            params: NotificationParams::Untyped(json!({}))
         };
         let initialized_notification = Message::Notification(initialized_notification);
         self.send_msg(initialized_notification);
