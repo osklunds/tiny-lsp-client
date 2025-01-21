@@ -93,8 +93,21 @@ pub struct Notification {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum NotificationParams {
+    DidOpenTextDocumentParams(DidOpenTextDocumentParams),
     DidChangeTextDocumentParams(DidChangeTextDocumentParams),
     Untyped(serde_json::Value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DidOpenTextDocumentParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: VersionedTextDocumentIdentifier,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DidCloseTextDocumentParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: VersionedTextDocumentIdentifier,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
