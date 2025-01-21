@@ -662,3 +662,27 @@ Result: [
     }
   }
 ]
+
+[Trace - 07:32:14 PM] Sending notification 'textDocument/didChange'.
+Params: {
+  "textDocument": {
+    "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/message.rs",
+    "version": 301
+  },
+  "contentChanges": [
+    {
+      "range": {
+        "start": {
+          "line": 27,
+          "character": 0
+        },
+        "end": {
+          "line": 27,
+          "character": 1
+        }
+      },
+      "rangeLength": 1,
+      "text": ""
+    }
+  ]
+}
