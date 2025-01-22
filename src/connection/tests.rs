@@ -54,23 +54,19 @@ fn did_open_change_close_and_definition() {
         })
     }));
     let response = connection.recv_response();
-    let result = response.result.unwrap();
-    let Result::TextDocumentDefinitionResult(result) = result else { panic!() };
-    let DefinitionResult::LocationLinkList(result) = result else { panic!() };
-    assert_eq!(1, result.len());
-    let location_link = result[0].clone();
-    let target_range = &location_link.target_range;
-    let exp_target_range = Range {
-        start: Position {
-            line: 7,
-            character: 0
+    assert_definition_response(
+        Range {
+            start: Position {
+                line: 7,
+                character: 0
+            },
+            end: Position {
+                line: 9,
+                character: 1
+            }
         },
-        end: Position {
-            line: 9,
-            character: 1
-        }
-    };
-    assert_eq!(&exp_target_range, target_range);
+        response
+    );
 
     // textDocument/didChange
     let did_change = Message::Notification(Notification {
@@ -112,26 +108,21 @@ fn did_open_change_close_and_definition() {
         })
     }));
     let response = connection.recv_response();
-    let result = response.result.unwrap();
-    let Result::TextDocumentDefinitionResult(result) = result else { panic!() };
-    let DefinitionResult::LocationLinkList(result) = result else { panic!() };
-    assert_eq!(1, result.len());
-    let location_link = result[0].clone();
-    let target_range = &location_link.target_range;
-    // Due to change, different position
-    let exp_target_range = Range {
-        start: Position {
-            line: 8,
-            character: 0
+    assert_definition_response(
+        Range {
+            start: Position {
+                line: 8,
+                character: 0
+            },
+            end: Position {
+                line: 10,
+                character: 1
+            }
         },
-        end: Position {
-            line: 10,
-            character: 1
-        }
-    };
-    assert_eq!(&exp_target_range, target_range);
+        response
+    );
 
-    // textDocument/didChange
+    // textDocument/definition after textDocument/didChange again
     connection.send_msg(Message::Request(Request {
         id: 1236,
         method: "textDocument/definition".to_string(),
@@ -146,22 +137,27 @@ fn did_open_change_close_and_definition() {
         })
     }));
     let response = connection.recv_response();
+    assert_definition_response(
+        Range {
+            start: Position {
+                line: 8,
+                character: 0
+            },
+            end: Position {
+                line: 10,
+                character: 1
+            }
+        },
+        response
+    );
+}
+
+fn assert_definition_response(exp_target_range: Range, response: Response) {
     let result = response.result.unwrap();
     let Result::TextDocumentDefinitionResult(result) = result else { panic!() };
     let DefinitionResult::LocationLinkList(result) = result else { panic!() };
     assert_eq!(1, result.len());
     let location_link = result[0].clone();
     let target_range = &location_link.target_range;
-    // Due to change, different position
-    let exp_target_range = Range {
-        start: Position {
-            line: 8,
-            character: 0
-        },
-        end: Position {
-            line: 10,
-            character: 1
-        }
-    };
     assert_eq!(&exp_target_range, target_range);
 }
