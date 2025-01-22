@@ -58,11 +58,15 @@ impl Connection {
             let mut reader = std::io::BufReader::new(stdout);
 
             loop {
+                // Only care about response so far, i.e. drop notifications
+                // about e.g. diagnostics
                 let msg = recv(&mut reader);
-                if let Ok(()) = stdout_tx.send(msg) {
+                if let Message::Response(_) = msg {
+                    if let Ok(()) = stdout_tx.send(msg) {
 
-                } else {
-                    return;
+                    } else {
+                        return;
+                    }
                 }
             }
         });
@@ -71,10 +75,10 @@ impl Connection {
             loop {
                 let mut buf = [0; 500];
                 let len = stderr.read(&mut buf).unwrap();
-                // println!("oskar stderr: {} {}",
-                //          len,
-                //          String::from_utf8(buf.to_vec()).unwrap()
-                // );
+                println!("oskar stderr: {} {}",
+                         len,
+                         String::from_utf8(buf.to_vec()).unwrap()
+                );
 
 
                 if len == 0 {
@@ -153,7 +157,7 @@ impl Connection {
 
 fn send_json<W: Write>(json: &str, writer: &mut W) {
     let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-    println!("Sent: {}", full);
+    // println!("Sent: {}", full);
     writer.write(full.as_bytes()).unwrap();
 }
 
@@ -180,10 +184,10 @@ fn recv(reader: &mut BufReader<ChildStdout>) -> Message {
     // need to find out why
     json_buf.resize(size+2, 0);
     reader.read_exact(&mut json_buf);
-    // println!("oskar: {:?}", json_buf);
+    // println!("oskar3: {:?}", json_buf);
     let json = String::from_utf8(json_buf).unwrap();
-    println!("Received: {}", json);
+    // println!("Received: {}", json);
+    thread::sleep(Duration::from_millis(100));
 
-    let response = serde_json::from_str(&json).unwrap();
-    Message::Response(response)
+    serde_json::from_str(&json).unwrap()
 }
