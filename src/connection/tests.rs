@@ -69,7 +69,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/didChange
-    let did_change = Message::Notification(Notification {
+    connection.send_msg(Message::Notification(Notification {
         method: "textDocument/didChange".to_string(),
         params: NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {
@@ -90,8 +90,7 @@ fn did_open_change_close_and_definition() {
                 text: "\n".to_string()
             }
             ]
-        })});
-    connection.send_msg(did_change);
+        })}));
 
     // textDocument/definition after textDocument/didChange
     connection.send_msg(Message::Request(Request {
@@ -150,6 +149,42 @@ fn did_open_change_close_and_definition() {
         },
         response
     );
+
+    // textDocument/didChange to revert the previous change, so that
+    // rust-analyzer's view matches the file system
+    connection.send_msg(Message::Notification(Notification {
+        method: "textDocument/didChange".to_string(),
+        params: NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier {
+                uri: uri.clone(),
+                version: 4
+            },
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: Range {
+                    start: Position {
+                        line: 6,
+                        character: 0
+                    },
+                    end: Position {
+                        line: 7,
+                        character: 1
+                    }
+                },
+                text: "".to_string()
+            }
+            ]
+        })}));
+
+    // textDocument/didClose
+    connection.send_msg(Message::Notification(Notification {
+        method: "textDocument/didClose".to_string(),
+        params: NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
+            text_document: TextDocumentIdentifier {
+                uri: uri.clone(),
+            },
+        })}));
+
+    thread::sleep(Duration::from_millis(2000));
 }
 
 fn assert_definition_response(exp_target_range: Range, response: Response) {

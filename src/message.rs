@@ -95,6 +95,7 @@ pub struct Notification {
 pub enum NotificationParams {
     DidOpenTextDocumentParams(DidOpenTextDocumentParams),
     DidChangeTextDocumentParams(DidChangeTextDocumentParams),
+    DidCloseTextDocumentParams(DidCloseTextDocumentParams),
     Untyped(serde_json::Value)
 }
 
