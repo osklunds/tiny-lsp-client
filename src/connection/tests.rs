@@ -184,7 +184,51 @@ fn did_open_change_close_and_definition() {
             },
         })}));
 
-    thread::sleep(Duration::from_millis(2000));
+    // Do a definition again to ensure that rust-analyzer did not crash due to
+    // faulty data sent in didClose above. Since it's a notification we can't
+    // wait for a response.
+
+    // textDocument/didOpen
+    connection.send_msg(Message::Notification(Notification {
+        method: "textDocument/didOpen".to_string(),
+        params: NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: uri.clone(),
+                language_id: "rust".to_string(),
+                version: 0,
+                text: fs::read_to_string("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs").unwrap()
+            }
+        })
+    }));
+
+    // textDocument/definition
+    connection.send_msg(Message::Request(Request {
+        id: 1236,
+        method: "textDocument/definition".to_string(),
+        params: RequestParams::DefinitionParams( DefinitionParams {
+            text_document: TextDocumentIdentifier {
+                uri: uri.clone()
+            },
+            position: Position {
+                character: 4,
+                line: 4
+            }
+        })
+    }));
+    let response = connection.recv_response();
+    assert_definition_response(
+        Range {
+            start: Position {
+                line: 7,
+                character: 0
+            },
+            end: Position {
+                line: 9,
+                character: 1
+            }
+        },
+        response
+    );
 }
 
 fn assert_definition_response(exp_target_range: Range, response: Response) {
