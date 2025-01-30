@@ -15,7 +15,7 @@ use std::time::Duration;
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::{self, Sender, Receiver};
 
-struct Connection {
+pub struct Connection {
     server_process: Child,
     root_path: String,
     sender: Sender<Message>,

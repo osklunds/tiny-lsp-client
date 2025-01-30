@@ -10,12 +10,32 @@ mod dummy;
 mod connection;
 mod message;
 
+use crate::connection::Connection;
+
 use std::ffi::CString;
 use std::os::raw;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::mem::MaybeUninit;
+use std::sync::Once;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
 pub static plugin_is_GPL_compatible: libc::c_int = 0;
+
+// todo: stolen from lspce. Understand how, and maybe make safer
+fn connections() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
+    static mut CONNECTIONS: MaybeUninit<Arc<Mutex<HashMap<String, Connection>>>> =
+        MaybeUninit::uninit();
+    static ONCE: Once = Once::new();
+
+    ONCE.call_once(|| unsafe {
+        CONNECTIONS.as_mut_ptr().write(Arc::new(Mutex::new(HashMap::new())))
+    });
+
+    unsafe { &*CONNECTIONS.as_mut_ptr() }
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_int {
@@ -121,9 +141,18 @@ unsafe extern "C" fn tlc__rust_start_server(
     let intern = (*env).intern.unwrap();
     let list = intern(env, CString::new("list").unwrap().as_ptr());
     let funcall = (*env).funcall.unwrap();
+    let copy_string_contents = (*env).copy_string_contents.unwrap();
 
     let root_uri: emacs_value = *args.offset(0);
     let server_cmd: emacs_value = *args.offset(1);
+
+    let conns = connections().lock().unwrap();
+    let mut buf = vec![0; 100];
+    let mut len = 100;
+    let res = copy_string_contents(env, root_uri, buf.as_mut_ptr() as *mut i8, &mut len);
+    let string = std::str::from_utf8(&buf[0..len as usize]).unwrap();
+
+    std::fs::write("/home/oskar/hej.txt", string).unwrap();
 
     let res = funcall(env, list, 2, [server_cmd, root_uri].as_mut_ptr());
 
