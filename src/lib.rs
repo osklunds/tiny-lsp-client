@@ -49,6 +49,25 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
     // we also want to actually call fset, so we'll need funcall
     let funcall = (*env).funcall.expect("could not get funcall");
 
+    let tlc__rust_all_server_info = make_function(
+        env,
+        0,
+        0,
+        Some(tlc__rust_all_server_info),
+        CString::new("doc").unwrap().as_ptr(),
+        std::ptr::null_mut(),
+    );
+    let tlc__rust_all_server_info_sym = intern(
+        env,
+        CString::new("tlc--rust-all-server-info").unwrap().as_ptr()
+    );
+    funcall(
+        env,
+        fset,
+        2,
+        [tlc__rust_all_server_info_sym, tlc__rust_all_server_info].as_mut_ptr()
+    );
+
     // in Emacs Lisp this is like:
     // (fset 'my-message-from-rust (lambda () ...))
     funcall(env, fset, 2, [my_message_sym, my_message_func].as_mut_ptr());
@@ -73,4 +92,25 @@ unsafe extern "C" fn message_from_rust(
     let c_string = CString::new(string).unwrap();
     let len = c_string.as_bytes().len() as isize;
     make_string(env, c_string.as_ptr(), len)
+}
+
+unsafe extern "C" fn tlc__rust_all_server_info(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    let make_integer = (*env).make_integer.unwrap();
+
+    let a = make_integer(env, 32);
+    let b = make_integer(env, 8);
+    let c = make_integer(env, 9);
+
+    let intern = (*env).intern.unwrap();
+    let list = intern(env, CString::new("list").unwrap().as_ptr());
+    let funcall = (*env).funcall.unwrap();
+
+    let res = funcall(env, list, 3, [a, b, c].as_mut_ptr());
+
+    res
 }
