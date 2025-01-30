@@ -157,7 +157,7 @@ impl Connection {
 
 fn send_json<W: Write>(json: &str, writer: &mut W) {
     let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-    // println!("Sent: {}", full);
+    println!("Sent: {}", full);
     writer.write(full.as_bytes()).unwrap();
 }
 
@@ -186,7 +186,7 @@ fn recv(reader: &mut BufReader<ChildStdout>) -> Message {
     reader.read_exact(&mut json_buf);
     // println!("oskar3: {:?}", json_buf);
     let json = String::from_utf8(json_buf).unwrap();
-    // println!("Received: {}", json);
+    println!("Received: {}", json);
     thread::sleep(Duration::from_millis(100));
 
     serde_json::from_str(&json).unwrap()
