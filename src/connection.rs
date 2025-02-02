@@ -94,7 +94,7 @@ impl Connection {
             root_path: root_path.to_string(),
             sender: stdin_tx,
             receiver: stdout_rx,
-            next_request_id: 1
+            next_request_id: 0
         }
     }
 
@@ -113,23 +113,17 @@ impl Connection {
                 }
             }
         });
+        self.send_request(
+            "initialize".to_string(),
+            RequestParams::Untyped(initialize_params)
+        );
 
-        let initialize_request = Request {
-            id: 0,
-            method: "initialize".to_string(),
-            params: RequestParams::Untyped(initialize_params)
-        };
-        let initialize_request = Message::Request(initialize_request);
-        self.send_msg(initialize_request);
+        let _initialize_response = self.recv_response();
 
-        let _initialize_response = self.recv_msg();
-
-        let initialized_notification = Notification {
-            method: "initialized".to_string(),
-            params: NotificationParams::Untyped(json!({}))
-        };
-        let initialized_notification = Message::Notification(initialized_notification);
-        self.send_msg(initialized_notification);
+        self.send_notification(
+            "initialized".to_string(),
+            NotificationParams::Untyped(json!({}))
+        );
     }
 
     pub fn send_request(&mut self, method: String, params: RequestParams) -> u32 {
@@ -140,31 +134,24 @@ impl Connection {
             method,
             params
         };
-        self.send_msg(Message::Request(request));
+        self.sender.send(Message::Request(request)).unwrap();
         id
     }
 
     pub fn send_notification(&self, method: String, params: NotificationParams) {
-        self.send_msg(Message::Notification(Notification {
+        let notification = Notification {
             method,
             params,
-        }));
+        };
+        self.sender.send(Message::Notification(notification)).unwrap();
     }
 
     pub fn recv_response(&self) -> Response {
-        if let Message::Response(response) = self.recv_msg() {
+        if let Message::Response(response) = self.receiver.recv().unwrap() {
             response
         } else {
             panic!("hej")
         }
-    }
-
-    fn send_msg(&self, msg: Message) {
-        self.sender.send(msg).unwrap();
-    }
-
-    fn recv_msg(&self) -> Message {
-        self.receiver.recv().unwrap()
     }
 }
 
