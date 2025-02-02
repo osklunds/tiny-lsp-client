@@ -11,6 +11,7 @@ mod connection;
 mod message;
 
 use crate::connection::Connection;
+use crate::message::*;
 
 use std::ffi::CString;
 use std::os::raw;
@@ -82,6 +83,25 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         fset,
         2,
         [tlc__rust_start_server_sym, tlc__rust_start_server].as_mut_ptr()
+    );
+
+    let tlc__rust_send_request = make_function(
+        env,
+        3,
+        3,
+        Some(tlc__rust_send_request),
+        CString::new("doc todo").unwrap().as_ptr(),
+        std::ptr::null_mut(),
+    );
+    let tlc__rust_send_request_sym = intern(
+        env,
+        CString::new("tlc--rust-send-request").unwrap().as_ptr()
+    );
+    funcall(
+        env,
+        fset,
+        2,
+        [tlc__rust_send_request_sym, tlc__rust_send_request].as_mut_ptr()
     );
     
         
@@ -172,7 +192,46 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    todo!()
+    let intern = (*env).intern.unwrap();
+    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
+    let funcall = (*env).funcall.unwrap();
+    let make_integer = (*env).make_integer.unwrap();
+    let extract_integer = (*env).extract_integer.unwrap();
+
+    let root_uri = get_as_string(env, *args.offset(0));
+    let conns = connections().lock().unwrap();
+    let connection = &conns[&root_uri];
+
+    let request_type = get_as_string(env, *args.offset(1));
+    if request_type == "textDocument/findDefinition" {
+        let request_args = *args.offset(2);
+
+        let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
+        let uri = get_as_string(env, uri);
+        let uri = "file://".to_owned() + &uri;
+
+        let character =
+            funcall(env, nth, 2, [make_integer(env, 1), request_args].as_mut_ptr());
+        let character = extract_integer(env, character) as usize;
+
+        let line =
+            funcall(env, nth, 2, [make_integer(env, 2), request_args].as_mut_ptr());
+        let line = extract_integer(env, line) as usize;
+
+        let params = RequestParams::DefinitionParams( DefinitionParams {
+            text_document: TextDocumentIdentifier {
+                uri,
+            },
+            position: Position {
+                character,
+                line,
+            }
+        });
+        connection.send_request(params);
+        intern(env, CString::new("ok").unwrap().as_ptr())
+    } else {
+        panic!("Incorrect request type")
+    }
 }
 
 unsafe extern "C" fn tlc__rust_recv_response(
@@ -182,4 +241,15 @@ unsafe extern "C" fn tlc__rust_recv_response(
     data: *mut raw::c_void,
 ) -> emacs_value {
     todo!()
+}
+
+unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
+    let copy_string_contents = (*env).copy_string_contents.unwrap();
+    let mut buf = vec![0; 1000];
+    let mut len = 1000;
+    let res = copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len);
+    println!("oskar: {:?}", &buf[0..len as usize]);
+    assert!(res);
+    len -= 1;
+    std::str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
 }

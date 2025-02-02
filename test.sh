@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cargo build && emacs -Q --eval '(load-file "tiny-lsp-client-test.el")'
+cargo build && RUST_BACKTRACE=1 emacs -Q --eval '(load-file "tiny-lsp-client-test.el")'
