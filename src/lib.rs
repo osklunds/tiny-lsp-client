@@ -118,7 +118,6 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let make_integer = (*env).make_integer.unwrap();
-
     let a = make_integer(env, 32);
     let b = make_integer(env, 8);
     let c = make_integer(env, 9);
@@ -146,17 +145,25 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_uri: emacs_value = *args.offset(0);
     let server_cmd: emacs_value = *args.offset(1);
 
-    let conns = connections().lock().unwrap();
+    let mut conns = connections().lock().unwrap();
     let mut buf = vec![0; 100];
     let mut len = 100;
     let res = copy_string_contents(env, root_uri, buf.as_mut_ptr() as *mut i8, &mut len);
+    assert!(res);
+    len -= 1;
     let string = std::str::from_utf8(&buf[0..len as usize]).unwrap();
 
-    std::fs::write("/home/oskar/hej.txt", string).unwrap();
-
-    let res = funcall(env, list, 2, [server_cmd, root_uri].as_mut_ptr());
-
-    res
+    if conns.contains_key(string) {
+        intern(env, CString::new("already-started").unwrap().as_ptr())
+    } else {
+        let mut connection = Connection::new(
+            "rust-analyzer",
+            string
+        );
+        connection.initialize();
+        conns.insert(string.to_string(), connection);
+        intern(env, CString::new("started").unwrap().as_ptr())
+    }
 }
 
 unsafe extern "C" fn tlc__rust_send_request(
