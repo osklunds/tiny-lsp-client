@@ -46,7 +46,10 @@ impl Connection {
         thread::spawn(move || {
             loop {
                 if let Ok(msg) = stdin_rx.recv() {
-                    send(&msg, &mut stdin);
+                    let json = serde_json::to_string(&msg).unwrap();
+                    let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
+                    println!("Sent: {}", full);
+                    stdin.write(full.as_bytes()).unwrap();
                 } else {
                     return;
                 }
@@ -153,17 +156,6 @@ impl Connection {
             panic!("hej")
         }
     }
-}
-
-fn send_json<W: Write>(json: &str, writer: &mut W) {
-    let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-    println!("Sent: {}", full);
-    writer.write(full.as_bytes()).unwrap();
-}
-
-fn send<W: Write>(msg: &Message, writer: &mut W) {
-    let json = serde_json::to_string(&msg).unwrap();
-    send_json(&json, writer);
 }
 
 fn recv(reader: &mut BufReader<ChildStdout>) -> Message {
