@@ -63,9 +63,32 @@ impl Connection {
             let mut reader = std::io::BufReader::new(stdout);
 
             loop {
+                let mut buf = String::new();
+                reader.read_line(&mut buf).unwrap();
+                buf.pop();
+                buf.pop();
+                // println!("oskar2: {:?}", buf);
+                let parts: Vec<&str> = buf.split(": ").collect();
+                let header_name = parts[0];
+                let header_value = parts[1];
+
+                let size = header_value.parse::<usize>().unwrap();
+                // println!("oskar: {:?}", size);
+
+                let mut json_buf = Vec::new();
+                // todo: +2 might be related the the pops above. Anyway,
+                // need to find out why
+                json_buf.resize(size+2, 0);
+                reader.read_exact(&mut json_buf);
+                // println!("oskar3: {:?}", json_buf);
+                let json = String::from_utf8(json_buf).unwrap();
+                println!("Received: {}", json);
+                thread::sleep(Duration::from_millis(100));
+
+                let msg = serde_json::from_str(&json).unwrap();
+
                 // Only care about response so far, i.e. drop notifications
                 // about e.g. diagnostics
-                let msg = recv(&mut reader);
                 if let Message::Response(_) = msg {
                     if let Ok(()) = stdout_tx.send(msg) {
 
@@ -156,30 +179,4 @@ impl Connection {
             panic!("hej")
         }
     }
-}
-
-fn recv(reader: &mut BufReader<ChildStdout>) -> Message {
-    let mut buf = String::new();
-    reader.read_line(&mut buf).unwrap();
-    buf.pop();
-    buf.pop();
-    // println!("oskar2: {:?}", buf);
-    let parts: Vec<&str> = buf.split(": ").collect();
-    let header_name = parts[0];
-    let header_value = parts[1];
-
-    let size = header_value.parse::<usize>().unwrap();
-    // println!("oskar: {:?}", size);
-
-    let mut json_buf = Vec::new();
-    // todo: +2 might be related the the pops above. Anyway,
-    // need to find out why
-    json_buf.resize(size+2, 0);
-    reader.read_exact(&mut json_buf);
-    // println!("oskar3: {:?}", json_buf);
-    let json = String::from_utf8(json_buf).unwrap();
-    println!("Received: {}", json);
-    thread::sleep(Duration::from_millis(100));
-
-    serde_json::from_str(&json).unwrap()
 }
