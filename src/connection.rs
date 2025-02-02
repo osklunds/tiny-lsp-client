@@ -132,15 +132,23 @@ impl Connection {
         self.send_msg(initialized_notification);
     }
 
-    pub fn send_request(&mut self, params: RequestParams) {
+    pub fn send_request(&mut self, method: String, params: RequestParams) -> u32 {
         let id = self.next_request_id;
         self.next_request_id += 1;
         let request = Request {
             id,
-            method: "textDocument/definition".to_string(), // todo: base on params
+            method,
             params
         };
         self.send_msg(Message::Request(request));
+        id
+    }
+
+    pub fn send_notification(&self, method: String, params: NotificationParams) {
+        self.send_msg(Message::Notification(Notification {
+            method,
+            params,
+        }));
     }
 
     pub fn recv_response(&self) -> Response {

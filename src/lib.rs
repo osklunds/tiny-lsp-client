@@ -203,7 +203,7 @@ unsafe extern "C" fn tlc__rust_send_request(
     let mut connection = &mut conns.get_mut(&root_uri).unwrap();
 
     let request_type = get_as_string(env, *args.offset(1));
-    if request_type == "textDocument/findDefinition" {
+    if request_type == "textDocument/definition" {
         let request_args = *args.offset(2);
 
         let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
@@ -227,7 +227,7 @@ unsafe extern "C" fn tlc__rust_send_request(
                 line,
             }
         });
-        connection.send_request(params);
+        connection.send_request(request_type, params);
         intern(env, CString::new("ok").unwrap().as_ptr())
     } else {
         panic!("Incorrect request type")

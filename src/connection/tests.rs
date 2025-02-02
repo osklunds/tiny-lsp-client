@@ -27,23 +27,21 @@ fn did_open_change_close_and_definition() {
     let uri = "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string();
 
     // textDocument/didOpen
-    connection.send_msg(Message::Notification(Notification {
-        method: "textDocument/didOpen".to_string(),
-        params: NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+    connection.send_notification(
+        "textDocument/didOpen".to_string(),
+        NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: uri.clone(),
                 language_id: "rust".to_string(),
                 version: 0,
                 text: fs::read_to_string("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs").unwrap()
             }
-        })
-    }));
+        }));
 
     // textDocument/definition
-    connection.send_msg(Message::Request(Request {
-        id: 1236,
-        method: "textDocument/definition".to_string(),
-        params: RequestParams::DefinitionParams( DefinitionParams {
+    connection.send_request(
+        "textDocument/definition".to_string(),
+        RequestParams::DefinitionParams( DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: uri.clone()
             },
@@ -51,8 +49,7 @@ fn did_open_change_close_and_definition() {
                 character: 4,
                 line: 4
             }
-        })
-    }));
+        }));
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -69,9 +66,9 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/didChange
-    connection.send_msg(Message::Notification(Notification {
-        method: "textDocument/didChange".to_string(),
-        params: NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+    connection.send_notification(
+        "textDocument/didChange".to_string(),
+        NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {
                 uri: uri.clone(),
                 version: 3
@@ -90,13 +87,12 @@ fn did_open_change_close_and_definition() {
                 text: "\n".to_string()
             }
             ]
-        })}));
+        }));
 
     // textDocument/definition after textDocument/didChange
-    connection.send_msg(Message::Request(Request {
-        id: 1236,
-        method: "textDocument/definition".to_string(),
-        params: RequestParams::DefinitionParams( DefinitionParams {
+    connection.send_request(
+        "textDocument/definition".to_string(),
+        RequestParams::DefinitionParams( DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: uri.clone()
             },
@@ -104,8 +100,7 @@ fn did_open_change_close_and_definition() {
                 character: 4,
                 line: 4
             }
-        })
-    }));
+        }));
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -122,10 +117,9 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition after textDocument/didChange again
-    connection.send_msg(Message::Request(Request {
-        id: 1236,
-        method: "textDocument/definition".to_string(),
-        params: RequestParams::DefinitionParams( DefinitionParams {
+    connection.send_request(
+        "textDocument/definition".to_string(),
+        RequestParams::DefinitionParams( DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: uri.clone()
             },
@@ -133,8 +127,7 @@ fn did_open_change_close_and_definition() {
                 character: 4,
                 line: 4
             }
-        })
-    }));
+        }));
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -152,9 +145,9 @@ fn did_open_change_close_and_definition() {
 
     // textDocument/didChange to revert the previous change, so that
     // rust-analyzer's view matches the file system
-    connection.send_msg(Message::Notification(Notification {
-        method: "textDocument/didChange".to_string(),
-        params: NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+    connection.send_notification(
+        "textDocument/didChange".to_string(),
+        NotificationParams::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {
                 uri: uri.clone(),
                 version: 4
@@ -173,39 +166,37 @@ fn did_open_change_close_and_definition() {
                 text: "".to_string()
             }
             ]
-        })}));
+        }));
 
     // textDocument/didClose
-    connection.send_msg(Message::Notification(Notification {
-        method: "textDocument/didClose".to_string(),
-        params: NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
+    connection.send_notification(
+        "textDocument/didClose".to_string(),
+        NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
             text_document: TextDocumentIdentifier {
                 uri: uri.clone(),
             },
-        })}));
+        }));
 
     // Do a definition again to ensure that rust-analyzer did not crash due to
     // faulty data sent in didClose above. Since it's a notification we can't
     // wait for a response.
 
     // textDocument/didOpen
-    connection.send_msg(Message::Notification(Notification {
-        method: "textDocument/didOpen".to_string(),
-        params: NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+    connection.send_notification(
+        "textDocument/didOpen".to_string(),
+        NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: uri.clone(),
                 language_id: "rust".to_string(),
                 version: 0,
                 text: fs::read_to_string("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs").unwrap()
             }
-        })
-    }));
+        }));
 
     // textDocument/definition
-    connection.send_msg(Message::Request(Request {
-        id: 1236,
-        method: "textDocument/definition".to_string(),
-        params: RequestParams::DefinitionParams( DefinitionParams {
+    connection.send_request(
+        "textDocument/definition".to_string(),
+        RequestParams::DefinitionParams( DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: uri.clone()
             },
@@ -213,8 +204,7 @@ fn did_open_change_close_and_definition() {
                 character: 4,
                 line: 4
             }
-        })
-    }));
+        }));
     let response = connection.recv_response();
     assert_definition_response(
         Range {

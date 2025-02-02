@@ -28,6 +28,6 @@
 
 (tlc--rust-send-request
  default-directory
- "textDocument/findDefinition"
+ "textDocument/definition"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 4))
 
