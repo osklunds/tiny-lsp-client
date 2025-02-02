@@ -1,2 +1,6 @@
 
 * tiny-lsp-client
+
+* todos:
+
+dir with test projects/repos
