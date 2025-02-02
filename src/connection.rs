@@ -14,8 +14,9 @@ use std::thread;
 use std::time::Duration;
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::{self, Sender, Receiver};
+use std::process;
 
-struct Connection {
+pub struct Connection {
     server_process: Child,
     root_path: String,
     sender: Sender<Message>,
@@ -99,7 +100,7 @@ impl Connection {
         let root_uri = format!("file://{}", self.root_path);
 
         let initialize_params = json!({
-            "processId": null,
+            "processId": process::id(),
             "rootUri": root_uri,
             "capabilities": {
                 "textDocument": {

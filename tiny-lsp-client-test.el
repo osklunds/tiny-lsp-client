@@ -11,10 +11,23 @@
     (copy-file module tmpfile t)
     (module-load tmpfile)))
 
-(fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/debug/libtiny_lsp_client.so")
-;; (fake-module-reload
-;;  "/home/oskar/own_repos/tiny-lsp-client/target/release/libtiny_lsp_client.so")
-
 (defun tlc-reload ()
   (interactive)
   (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/debug/libtiny_lsp_client.so"))
+(defun stderr (msg)
+  (print (format "emacs-stderr: %s" msg) 'external-debugging-output))
+
+(tlc-reload)
+
+(stderr (tlc--rust-all-server-info))
+
+(stderr (tlc--rust-start-server default-directory "rust-analyzer"))
+(stderr (tlc--rust-start-server default-directory "rust-analyzer"))
+
+(sleep-for 3)
+
+(tlc--rust-send-request
+ default-directory
+ "textDocument/findDefinition"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 4))
+
