@@ -199,8 +199,8 @@ unsafe extern "C" fn tlc__rust_send_request(
     let extract_integer = (*env).extract_integer.unwrap();
 
     let root_uri = get_as_string(env, *args.offset(0));
-    let conns = connections().lock().unwrap();
-    let connection = &conns[&root_uri];
+    let mut conns = connections().lock().unwrap();
+    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
 
     let request_type = get_as_string(env, *args.offset(1));
     if request_type == "textDocument/findDefinition" {

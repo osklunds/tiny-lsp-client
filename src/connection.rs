@@ -20,7 +20,8 @@ pub struct Connection {
     server_process: Child,
     root_path: String,
     sender: Sender<Message>,
-    receiver: Receiver<Message>
+    receiver: Receiver<Message>,
+    next_request_id: u32,
 }
 
 impl Connection {
@@ -92,7 +93,8 @@ impl Connection {
             server_process: child,
             root_path: root_path.to_string(),
             sender: stdin_tx,
-            receiver: stdout_rx
+            receiver: stdout_rx,
+            next_request_id: 1
         }
     }
 
@@ -130,9 +132,11 @@ impl Connection {
         self.send_msg(initialized_notification);
     }
 
-    pub fn send_request(&self, params: RequestParams) {
+    pub fn send_request(&mut self, params: RequestParams) {
+        let id = self.next_request_id;
+        self.next_request_id += 1;
         let request = Request {
-            id: 1234,
+            id,
             method: "textDocument/definition".to_string(), // todo: base on params
             params
         };
