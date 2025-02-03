@@ -49,8 +49,10 @@
           (recv-response))
       response)))
 
-(let ((resp (recv-response))
-      (exp-resp (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
-  (cl-assert (equal resp exp-resp) t))
+(defun assert-equal (exp act)
+  (cl-assert (equal exp act) 'show))
+
+(assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)
+              (recv-response))
 
 (stderr "done")
