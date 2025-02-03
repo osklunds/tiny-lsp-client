@@ -12,7 +12,7 @@ echo ""
 echo ""
 
 if [ $code -eq 0 ]; then
-    echo "$OK"
+    echo "OK"
 else
-    echo "$FAILED"
+    echo "FAILED"
 fi
