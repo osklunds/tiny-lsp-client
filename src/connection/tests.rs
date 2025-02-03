@@ -39,6 +39,7 @@ fn did_open_change_close_and_definition() {
         }));
 
     // textDocument/definition
+    assert_eq!(None, connection.try_recv_response());
     connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams( DefinitionParams {

@@ -13,7 +13,7 @@ use serde::Serialize;
 use std::thread;
 use std::time::Duration;
 use std::io::{BufRead, BufReader};
-use std::sync::mpsc::{self, Sender, Receiver};
+use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use std::process;
 
 pub struct Connection {
@@ -175,6 +175,17 @@ impl Connection {
     pub fn recv_response(&self) -> Response {
         if let Message::Response(response) = self.receiver.recv().unwrap() {
             response
+        } else {
+            panic!("hej")
+        }
+    }
+
+    pub fn try_recv_response(&self) -> Option<Response> {
+        let res = self.receiver.try_recv();
+        if let Ok(Message::Response(response)) = res  {
+            Some(response)
+        } else if let Err(TryRecvError::Empty) = res {
+            None
         } else {
             panic!("hej")
         }
