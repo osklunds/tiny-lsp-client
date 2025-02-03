@@ -31,3 +31,7 @@
  "textDocument/definition"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 4))
 
+(sleep-for 10)
+
+(stderr (tlc--rust-recv-response
+         default-directory))

@@ -103,6 +103,25 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         2,
         [tlc__rust_send_request_sym, tlc__rust_send_request].as_mut_ptr()
     );
+
+    let tlc__rust_recv_response = make_function(
+        env,
+        1,
+        1,
+        Some(tlc__rust_recv_response),
+        CString::new("doc todo").unwrap().as_ptr(),
+        std::ptr::null_mut(),
+    );
+    let tlc__rust_recv_response_sym = intern(
+        env,
+        CString::new("tlc--rust-recv-response").unwrap().as_ptr()
+    );
+    funcall(
+        env,
+        fset,
+        2,
+        [tlc__rust_recv_response_sym, tlc__rust_recv_response].as_mut_ptr()
+    );
     
         
         
@@ -240,7 +259,44 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    todo!()
+    let intern = (*env).intern.unwrap();
+    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
+    let funcall = (*env).funcall.unwrap();
+    let list = intern(env, CString::new("list").unwrap().as_ptr());
+    let make_integer = (*env).make_integer.unwrap();
+
+    let root_uri = get_as_string(env, *args.offset(0));
+    let mut conns = connections().lock().unwrap();
+    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
+
+    if let Some(response) = connection.try_recv_response() {
+        if let Some(result) = response.result {
+            if let Result::TextDocumentDefinitionResult(definition_result) = result {
+                let DefinitionResult::LocationLinkList(location_link_list) =
+                    definition_result;
+                let location_link = &location_link_list[0];
+                let uri = &location_link.target_uri;
+                let range = &location_link.target_selection_range;
+
+                funcall(env,
+                        list,
+                        5,
+                        [string_to_emacs(env, uri.to_string()),
+                         make_integer(env, range.start.line as i64),
+                         make_integer(env, range.start.character as i64),
+                         make_integer(env, range.end.line as i64),
+                         make_integer(env, range.end.character as i64),
+                        ].as_mut_ptr()
+                       ) 
+            } else {
+                intern(env, CString::new("other-response").unwrap().as_ptr())
+            }
+        } else {
+            intern(env, CString::new("other-response").unwrap().as_ptr())
+        }
+    } else {
+        intern(env, CString::new("no-response").unwrap().as_ptr())
+    }
 }
 
 unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
@@ -252,4 +308,11 @@ unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
     assert!(res);
     len -= 1;
     std::str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
+}
+
+unsafe fn string_to_emacs(env: *mut emacs_env, string: String) -> emacs_value {
+    let make_string = (*env).make_string.unwrap();
+    let c_string = CString::new(string).unwrap();
+    let len = c_string.as_bytes().len() as isize;
+    make_string(env, c_string.as_ptr(), len)
 }

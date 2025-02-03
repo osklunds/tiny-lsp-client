@@ -76,6 +76,8 @@ pub struct LocationLink {
     pub target_uri: String,
     #[serde(rename = "targetRange")]
     pub target_range: Range,
+    #[serde(rename = "targetSelectionRange")]
+    pub target_selection_range: Range,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
