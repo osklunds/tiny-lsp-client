@@ -24,19 +24,27 @@
 (stderr (tlc--rust-start-server default-directory "rust-analyzer"))
 (stderr (tlc--rust-start-server default-directory "rust-analyzer"))
 
-(sleep-for 2)
+(sleep-for 1)
 
 (tlc--rust-send-notification
  default-directory
  "textDocument/didOpen"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
+(sleep-for 1)
+
 (tlc--rust-send-request
  default-directory
  "textDocument/definition"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 4))
 
-(sleep-for 10)
+(defun recv-response ()
+  (let ((response (tlc--rust-recv-response default-directory)))
+    (if (equal 'no-response response)
+        (progn
+          (stderr "again")
+          (sleep-for 1)
+          (recv-response))
+      response)))
 
-(stderr (tlc--rust-recv-response
-         default-directory))
+(stderr (recv-response))

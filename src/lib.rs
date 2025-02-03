@@ -339,20 +339,24 @@ unsafe extern "C" fn tlc__rust_recv_response(
             if let Result::TextDocumentDefinitionResult(definition_result) = result {
                 let DefinitionResult::LocationLinkList(location_link_list) =
                     definition_result;
+                if !location_link_list.is_empty() {
                 let location_link = &location_link_list[0];
                 let uri = &location_link.target_uri;
                 let range = &location_link.target_selection_range;
 
-                funcall(env,
-                        list,
-                        5,
-                        [string_to_emacs(env, uri.to_string()),
-                         make_integer(env, range.start.line as i64),
-                         make_integer(env, range.start.character as i64),
-                         make_integer(env, range.end.line as i64),
-                         make_integer(env, range.end.character as i64),
-                        ].as_mut_ptr()
-                       ) 
+                    funcall(env,
+                            list,
+                            5,
+                            [string_to_emacs(env, uri.to_string()),
+                             make_integer(env, range.start.line as i64),
+                             make_integer(env, range.start.character as i64),
+                             make_integer(env, range.end.line as i64),
+                             make_integer(env, range.end.character as i64),
+                            ].as_mut_ptr()
+                    )
+                } else {
+                    intern(env, CString::new("other-response").unwrap().as_ptr())
+                }
             } else {
                 intern(env, CString::new("other-response").unwrap().as_ptr())
             }
@@ -369,7 +373,6 @@ unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
     let mut buf = vec![0; 1000];
     let mut len = 1000;
     let res = copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len);
-    println!("oskar: {:?}", &buf[0..len as usize]);
     assert!(res);
     len -= 1;
     std::str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
