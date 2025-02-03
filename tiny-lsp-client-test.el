@@ -1,4 +1,6 @@
 
+(require 'cl-lib)
+
 ;; (defun my-message-from-rust ()
 ;;   "Returns a message from Rust"
 ;;   "dummy")
@@ -47,4 +49,8 @@
           (recv-response))
       response)))
 
-(stderr (recv-response))
+(let ((resp (recv-response))
+      (exp-resp (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
+  (cl-assert (equal resp exp-resp) t))
+
+(stderr "done")
