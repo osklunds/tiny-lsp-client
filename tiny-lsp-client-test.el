@@ -1,9 +1,9 @@
 
 (require 'cl-lib)
 
-;; (defun my-message-from-rust ()
-;;   "Returns a message from Rust"
-;;   "dummy")
+;; -----------------------------------------------------------------------------
+;; Helpers
+;;------------------------------------------------------------------------------
 
 ;; copied from https://emacs.stackexchange.com/questions/33976/how-do-you-reload-a-dynamic-module
 (defun fake-module-reload (module)
@@ -16,24 +16,42 @@
 (defun tlc-reload ()
   (interactive)
   (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/debug/libtiny_lsp_client.so"))
-(defun stderr (msg)
-  (print (format "emacs-stderr: %s" msg) 'external-debugging-output))
+
+(defun assert-equal (exp act)
+  (cl-assert (equal exp act) 'show))
+
+(defun std-message (format-string &rest args)
+  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
+
+;; -----------------------------------------------------------------------------
+;; Test
+;;------------------------------------------------------------------------------
 
 (tlc-reload)
 
-(stderr (tlc--rust-all-server-info))
+(std-message "%s" (tlc--rust-all-server-info))
 
-(stderr (tlc--rust-start-server default-directory "rust-analyzer"))
-(stderr (tlc--rust-start-server default-directory "rust-analyzer"))
+(std-message "Starting server")
 
+(assert-equal 'started (tlc--rust-start-server default-directory "rust-analyzer"))
+(assert-equal 'already-started (tlc--rust-start-server default-directory "rust-analyzer"))
+
+(std-message "Server started")
+
+;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
+
+(std-message "Sending didOpen")
 
 (tlc--rust-send-notification
  default-directory
  "textDocument/didOpen"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
+;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
+
+(std-message "Sending definition")
 
 (tlc--rust-send-request
  default-directory
@@ -44,15 +62,12 @@
   (let ((response (tlc--rust-recv-response default-directory)))
     (if (equal 'no-response response)
         (progn
-          (stderr "again")
+          (std-message "recv-response again")
           (sleep-for 1)
           (recv-response))
       response)))
 
-(defun assert-equal (exp act)
-  (cl-assert (equal exp act) 'show))
-
 (assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)
               (recv-response))
 
-(stderr "done")
+(std-message "done")
