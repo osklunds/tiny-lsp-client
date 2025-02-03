@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::Once;
+use std::fs;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -121,6 +122,25 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         fset,
         2,
         [tlc__rust_recv_response_sym, tlc__rust_recv_response].as_mut_ptr()
+    );
+
+    let tlc__rust_send_notification = make_function(
+        env,
+        3,
+        3,
+        Some(tlc__rust_send_notification),
+        CString::new("doc todo").unwrap().as_ptr(),
+        std::ptr::null_mut(),
+    );
+    let tlc__rust_send_notification_sym = intern(
+        env,
+        CString::new("tlc--rust-send-notification").unwrap().as_ptr()
+    );
+    funcall(
+        env,
+        fset,
+        2,
+        [tlc__rust_send_notification_sym, tlc__rust_send_notification].as_mut_ptr()
     );
     
         
@@ -247,6 +267,51 @@ unsafe extern "C" fn tlc__rust_send_request(
             }
         });
         connection.send_request(request_type, params);
+        intern(env, CString::new("ok").unwrap().as_ptr())
+    } else {
+        panic!("Incorrect request type")
+    }
+}
+
+unsafe extern "C" fn tlc__rust_send_notification(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    let intern = (*env).intern.unwrap();
+    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
+    let funcall = (*env).funcall.unwrap();
+    let make_integer = (*env).make_integer.unwrap();
+    let extract_integer = (*env).extract_integer.unwrap();
+
+    let root_uri = get_as_string(env, *args.offset(0));
+    let mut conns = connections().lock().unwrap();
+    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
+
+    let request_type = get_as_string(env, *args.offset(1));
+    if request_type == "textDocument/didOpen" {
+        let request_args = *args.offset(2);
+
+        let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
+        let uri = get_as_string(env, uri);
+        let text = fs::read_to_string(&uri).unwrap();
+        let uri = "file://".to_owned() + &uri;
+
+        let language_id = "rust".to_string();
+        let version = 1;
+
+        connection.send_notification(
+            "textDocument/didOpen".to_string(),
+            NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+                text_document: TextDocumentItem {
+                    uri,
+                    language_id,
+                    version,
+                    text
+                }
+            }));
+
         intern(env, CString::new("ok").unwrap().as_ptr())
     } else {
         panic!("Incorrect request type")

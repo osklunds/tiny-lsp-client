@@ -24,7 +24,12 @@
 (stderr (tlc--rust-start-server default-directory "rust-analyzer"))
 (stderr (tlc--rust-start-server default-directory "rust-analyzer"))
 
-(sleep-for 3)
+(sleep-for 2)
+
+(tlc--rust-send-notification
+ default-directory
+ "textDocument/didOpen"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
 (tlc--rust-send-request
  default-directory
