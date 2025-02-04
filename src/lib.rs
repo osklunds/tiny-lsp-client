@@ -120,28 +120,20 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let copy_string_contents = (*env).copy_string_contents.unwrap();
-
-    let root_uri: emacs_value = *args.offset(0);
-    let server_cmd: emacs_value = *args.offset(1);
+    let root_uri = extract_string(env, *args.offset(0));
+    let server_cmd = extract_string(env, *args.offset(1));
 
     let mut conns = connections().lock().unwrap();
-    let mut buf = vec![0; 100];
-    let mut len = 100;
-    let res = copy_string_contents(env, root_uri, buf.as_mut_ptr() as *mut i8, &mut len);
-    assert!(res);
-    len -= 1;
-    let string = std::str::from_utf8(&buf[0..len as usize]).unwrap();
 
-    if conns.contains_key(string) {
+    if conns.contains_key(&root_uri) {
         intern(env, "already-started")
     } else {
         let mut connection = Connection::new(
             "rust-analyzer",
-            string
+            &root_uri
         );
         connection.initialize();
-        conns.insert(string.to_string(), connection);
+        conns.insert(root_uri.to_string(), connection);
         intern(env, "started")
     }
 }
