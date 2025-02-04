@@ -52,6 +52,15 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
     let make_function = (*env).make_function.unwrap();
     let intern = (*env).intern.unwrap();
 
+    export_function(
+        env,
+        0,
+        0,
+        tlc__rust_all_server_info,
+        "doc todo",
+        "tlc--rust-all-server-info"
+    );
+
     let tlc__rust_all_server_info = make_function(
         env,
         0,
@@ -356,4 +365,35 @@ unsafe fn call<F: AsRef<str>>(env: *mut emacs_env,
             args.as_mut_ptr()
             )
 }
+
+unsafe fn export_function(env: *mut emacs_env,
+                          min_arity: isize,
+                          max_arity: isize,
+                          fun: unsafe extern "C" fn(
+                              env: *mut emacs_env,
+                              nargs: isize,
+                              args: *mut emacs_value,
+                              data: *mut ::std::os::raw::c_void,
+                          ) -> emacs_value,
+                          docstring: &str,
+                          symbol: &str
+) {
+    let make_function = (*env).make_function.unwrap();
+    let intern = (*env).intern.unwrap();
+
+    let emacs_fun = make_function(
+        env,
+        min_arity,
+        max_arity,
+        Some(fun),
+        c_string!(docstring),
+        std::ptr::null_mut(),
+    );
+    let symbol = intern(
+        env,
+        c_string!(symbol)
+    );
+    call(env, "fset", vec![symbol, emacs_fun]);
+}
+                          
 
