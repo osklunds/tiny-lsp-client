@@ -21,6 +21,12 @@ use std::mem::MaybeUninit;
 use std::sync::Once;
 use std::fs;
 
+macro_rules! c_string {
+    ($x:expr) => {
+        CString::new($x).unwrap().as_ptr()
+    };
+}
+
 #[no_mangle]
 #[allow(non_upper_case_globals)]
 pub static plugin_is_GPL_compatible: libc::c_int = 0;
@@ -345,8 +351,9 @@ unsafe fn call<F: AsRef<str>>(env: *mut emacs_env,
     let intern = (*env).intern.unwrap();
     let funcall = (*env).funcall.unwrap();
     funcall(env,
-            intern(env, CString::new(func.as_ref()).unwrap().as_ptr()),
+            intern(env, c_string!(func.as_ref())),
             args.len() as isize,
             args.as_mut_ptr()
             )
 }
+
