@@ -204,16 +204,16 @@ unsafe extern "C" fn tlc__rust_send_request(
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
-    let root_uri = get_as_string(env, *args.offset(0));
+    let root_uri = extract_string(env, *args.offset(0));
     let mut conns = connections().lock().unwrap();
     let mut connection = &mut conns.get_mut(&root_uri).unwrap();
 
-    let request_type = get_as_string(env, *args.offset(1));
+    let request_type = extract_string(env, *args.offset(1));
     if request_type == "textDocument/definition" {
         let request_args = *args.offset(2);
 
         let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
-        let uri = get_as_string(env, uri);
+        let uri = extract_string(env, uri);
         let uri = "file://".to_owned() + &uri;
 
         let character =
@@ -252,16 +252,16 @@ unsafe extern "C" fn tlc__rust_send_notification(
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
-    let root_uri = get_as_string(env, *args.offset(0));
+    let root_uri = extract_string(env, *args.offset(0));
     let mut conns = connections().lock().unwrap();
     let mut connection = &mut conns.get_mut(&root_uri).unwrap();
 
-    let request_type = get_as_string(env, *args.offset(1));
+    let request_type = extract_string(env, *args.offset(1));
     if request_type == "textDocument/didOpen" {
         let request_args = *args.offset(2);
 
         let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
-        let uri = get_as_string(env, uri);
+        let uri = extract_string(env, uri);
         let text = fs::read_to_string(&uri).unwrap();
         let uri = "file://".to_owned() + &uri;
 
@@ -297,7 +297,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     let list = intern(env, CString::new("list").unwrap().as_ptr());
     let make_integer = (*env).make_integer.unwrap();
 
-    let root_uri = get_as_string(env, *args.offset(0));
+    let root_uri = extract_string(env, *args.offset(0));
     let mut conns = connections().lock().unwrap();
     let mut connection = &mut conns.get_mut(&root_uri).unwrap();
 
@@ -314,7 +314,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                     funcall(env,
                             list,
                             5,
-                            [string_to_emacs(env, uri.to_string()),
+                            [make_string(env, uri.to_string()),
                              make_integer(env, range.start.line as i64),
                              make_integer(env, range.start.character as i64),
                              make_integer(env, range.end.line as i64),
@@ -335,7 +335,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     }
 }
 
-unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
+unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let copy_string_contents = (*env).copy_string_contents.unwrap();
     let mut buf = vec![0; 1000];
     let mut len = 1000;
@@ -345,7 +345,7 @@ unsafe fn get_as_string(env: *mut emacs_env, val: emacs_value) -> String {
     std::str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
 }
 
-unsafe fn string_to_emacs(env: *mut emacs_env, string: String) -> emacs_value {
+unsafe fn make_string(env: *mut emacs_env, string: String) -> emacs_value {
     let make_string = (*env).make_string.unwrap();
     let c_string = CString::new(string).unwrap();
     let len = c_string.as_bytes().len() as isize;
