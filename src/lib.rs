@@ -49,9 +49,6 @@ fn connections() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
 pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_int {
     let env = (*ert).get_environment.unwrap()(ert);
 
-    let make_function = (*env).make_function.unwrap();
-    let intern = (*env).intern.unwrap();
-
     export_function(
         env,
         0,
@@ -97,8 +94,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         "tlc--rust-send-notification"
     );
 
-    let feat_name = intern(env, c_string!("tlc-rust"));
-    call(env, "provide", vec![feat_name]);
+    call(env, "provide", vec![intern(env, "tlc-rust")]);
 
     0
 }
@@ -137,7 +133,6 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let intern = (*env).intern.unwrap();
     let copy_string_contents = (*env).copy_string_contents.unwrap();
 
     let root_uri: emacs_value = *args.offset(0);
@@ -152,7 +147,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     let string = std::str::from_utf8(&buf[0..len as usize]).unwrap();
 
     if conns.contains_key(string) {
-        intern(env, c_string!("already-started"))
+        intern(env, "already-started")
     } else {
         let mut connection = Connection::new(
             "rust-analyzer",
@@ -160,7 +155,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         );
         connection.initialize();
         conns.insert(string.to_string(), connection);
-        intern(env, c_string!("started"))
+        intern(env, "started")
     }
 }
 
@@ -170,7 +165,6 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let intern = (*env).intern.unwrap();
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
@@ -204,7 +198,7 @@ unsafe extern "C" fn tlc__rust_send_request(
             }
         });
         connection.send_request(request_type, params);
-        intern(env, c_string!("ok"))
+        intern(env, "ok")
     } else {
         panic!("Incorrect request type")
     }
@@ -216,8 +210,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let intern = (*env).intern.unwrap();
-    let nth = intern(env, c_string!("nth"));
+    let nth = intern(env, "nth");
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
@@ -248,7 +241,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
                 }
             }));
 
-        intern(env, c_string!("ok"))
+        intern(env, "ok")
     } else {
         panic!("Incorrect request type")
     }
@@ -260,7 +253,6 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let intern = (*env).intern.unwrap();
     let make_integer = (*env).make_integer.unwrap();
 
     let root_uri = extract_string(env, *args.offset(0));
@@ -287,16 +279,16 @@ unsafe extern "C" fn tlc__rust_recv_response(
                          ]
                     )
                 } else {
-                    intern(env, c_string!("other-response"))
+                    intern(env, "other-response")
                 }
             } else {
-                intern(env, c_string!("other-response"))
+                intern(env, "other-response")
             }
         } else {
-            intern(env, c_string!("other-response"))
+            intern(env, "other-response")
         }
     } else {
-        intern(env, c_string!("no-response"))
+        intern(env, "no-response")
     }
 }
 
@@ -321,13 +313,16 @@ unsafe fn call<F: AsRef<str>>(env: *mut emacs_env,
                               func: F,
                               mut args: Vec<emacs_value>
 ) -> emacs_value {
-    let intern = (*env).intern.unwrap();
     let funcall = (*env).funcall.unwrap();
     funcall(env,
-            intern(env, c_string!(func.as_ref())),
+            intern(env, func.as_ref()),
             args.len() as isize,
             args.as_mut_ptr()
             )
+}
+
+unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
+    (*env).intern.unwrap()(env, c_string!(symbol))
 }
 
 unsafe fn export_function(env: *mut emacs_env,
@@ -343,7 +338,6 @@ unsafe fn export_function(env: *mut emacs_env,
                           symbol: &str
 ) {
     let make_function = (*env).make_function.unwrap();
-    let intern = (*env).intern.unwrap();
 
     let emacs_fun = make_function(
         env,
@@ -353,11 +347,6 @@ unsafe fn export_function(env: *mut emacs_env,
         c_string!(docstring),
         std::ptr::null_mut(),
     );
-    let symbol = intern(
-        env,
-        c_string!(symbol)
-    );
-    call(env, "fset", vec![symbol, emacs_fun]);
+    call(env, "fset", vec![intern(env, symbol), emacs_fun]);
 }
-                          
 
