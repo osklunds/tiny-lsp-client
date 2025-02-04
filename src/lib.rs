@@ -61,20 +61,6 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         "tlc--rust-all-server-info"
     );
 
-    let tlc__rust_all_server_info = make_function(
-        env,
-        0,
-        0,
-        Some(tlc__rust_all_server_info),
-        c_string!("doc todo"),
-        std::ptr::null_mut(),
-    );
-    let tlc__rust_all_server_info_sym = intern(
-        env,
-        c_string!("tlc--rust-all-server-info")
-    );
-    call(env, "fset", vec![tlc__rust_all_server_info_sym, tlc__rust_all_server_info]);
-
     let tlc__rust_start_server = make_function(
         env,
         2,
