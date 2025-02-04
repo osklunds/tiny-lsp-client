@@ -155,16 +155,14 @@ unsafe extern "C" fn tlc__rust_send_request(
     if request_type == "textDocument/definition" {
         let request_args = *args.offset(2);
 
-        let uri = call(env, "nth", vec![make_integer(env, 0), request_args]);
-        let uri = extract_string(env, uri);
-        let uri = "file://".to_owned() + &uri;
+        let file_path = call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = extract_string(env, file_path);
+        let uri = file_path_to_uri(file_path);
 
-        let character =
-            call(env, "nth", vec![make_integer(env, 1), request_args]);
+        let character = call(env, "nth", vec![make_integer(env, 1), request_args]);
         let character = extract_integer(env, character) as usize;
 
-        let line =
-            call(env, "nth", vec![make_integer(env, 2), request_args]);
+        let line = call(env, "nth", vec![make_integer(env, 2), request_args]);
         let line = extract_integer(env, line) as usize;
 
         let params = RequestParams::DefinitionParams( DefinitionParams {
@@ -172,8 +170,8 @@ unsafe extern "C" fn tlc__rust_send_request(
                 uri,
             },
             position: Position {
-                character,
                 line,
+                character,
             }
         });
         connection.send_request(request_type, params);
@@ -189,9 +187,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let nth = intern(env, "nth");
     let make_integer = (*env).make_integer.unwrap();
-    let extract_integer = (*env).extract_integer.unwrap();
 
     let root_path = extract_string(env, *args.offset(0));
     let mut connections = connections().lock().unwrap();
@@ -201,22 +197,22 @@ unsafe extern "C" fn tlc__rust_send_notification(
     if request_type == "textDocument/didOpen" {
         let request_args = *args.offset(2);
 
-        let uri = call(env, "nth", vec![make_integer(env, 0), request_args]);
-        let uri = extract_string(env, uri);
-        let text = fs::read_to_string(&uri).unwrap();
-        let uri = "file://".to_owned() + &uri;
+        let file_path = call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = extract_string(env, file_path);
+        let file_content = fs::read_to_string(&file_path).unwrap();
+        let uri = file_path_to_uri(file_path);
 
         let language_id = "rust".to_string();
         let version = 1;
 
         connection.send_notification(
-            "textDocument/didOpen".to_string(),
+            request_type,
             NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
                 text_document: TextDocumentItem {
                     uri,
                     language_id,
                     version,
-                    text
+                    text: file_content
                 }
             }));
 
@@ -244,8 +240,8 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 let DefinitionResult::LocationLinkList(location_link_list) =
                     definition_result;
                 if !location_link_list.is_empty() {
-                let location_link = &location_link_list[0];
-                let uri = &location_link.target_uri;
+                    let location_link = &location_link_list[0];
+                    let uri = &location_link.target_uri;
                     let range = &location_link.target_selection_range;
 
                     call(env,
@@ -327,5 +323,9 @@ unsafe fn export_function(env: *mut emacs_env,
         std::ptr::null_mut(),
     );
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);
+}
+
+fn file_path_to_uri<S: AsRef<str>>(file_path: S) -> String {
+    format!("file://{}", file_path.as_ref())
 }
 
