@@ -97,9 +97,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         "tlc--rust-send-notification"
     );
 
-    // unclear if/why needed
-    let provide = intern(env, c_string!("provide"));
-    let feat_name = intern(env, c_string!("my-rust-mod"));
+    let feat_name = intern(env, c_string!("tlc-rust"));
     call(env, "provide", vec![feat_name]);
 
     0
