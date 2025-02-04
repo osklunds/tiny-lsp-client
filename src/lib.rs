@@ -45,7 +45,6 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
 
     let make_function = (*env).make_function.unwrap();
     let intern = (*env).intern.unwrap();
-    let fset = intern(env, CString::new("fset").unwrap().as_ptr());
 
     let tlc__rust_all_server_info = make_function(
         env,
