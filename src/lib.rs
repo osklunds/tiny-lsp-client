@@ -148,13 +148,8 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     let b = make_integer(env, 8);
     let c = make_integer(env, 9);
 
-    let intern = (*env).intern.unwrap();
-    let list = intern(env, CString::new("list").unwrap().as_ptr());
-    let funcall = (*env).funcall.unwrap();
 
-    let res = funcall(env, list, 3, [a, b, c].as_mut_ptr());
-
-    res
+    call(env, "list", vec![a, b, c])
 }
 
 unsafe extern "C" fn tlc__rust_start_server(
@@ -164,8 +159,6 @@ unsafe extern "C" fn tlc__rust_start_server(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let intern = (*env).intern.unwrap();
-    let list = intern(env, CString::new("list").unwrap().as_ptr());
-    let funcall = (*env).funcall.unwrap();
     let copy_string_contents = (*env).copy_string_contents.unwrap();
 
     let root_uri: emacs_value = *args.offset(0);
@@ -199,8 +192,6 @@ unsafe extern "C" fn tlc__rust_send_request(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let intern = (*env).intern.unwrap();
-    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
-    let funcall = (*env).funcall.unwrap();
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
@@ -212,16 +203,16 @@ unsafe extern "C" fn tlc__rust_send_request(
     if request_type == "textDocument/definition" {
         let request_args = *args.offset(2);
 
-        let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
+        let uri = call(env, "nth", vec![make_integer(env, 0), request_args]);
         let uri = extract_string(env, uri);
         let uri = "file://".to_owned() + &uri;
 
         let character =
-            funcall(env, nth, 2, [make_integer(env, 1), request_args].as_mut_ptr());
+            call(env, "nth", vec![make_integer(env, 1), request_args]);
         let character = extract_integer(env, character) as usize;
 
         let line =
-            funcall(env, nth, 2, [make_integer(env, 2), request_args].as_mut_ptr());
+            call(env, "nth", vec![make_integer(env, 2), request_args]);
         let line = extract_integer(env, line) as usize;
 
         let params = RequestParams::DefinitionParams( DefinitionParams {
@@ -248,7 +239,6 @@ unsafe extern "C" fn tlc__rust_send_notification(
 ) -> emacs_value {
     let intern = (*env).intern.unwrap();
     let nth = intern(env, CString::new("nth").unwrap().as_ptr());
-    let funcall = (*env).funcall.unwrap();
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
@@ -260,7 +250,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     if request_type == "textDocument/didOpen" {
         let request_args = *args.offset(2);
 
-        let uri = funcall(env, nth, 2, [make_integer(env, 0), request_args].as_mut_ptr());
+        let uri = call(env, "nth", vec![make_integer(env, 0), request_args]);
         let uri = extract_string(env, uri);
         let text = fs::read_to_string(&uri).unwrap();
         let uri = "file://".to_owned() + &uri;
@@ -292,9 +282,6 @@ unsafe extern "C" fn tlc__rust_recv_response(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let intern = (*env).intern.unwrap();
-    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
-    let funcall = (*env).funcall.unwrap();
-    let list = intern(env, CString::new("list").unwrap().as_ptr());
     let make_integer = (*env).make_integer.unwrap();
 
     let root_uri = extract_string(env, *args.offset(0));
@@ -309,17 +296,16 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 if !location_link_list.is_empty() {
                 let location_link = &location_link_list[0];
                 let uri = &location_link.target_uri;
-                let range = &location_link.target_selection_range;
+                    let range = &location_link.target_selection_range;
 
-                    funcall(env,
-                            list,
-                            5,
-                            [make_string(env, uri.to_string()),
-                             make_integer(env, range.start.line as i64),
-                             make_integer(env, range.start.character as i64),
-                             make_integer(env, range.end.line as i64),
-                             make_integer(env, range.end.character as i64),
-                            ].as_mut_ptr()
+                    call(env,
+                         "list",
+                         vec![make_string(env, uri.to_string()),
+                              make_integer(env, range.start.line as i64),
+                              make_integer(env, range.start.character as i64),
+                              make_integer(env, range.end.line as i64),
+                              make_integer(env, range.end.character as i64),
+                         ]
                     )
                 } else {
                     intern(env, CString::new("other-response").unwrap().as_ptr())
