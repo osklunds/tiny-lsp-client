@@ -56,7 +56,7 @@
 (tlc--rust-send-request
  default-directory
  "textDocument/definition"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 4))
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10))
 
 (defun recv-response ()
   (let ((response (tlc--rust-recv-response default-directory)))

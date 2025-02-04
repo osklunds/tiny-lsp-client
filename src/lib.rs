@@ -161,12 +161,12 @@ unsafe extern "C" fn tlc__rust_send_request(
         let file_path = extract_string(env, file_path);
         let uri = file_path_to_uri(file_path);
 
-        let character =
-            call(env, "nth", vec![make_integer(env, 1), request_args]);
-        let character = extract_integer(env, character) as usize;
-
-        let line = call(env, "nth", vec![make_integer(env, 2), request_args]);
+        let line = call(env, "nth", vec![make_integer(env, 1), request_args]);
         let line = extract_integer(env, line) as usize;
+
+        let character =
+            call(env, "nth", vec![make_integer(env, 2), request_args]);
+        let character = extract_integer(env, character) as usize;
 
         let params = RequestParams::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri },
