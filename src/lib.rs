@@ -123,9 +123,9 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_uri = extract_string(env, *args.offset(0));
     let server_cmd = extract_string(env, *args.offset(1));
 
-    let mut conns = connections().lock().unwrap();
+    let mut connections = connections().lock().unwrap();
 
-    if conns.contains_key(&root_uri) {
+    if connections.contains_key(&root_uri) {
         intern(env, "already-started")
     } else {
         let mut connection = Connection::new(
@@ -133,7 +133,7 @@ unsafe extern "C" fn tlc__rust_start_server(
             &root_uri
         );
         connection.initialize();
-        conns.insert(root_uri.to_string(), connection);
+        connections.insert(root_uri.to_string(), connection);
         intern(env, "started")
     }
 }
@@ -148,8 +148,8 @@ unsafe extern "C" fn tlc__rust_send_request(
     let extract_integer = (*env).extract_integer.unwrap();
 
     let root_uri = extract_string(env, *args.offset(0));
-    let mut conns = connections().lock().unwrap();
-    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
+    let mut connections = connections().lock().unwrap();
+    let mut connection = &mut connections.get_mut(&root_uri).unwrap();
 
     let request_type = extract_string(env, *args.offset(1));
     if request_type == "textDocument/definition" {
@@ -194,8 +194,8 @@ unsafe extern "C" fn tlc__rust_send_notification(
     let extract_integer = (*env).extract_integer.unwrap();
 
     let root_uri = extract_string(env, *args.offset(0));
-    let mut conns = connections().lock().unwrap();
-    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
+    let mut connections = connections().lock().unwrap();
+    let mut connection = &mut connections.get_mut(&root_uri).unwrap();
 
     let request_type = extract_string(env, *args.offset(1));
     if request_type == "textDocument/didOpen" {
@@ -235,8 +235,8 @@ unsafe extern "C" fn tlc__rust_recv_response(
     let make_integer = (*env).make_integer.unwrap();
 
     let root_uri = extract_string(env, *args.offset(0));
-    let mut conns = connections().lock().unwrap();
-    let mut connection = &mut conns.get_mut(&root_uri).unwrap();
+    let mut connections = connections().lock().unwrap();
+    let mut connection = &mut connections.get_mut(&root_uri).unwrap();
 
     if let Some(response) = connection.try_recv_response() {
         if let Some(result) = response.result {
