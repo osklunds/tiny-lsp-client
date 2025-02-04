@@ -61,61 +61,41 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         "tlc--rust-all-server-info"
     );
 
-    let tlc__rust_start_server = make_function(
+    export_function(
         env,
         2,
         2,
-        Some(tlc__rust_start_server),
-        c_string!("doc todo"),
-        std::ptr::null_mut(),
+        tlc__rust_start_server,
+        "doc todo",
+        "tlc--rust-start-server"
     );
-    let tlc__rust_start_server_sym = intern(
-        env,
-        c_string!("tlc--rust-start-server")
-    );
-    call(env, "fset", vec![tlc__rust_start_server_sym, tlc__rust_start_server]);
 
-    let tlc__rust_send_request = make_function(
+    export_function(
         env,
         3,
         3,
-        Some(tlc__rust_send_request),
-        c_string!("doc todo"),
-        std::ptr::null_mut(),
+        tlc__rust_send_request,
+        "doc todo",
+        "tlc--rust-send-request"
     );
-    let tlc__rust_send_request_sym = intern(
-        env,
-        c_string!("tlc--rust-send-request")
-    );
-    call(env, "fset", vec![tlc__rust_send_request_sym, tlc__rust_send_request]);
 
-    let tlc__rust_recv_response = make_function(
+    export_function(
         env,
         1,
         1,
-        Some(tlc__rust_recv_response),
-        c_string!("doc todo"),
-        std::ptr::null_mut(),
+        tlc__rust_recv_response,
+        "doc todo",
+        "tlc--rust-recv-response"
     );
-    let tlc__rust_recv_response_sym = intern(
-        env,
-        c_string!("tlc--rust-recv-response")
-    );
-    call(env, "fset", vec![tlc__rust_recv_response_sym, tlc__rust_recv_response]);
 
-    let tlc__rust_send_notification = make_function(
+    export_function(
         env,
         3,
         3,
-        Some(tlc__rust_send_notification),
-        c_string!("doc todo"),
-        std::ptr::null_mut(),
+        tlc__rust_send_notification,
+        "doc todo",
+        "tlc--rust-send-notification"
     );
-    let tlc__rust_send_notification_sym = intern(
-        env,
-        c_string!("tlc--rust-send-notification")
-    );
-    call(env, "fset", vec![tlc__rust_send_notification_sym, tlc__rust_send_notification]);
 
     // unclear if/why needed
     let provide = intern(env, c_string!("provide"));
