@@ -45,7 +45,6 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
 
     let make_function = (*env).make_function.unwrap();
     let intern = (*env).intern.unwrap();
-    let funcall = (*env).funcall.unwrap();
     let fset = intern(env, CString::new("fset").unwrap().as_ptr());
 
     let tlc__rust_all_server_info = make_function(
@@ -74,12 +73,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         env,
         CString::new("tlc--rust-start-server").unwrap().as_ptr()
     );
-    funcall(
-        env,
-        fset,
-        2,
-        [tlc__rust_start_server_sym, tlc__rust_start_server].as_mut_ptr()
-    );
+    call(env, "fset", vec![tlc__rust_start_server_sym, tlc__rust_start_server]);
 
     let tlc__rust_send_request = make_function(
         env,
@@ -93,12 +87,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         env,
         CString::new("tlc--rust-send-request").unwrap().as_ptr()
     );
-    funcall(
-        env,
-        fset,
-        2,
-        [tlc__rust_send_request_sym, tlc__rust_send_request].as_mut_ptr()
-    );
+    call(env, "fset", vec![tlc__rust_send_request_sym, tlc__rust_send_request]);
 
     let tlc__rust_recv_response = make_function(
         env,
@@ -112,12 +101,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         env,
         CString::new("tlc--rust-recv-response").unwrap().as_ptr()
     );
-    funcall(
-        env,
-        fset,
-        2,
-        [tlc__rust_recv_response_sym, tlc__rust_recv_response].as_mut_ptr()
-    );
+    call(env, "fset", vec![tlc__rust_recv_response_sym, tlc__rust_recv_response]);
 
     let tlc__rust_send_notification = make_function(
         env,
@@ -131,23 +115,12 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         env,
         CString::new("tlc--rust-send-notification").unwrap().as_ptr()
     );
-    funcall(
-        env,
-        fset,
-        2,
-        [tlc__rust_send_notification_sym, tlc__rust_send_notification].as_mut_ptr()
-    );
-    
-        
-        
-
-
+    call(env, "fset", vec![tlc__rust_send_notification_sym, tlc__rust_send_notification]);
 
     // unclear if/why needed
     let provide = intern(env, CString::new("provide").unwrap().as_ptr());
     let feat_name = intern(env, CString::new("my-rust-mod").unwrap().as_ptr());
-    let provide_args = [feat_name].as_mut_ptr();
-    funcall(env, provide, 1, provide_args);
+    call(env, "provide", vec![feat_name]);
 
     0
 }
