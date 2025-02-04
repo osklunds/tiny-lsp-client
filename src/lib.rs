@@ -57,12 +57,12 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         0,
         0,
         Some(tlc__rust_all_server_info),
-        CString::new("doc todo").unwrap().as_ptr(),
+        c_string!("doc todo"),
         std::ptr::null_mut(),
     );
     let tlc__rust_all_server_info_sym = intern(
         env,
-        CString::new("tlc--rust-all-server-info").unwrap().as_ptr()
+        c_string!("tlc--rust-all-server-info")
     );
     call(env, "fset", vec![tlc__rust_all_server_info_sym, tlc__rust_all_server_info]);
 
@@ -71,12 +71,12 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         2,
         2,
         Some(tlc__rust_start_server),
-        CString::new("doc todo").unwrap().as_ptr(),
+        c_string!("doc todo"),
         std::ptr::null_mut(),
     );
     let tlc__rust_start_server_sym = intern(
         env,
-        CString::new("tlc--rust-start-server").unwrap().as_ptr()
+        c_string!("tlc--rust-start-server")
     );
     call(env, "fset", vec![tlc__rust_start_server_sym, tlc__rust_start_server]);
 
@@ -85,12 +85,12 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         3,
         3,
         Some(tlc__rust_send_request),
-        CString::new("doc todo").unwrap().as_ptr(),
+        c_string!("doc todo"),
         std::ptr::null_mut(),
     );
     let tlc__rust_send_request_sym = intern(
         env,
-        CString::new("tlc--rust-send-request").unwrap().as_ptr()
+        c_string!("tlc--rust-send-request")
     );
     call(env, "fset", vec![tlc__rust_send_request_sym, tlc__rust_send_request]);
 
@@ -99,12 +99,12 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         1,
         1,
         Some(tlc__rust_recv_response),
-        CString::new("doc todo").unwrap().as_ptr(),
+        c_string!("doc todo"),
         std::ptr::null_mut(),
     );
     let tlc__rust_recv_response_sym = intern(
         env,
-        CString::new("tlc--rust-recv-response").unwrap().as_ptr()
+        c_string!("tlc--rust-recv-response")
     );
     call(env, "fset", vec![tlc__rust_recv_response_sym, tlc__rust_recv_response]);
 
@@ -113,18 +113,18 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         3,
         3,
         Some(tlc__rust_send_notification),
-        CString::new("doc todo").unwrap().as_ptr(),
+        c_string!("doc todo"),
         std::ptr::null_mut(),
     );
     let tlc__rust_send_notification_sym = intern(
         env,
-        CString::new("tlc--rust-send-notification").unwrap().as_ptr()
+        c_string!("tlc--rust-send-notification")
     );
     call(env, "fset", vec![tlc__rust_send_notification_sym, tlc__rust_send_notification]);
 
     // unclear if/why needed
-    let provide = intern(env, CString::new("provide").unwrap().as_ptr());
-    let feat_name = intern(env, CString::new("my-rust-mod").unwrap().as_ptr());
+    let provide = intern(env, c_string!("provide"));
+    let feat_name = intern(env, c_string!("my-rust-mod"));
     call(env, "provide", vec![feat_name]);
 
     0
@@ -179,7 +179,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     let string = std::str::from_utf8(&buf[0..len as usize]).unwrap();
 
     if conns.contains_key(string) {
-        intern(env, CString::new("already-started").unwrap().as_ptr())
+        intern(env, c_string!("already-started"))
     } else {
         let mut connection = Connection::new(
             "rust-analyzer",
@@ -187,7 +187,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         );
         connection.initialize();
         conns.insert(string.to_string(), connection);
-        intern(env, CString::new("started").unwrap().as_ptr())
+        intern(env, c_string!("started"))
     }
 }
 
@@ -231,7 +231,7 @@ unsafe extern "C" fn tlc__rust_send_request(
             }
         });
         connection.send_request(request_type, params);
-        intern(env, CString::new("ok").unwrap().as_ptr())
+        intern(env, c_string!("ok"))
     } else {
         panic!("Incorrect request type")
     }
@@ -244,7 +244,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let intern = (*env).intern.unwrap();
-    let nth = intern(env, CString::new("nth").unwrap().as_ptr());
+    let nth = intern(env, c_string!("nth"));
     let make_integer = (*env).make_integer.unwrap();
     let extract_integer = (*env).extract_integer.unwrap();
 
@@ -275,7 +275,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
                 }
             }));
 
-        intern(env, CString::new("ok").unwrap().as_ptr())
+        intern(env, c_string!("ok"))
     } else {
         panic!("Incorrect request type")
     }
@@ -314,16 +314,16 @@ unsafe extern "C" fn tlc__rust_recv_response(
                          ]
                     )
                 } else {
-                    intern(env, CString::new("other-response").unwrap().as_ptr())
+                    intern(env, c_string!("other-response"))
                 }
             } else {
-                intern(env, CString::new("other-response").unwrap().as_ptr())
+                intern(env, c_string!("other-response"))
             }
         } else {
-            intern(env, CString::new("other-response").unwrap().as_ptr())
+            intern(env, c_string!("other-response"))
         }
     } else {
-        intern(env, CString::new("no-response").unwrap().as_ptr())
+        intern(env, c_string!("no-response"))
     }
 }
 
