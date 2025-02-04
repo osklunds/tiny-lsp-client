@@ -1,16 +1,15 @@
+#![allow(warnings)]
 
-#![allow(warnings)] 
-
-use std::process::{Command, Stdio};
-use std::io::Read;
-use std::io::Write;
-use serde_json::{json, Value, Number};
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::{json, Number, Value};
+use std::io::BufRead;
+use std::io::Read;
+use std::io::Write;
+use std::process::{Command, Stdio};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
-use std::io::BufRead;
-use std::sync::mpsc::{self, Sender, Receiver};
 
 #[test]
 fn rust_analyzer() {
@@ -18,7 +17,8 @@ fn rust_analyzer() {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn().unwrap();
+        .spawn()
+        .unwrap();
 
     let mut stdin = child.stdin.take().unwrap();
     let mut stdout = child.stdout.take().unwrap();
@@ -40,7 +40,7 @@ fn rust_analyzer() {
     let initialize_request = Request {
         id: 123,
         method: "initialize".to_string(),
-        params: initialize_params
+        params: initialize_params,
     };
 
     send_request(&initialize_request, &mut stdin);
@@ -67,7 +67,7 @@ fn rust_analyzer() {
                 let mut json_buf = Vec::new();
                 // todo: +2 might be related the the pops above. Anyway,
                 // need to find out why
-                json_buf.resize(size+2, 0);
+                json_buf.resize(size + 2, 0);
                 reader.read_exact(&mut json_buf);
                 // println!("oskar: {:?}", json_buf);
                 let json = String::from_utf8(json_buf).unwrap();
@@ -81,16 +81,21 @@ fn rust_analyzer() {
         }
     });
 
-    thread::spawn(move || {
-        loop {
-            let mut buf = [0; 100];
-            let len = stderr.read(&mut buf).unwrap();
-            println!("oskar stderr: {} {}", len, String::from_utf8(buf.to_vec()).unwrap());
-        }
+    thread::spawn(move || loop {
+        let mut buf = [0; 100];
+        let len = stderr.read(&mut buf).unwrap();
+        println!(
+            "oskar stderr: {} {}",
+            len,
+            String::from_utf8(buf.to_vec()).unwrap()
+        );
     });
 
     let initialize_response = stdout_rx.recv().unwrap();
-    assert_eq!(Value::Number(Number::from_u128(123).unwrap()), initialize_response["id"]);
+    assert_eq!(
+        Value::Number(Number::from_u128(123).unwrap()),
+        initialize_response["id"]
+    );
     let result = &initialize_response["result"];
     let capabilities = &result["capabilities"];
     assert_eq!(Value::Bool(true), capabilities["definitionProvider"]);
@@ -101,7 +106,10 @@ fn rust_analyzer() {
         "params":{}
     });
 
-    send_json(&serde_json::to_string(&initialized_notification).unwrap(), &mut stdin);
+    send_json(
+        &serde_json::to_string(&initialized_notification).unwrap(),
+        &mut stdin,
+    );
 
     // To let indexing finish
     thread::sleep(Duration::from_secs(1));
@@ -119,19 +127,25 @@ fn rust_analyzer() {
     let find_definition_request = Request {
         id: 133,
         method: "textDocument/definition".to_string(),
-        params: find_definition_params
+        params: find_definition_params,
     };
-            
+
     send_request(&find_definition_request, &mut stdin);
     let find_definition_response = stdout_rx.recv().unwrap();
-    assert_eq!(Value::Number(Number::from_u128(133).unwrap()), find_definition_response["id"]);
+    assert_eq!(
+        Value::Number(Number::from_u128(133).unwrap()),
+        find_definition_response["id"]
+    );
 
     let result_vec = &find_definition_response["result"];
     let result = &result_vec[0];
     let target_range = &result["targetSelectionRange"];
     let start = &target_range["start"];
     assert_eq!(Value::Number(Number::from_u128(7).unwrap()), start["line"]);
-    assert_eq!(Value::Number(Number::from_u128(3).unwrap()), start["character"]);
+    assert_eq!(
+        Value::Number(Number::from_u128(3).unwrap()),
+        start["character"]
+    );
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -151,5 +165,3 @@ fn send_request<W: Write>(request: &Request, writer: &mut W) {
     let json = serde_json::to_string(&request).unwrap();
     send_json(&json, writer);
 }
-
-    

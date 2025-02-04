@@ -1,20 +1,19 @@
-
 #[cfg(test)]
 mod tests;
 
 use crate::message::*;
 
-use std::process::{Command, Stdio, Child, ChildStdout};
-use std::io::Read;
-use std::io::Write;
-use serde_json::{json, Value, Number};
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::{json, Number, Value};
+use std::io::Read;
+use std::io::Write;
+use std::io::{BufRead, BufReader};
+use std::process;
+use std::process::{Child, ChildStdout, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 use std::time::Duration;
-use std::io::{BufRead, BufReader};
-use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
-use std::process;
 
 pub struct Connection {
     server_process: Child,
@@ -25,15 +24,13 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn new(
-        command: &str,
-        root_path: &str,
-    ) -> Connection {
+    pub fn new(command: &str, root_path: &str) -> Connection {
         let mut child = Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn().unwrap();
+            .spawn()
+            .unwrap();
 
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
@@ -43,16 +40,15 @@ impl Connection {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        thread::spawn(move || {
-            loop {
-                if let Ok(msg) = stdin_rx.recv() {
-                    let json = serde_json::to_string(&msg).unwrap();
-                    let full = format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-                    println!("Sent: {}", full);
-                    stdin.write(full.as_bytes()).unwrap();
-                } else {
-                    return;
-                }
+        thread::spawn(move || loop {
+            if let Ok(msg) = stdin_rx.recv() {
+                let json = serde_json::to_string(&msg).unwrap();
+                let full =
+                    format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
+                println!("Sent: {}", full);
+                stdin.write(full.as_bytes()).unwrap();
+            } else {
+                return;
             }
         });
 
@@ -78,7 +74,7 @@ impl Connection {
                 let mut json_buf = Vec::new();
                 // todo: +2 might be related the the pops above. Anyway,
                 // need to find out why
-                json_buf.resize(size+2, 0);
+                json_buf.resize(size + 2, 0);
                 reader.read_exact(&mut json_buf);
                 // println!("oskar3: {:?}", json_buf);
                 let json = String::from_utf8(json_buf).unwrap();
@@ -91,7 +87,6 @@ impl Connection {
                 // about e.g. diagnostics
                 if let Message::Response(_) = msg {
                     if let Ok(()) = stdout_tx.send(msg) {
-
                     } else {
                         return;
                     }
@@ -99,19 +94,17 @@ impl Connection {
             }
         });
 
-        thread::spawn(move || {
-            loop {
-                let mut buf = [0; 500];
-                let len = stderr.read(&mut buf).unwrap();
-                println!("oskar stderr: {} {}",
-                         len,
-                         String::from_utf8(buf.to_vec()).unwrap()
-                );
+        thread::spawn(move || loop {
+            let mut buf = [0; 500];
+            let len = stderr.read(&mut buf).unwrap();
+            println!(
+                "oskar stderr: {} {}",
+                len,
+                String::from_utf8(buf.to_vec()).unwrap()
+            );
 
-
-                if len == 0 {
-                    return;
-                }
+            if len == 0 {
+                return;
             }
         });
 
@@ -120,7 +113,7 @@ impl Connection {
             root_path: root_path.to_string(),
             sender: stdin_tx,
             receiver: stdout_rx,
-            next_request_id: 0
+            next_request_id: 0,
         }
     }
 
@@ -141,35 +134,38 @@ impl Connection {
         });
         self.send_request(
             "initialize".to_string(),
-            RequestParams::Untyped(initialize_params)
+            RequestParams::Untyped(initialize_params),
         );
 
         let _initialize_response = self.recv_response();
 
         self.send_notification(
             "initialized".to_string(),
-            NotificationParams::Untyped(json!({}))
+            NotificationParams::Untyped(json!({})),
         );
     }
 
-    pub fn send_request(&mut self, method: String, params: RequestParams) -> u32 {
+    pub fn send_request(
+        &mut self,
+        method: String,
+        params: RequestParams,
+    ) -> u32 {
         let id = self.next_request_id;
         self.next_request_id += 1;
-        let request = Request {
-            id,
-            method,
-            params
-        };
+        let request = Request { id, method, params };
         self.sender.send(Message::Request(request)).unwrap();
         id
     }
 
-    pub fn send_notification(&self, method: String, params: NotificationParams) {
-        let notification = Notification {
-            method,
-            params,
-        };
-        self.sender.send(Message::Notification(notification)).unwrap();
+    pub fn send_notification(
+        &self,
+        method: String,
+        params: NotificationParams,
+    ) {
+        let notification = Notification { method, params };
+        self.sender
+            .send(Message::Notification(notification))
+            .unwrap();
     }
 
     pub fn recv_response(&self) -> Response {
@@ -182,7 +178,7 @@ impl Connection {
 
     pub fn try_recv_response(&self) -> Option<Response> {
         let res = self.receiver.try_recv();
-        if let Ok(Message::Response(response)) = res  {
+        if let Ok(Message::Response(response)) = res {
             Some(response)
         } else if let Err(TryRecvError::Empty) = res {
             None

@@ -1,4 +1,3 @@
-
 // Copied/modified from https://ryanfaulhaber.com/posts/first-emacs-module-rust/
 
 extern crate bindgen;
