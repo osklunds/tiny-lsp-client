@@ -60,12 +60,7 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
         env,
         CString::new("tlc--rust-all-server-info").unwrap().as_ptr()
     );
-    funcall(
-        env,
-        fset,
-        2,
-        [tlc__rust_all_server_info_sym, tlc__rust_all_server_info].as_mut_ptr()
-    );
+    call(env, "fset", vec![tlc__rust_all_server_info_sym, tlc__rust_all_server_info]);
 
     let tlc__rust_start_server = make_function(
         env,
@@ -383,4 +378,17 @@ unsafe fn string_to_emacs(env: *mut emacs_env, string: String) -> emacs_value {
     let c_string = CString::new(string).unwrap();
     let len = c_string.as_bytes().len() as isize;
     make_string(env, c_string.as_ptr(), len)
+}
+
+unsafe fn call<F: AsRef<str>>(env: *mut emacs_env,
+                              func: F,
+                              mut args: Vec<emacs_value>
+) -> emacs_value {
+    let intern = (*env).intern.unwrap();
+    let funcall = (*env).funcall.unwrap();
+    funcall(env,
+            intern(env, CString::new(func.as_ref()).unwrap().as_ptr()),
+            args.len() as isize,
+            args.as_mut_ptr()
+            )
 }
