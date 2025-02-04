@@ -99,19 +99,6 @@ pub unsafe extern "C" fn emacs_module_init(ert: *mut emacs_runtime) -> libc::c_i
     0
 }
 
-unsafe extern "C" fn message_from_rust(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    data: *mut raw::c_void,
-) -> emacs_value {
-    let string = "Hello Emacs! I'm from Rust!126";
-    let make_string = (*env).make_string.unwrap();
-    let c_string = CString::new(string).unwrap();
-    let len = c_string.as_bytes().len() as isize;
-    make_string(env, c_string.as_ptr(), len)
-}
-
 unsafe extern "C" fn tlc__rust_all_server_info(
     env: *mut emacs_env,
     nargs: isize,
