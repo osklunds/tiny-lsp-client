@@ -45,8 +45,8 @@ impl Connection {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-                println!("Sent: {}", full);
                 stdin.write(full.as_bytes()).unwrap();
+                println!("Sent: {}", json);
             } else {
                 return;
             }
@@ -97,11 +97,7 @@ impl Connection {
         thread::spawn(move || loop {
             let mut buf = [0; 500];
             let len = stderr.read(&mut buf).unwrap();
-            println!(
-                "oskar stderr: {} {}",
-                len,
-                String::from_utf8(buf.to_vec()).unwrap()
-            );
+            print!("{}", String::from_utf8(buf.to_vec()).unwrap());
 
             if len == 0 {
                 return;
