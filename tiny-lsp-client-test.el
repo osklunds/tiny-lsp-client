@@ -18,7 +18,10 @@
   (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/debug/libtiny_lsp_client.so"))
 
 (defun assert-equal (exp act)
-  (cl-assert (equal exp act) 'show))
+  (unless (equal exp act)
+    (std-message "Exp %s" exp)
+    (std-message "Act %s" act)
+    (cl-assert (equal exp act) 'show)))
 
 (defun std-message (format-string &rest args)
   (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
@@ -69,5 +72,12 @@
 
 (assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)
               (recv-response))
+
+(std-message "Sending didChange")
+
+(tlc--rust-send-notification
+ default-directory
+ "textDocument/didChange"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
 
 (std-message "done")

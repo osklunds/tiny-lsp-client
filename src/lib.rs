@@ -186,6 +186,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     data: *mut raw::c_void,
 ) -> emacs_value {
     let make_integer = (*env).make_integer.unwrap();
+    let extract_integer = (*env).extract_integer.unwrap();
 
     let root_path = extract_string(env, *args.offset(0));
     let mut connections = connections().lock().unwrap();
@@ -217,11 +218,77 @@ unsafe extern "C" fn tlc__rust_send_notification(
                 },
             ),
         );
+    } else if request_type == "textDocument/didChange" {
+        let request_args = *args.offset(2);
 
-        intern(env, "ok")
+        let file_path =
+            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = extract_string(env, file_path);
+        let file_content = fs::read_to_string(&file_path).unwrap();
+        let uri = file_path_to_uri(file_path);
+
+        let language_id = "rust".to_string();
+        let version = 1;
+
+        let content_changes =
+            call(env, "nth", vec![make_integer(env, 1), request_args]);
+        let content_changes_len = call(env, "length", vec![content_changes]);
+        let content_changes_len = extract_integer(env, content_changes_len);
+
+        let mut json_content_changes = Vec::new();
+
+        for i in 0..content_changes_len {
+            let content_change =
+                call(env, "nth", vec![make_integer(env, i), content_changes]);
+
+            let start_line =
+                call(env, "nth", vec![make_integer(env, 0), content_change]);
+            let start_character =
+                call(env, "nth", vec![make_integer(env, 1), content_change]);
+            let end_line =
+                call(env, "nth", vec![make_integer(env, 2), content_change]);
+            let end_character =
+                call(env, "nth", vec![make_integer(env, 3), content_change]);
+            let text =
+                call(env, "nth", vec![make_integer(env, 4), content_change]);
+
+            let json_content_change = TextDocumentContentChangeEvent {
+                range: Range {
+                    start: Position {
+                        line: extract_integer(env, start_line) as usize,
+                        character: extract_integer(env, start_character)
+                            as usize,
+                    },
+                    end: Position {
+                        line: extract_integer(env, end_line) as usize,
+                        character: extract_integer(env, end_character) as usize,
+                    },
+                },
+                text: extract_string(env, text),
+            };
+            json_content_changes.push(json_content_change);
+        }
+
+        println!("oska lenr: {:?}", content_changes_len);
+        println!("oskar: {:?}", json_content_changes);
+
+        connection.send_notification(
+            request_type,
+            NotificationParams::DidChangeTextDocumentParams(
+                DidChangeTextDocumentParams {
+                    text_document: VersionedTextDocumentIdentifier {
+                        uri,
+                        version,
+                    },
+                    content_changes: json_content_changes,
+                },
+            ),
+        );
     } else {
         panic!("Incorrect request type")
     }
+
+    intern(env, "ok")
 }
 
 unsafe extern "C" fn tlc__rust_recv_response(
