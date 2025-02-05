@@ -80,4 +80,12 @@
  "textDocument/didChange"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
 
+(tlc--rust-send-request
+ default-directory
+ "textDocument/definition"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10))
+
+(assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3 8 18)
+              (recv-response))
+
 (std-message "done")
