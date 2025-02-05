@@ -33,7 +33,7 @@ fn did_open_change_close_and_definition() {
             DidOpenTextDocumentParams {
                 text_document: TextDocumentItem {
                     uri: uri.clone(),
-                    language_id: "rust".to_string(),
+                    language_id: LANGUAGE_ID.to_string(),
                     version: 0,
                     text: fs::read_to_string(
                         "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs",
@@ -197,7 +197,7 @@ fn did_open_change_close_and_definition() {
             DidOpenTextDocumentParams {
                 text_document: TextDocumentItem {
                     uri: uri.clone(),
-                    language_id: "rust".to_string(),
+                    language_id: LANGUAGE_ID.to_string(),
                     version: 0,
                     text: fs::read_to_string(
                         "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs",

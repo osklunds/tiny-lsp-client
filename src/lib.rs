@@ -211,12 +211,11 @@ unsafe fn build_text_document_did_open(
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
-    let language_id = "rust".to_string();
     let version = 1;
     NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri,
-            language_id,
+            language_id: LANGUAGE_ID.to_string(),
             version,
             text: file_content,
         },
@@ -233,7 +232,6 @@ unsafe fn build_text_document_did_change(
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
-    let language_id = "rust".to_string();
     let version = 1;
 
     let content_changes = nth(env, 1, request_args);
