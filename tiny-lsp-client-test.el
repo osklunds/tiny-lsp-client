@@ -34,8 +34,13 @@
 ;;;; Load the module
 ;;;;----------------------------------------------------------------------------
 
+(std-message "Before load")
+
 (tlc-reload)
-(std-message "%s" (tlc--rust-all-server-info))
+
+(std-message "After load")
+
+(std-message "All server info: %s" (tlc--rust-all-server-info))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Initialize
@@ -80,7 +85,7 @@
   (let ((response (tlc--rust-recv-response default-directory)))
     (if (equal 'no-response response)
         (progn
-          (std-message "recv-response again")
+          (std-message "recv-response retry")
           (sleep-for 1)
           (recv-response))
       response)))
@@ -103,6 +108,8 @@
 ;;;; definition after didChange
 ;;;;----------------------------------------------------------------------------
 
+(std-message "Sending definition after didChange")
+
 (tlc--rust-send-request
  default-directory
  "textDocument/definition"
@@ -116,6 +123,8 @@
 ;; view matches the file system
 ;;;;----------------------------------------------------------------------------
 
+(std-message "Sending didChange to revert")
+
 (tlc--rust-send-notification
  default-directory
  "textDocument/didChange"
@@ -124,6 +133,8 @@
 ;;;; ---------------------------------------------------------------------------
 ;;;; didClose
 ;;;;----------------------------------------------------------------------------
+
+(std-message "Sending didClose")
 
 (tlc--rust-send-notification
  default-directory
@@ -137,6 +148,8 @@
 ;; Do a definition again to ensure that rust-analyzer did not crash due to
 ;; faulty data sent in didClose above. Since it's a notification we can't
 ;; wait for a response.
+
+(std-message "Sending didOpen+definition")
 
 (tlc--rust-send-notification
  default-directory
