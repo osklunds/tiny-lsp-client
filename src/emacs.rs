@@ -1,4 +1,3 @@
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::CString;
@@ -29,7 +28,10 @@ pub unsafe fn make_string(env: *mut emacs_env, string: String) -> emacs_value {
     make_string(env, c_string.as_ptr(), len)
 }
 
-pub unsafe fn extract_integer(env: *mut emacs_env, integer: emacs_value) -> i64 {
+pub unsafe fn extract_integer(
+    env: *mut emacs_env,
+    integer: emacs_value,
+) -> i64 {
     (*env).extract_integer.unwrap()(env, integer)
 }
 
@@ -79,4 +81,12 @@ pub unsafe fn call<F: AsRef<str>>(
 
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
     (*env).intern.unwrap()(env, c_string!(symbol))
+}
+
+pub unsafe fn nth(
+    env: *mut emacs_env,
+    index: i64,
+    list: emacs_value,
+) -> emacs_value {
+    call(env, "nth", vec![make_integer(env, index), list])
 }

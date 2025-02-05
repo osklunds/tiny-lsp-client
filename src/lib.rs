@@ -145,16 +145,14 @@ unsafe extern "C" fn tlc__rust_send_request(
     if request_type == "textDocument/definition" {
         let request_args = *args.offset(2);
 
-        let file_path =
-            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = nth(env, 0, request_args);
         let file_path = extract_string(env, file_path);
         let uri = file_path_to_uri(file_path);
 
-        let line = call(env, "nth", vec![make_integer(env, 1), request_args]);
+        let line = nth(env, 1, request_args);
         let line = extract_integer(env, line) as usize;
 
-        let character =
-            call(env, "nth", vec![make_integer(env, 2), request_args]);
+        let character = nth(env, 2, request_args);
         let character = extract_integer(env, character) as usize;
 
         let params = RequestParams::DefinitionParams(DefinitionParams {
@@ -182,8 +180,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     if request_type == "textDocument/didOpen" {
         let request_args = *args.offset(2);
 
-        let file_path =
-            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = nth(env, 0, request_args);
         let file_path = extract_string(env, file_path);
         let file_content = fs::read_to_string(&file_path).unwrap();
         let uri = file_path_to_uri(file_path);
@@ -207,8 +204,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     } else if request_type == "textDocument/didChange" {
         let request_args = *args.offset(2);
 
-        let file_path =
-            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = nth(env, 0, request_args);
         let file_path = extract_string(env, file_path);
         let file_content = fs::read_to_string(&file_path).unwrap();
         let uri = file_path_to_uri(file_path);
@@ -216,27 +212,20 @@ unsafe extern "C" fn tlc__rust_send_notification(
         let language_id = "rust".to_string();
         let version = 1;
 
-        let content_changes =
-            call(env, "nth", vec![make_integer(env, 1), request_args]);
+        let content_changes = nth(env, 1, request_args);
         let content_changes_len = call(env, "length", vec![content_changes]);
         let content_changes_len = extract_integer(env, content_changes_len);
 
         let mut json_content_changes = Vec::new();
 
         for i in 0..content_changes_len {
-            let content_change =
-                call(env, "nth", vec![make_integer(env, i), content_changes]);
+            let content_change = nth(env, i, content_changes);
 
-            let start_line =
-                call(env, "nth", vec![make_integer(env, 0), content_change]);
-            let start_character =
-                call(env, "nth", vec![make_integer(env, 1), content_change]);
-            let end_line =
-                call(env, "nth", vec![make_integer(env, 2), content_change]);
-            let end_character =
-                call(env, "nth", vec![make_integer(env, 3), content_change]);
-            let text =
-                call(env, "nth", vec![make_integer(env, 4), content_change]);
+            let start_line = nth(env, 0, content_change);
+            let start_character = nth(env, 1, content_change);
+            let end_line = nth(env, 2, content_change);
+            let end_character = nth(env, 3, content_change);
+            let text = nth(env, 4, content_change);
 
             let json_content_change = TextDocumentContentChangeEvent {
                 range: Range {
@@ -270,8 +259,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     } else if request_type == "textDocument/didClose" {
         let request_args = *args.offset(2);
 
-        let file_path =
-            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = nth(env, 0, request_args);
         let file_path = extract_string(env, file_path);
         let file_content = fs::read_to_string(&file_path).unwrap();
         let uri = file_path_to_uri(file_path);
