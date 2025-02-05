@@ -30,9 +30,16 @@
 ;; Test
 ;;------------------------------------------------------------------------------
 
-(tlc-reload)
+;;;; ---------------------------------------------------------------------------
+;;;; Load the module
+;;;;----------------------------------------------------------------------------
 
+(tlc-reload)
 (std-message "%s" (tlc--rust-all-server-info))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Initialize
+;;;;----------------------------------------------------------------------------
 
 (std-message "Starting server")
 
@@ -40,6 +47,10 @@
 (assert-equal 'already-started (tlc--rust-start-server default-directory "rust-analyzer"))
 
 (std-message "Server started")
+
+;;;; ---------------------------------------------------------------------------
+;;;; didOpen
+;;;;----------------------------------------------------------------------------
 
 ;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
@@ -50,6 +61,10 @@
  default-directory
  "textDocument/didOpen"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+
+;;;; ---------------------------------------------------------------------------
+;;;; textDocument/definition
+;;;;----------------------------------------------------------------------------
 
 ;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
@@ -73,12 +88,20 @@
 (assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)
               (recv-response))
 
+;;;; ---------------------------------------------------------------------------
+;;;; didChange
+;;;;----------------------------------------------------------------------------
+
 (std-message "Sending didChange")
 
 (tlc--rust-send-notification
  default-directory
  "textDocument/didChange"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; textDocument/definition after didChange
+;;;;----------------------------------------------------------------------------
 
 (tlc--rust-send-request
  default-directory
@@ -87,5 +110,28 @@
 
 (assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3 8 18)
               (recv-response))
+
+;;;; ---------------------------------------------------------------------------
+;; textDocument/didChange to revert the previous change, so that rust-analyzer's
+;; view matches the file system
+;;;;----------------------------------------------------------------------------
+
+(tlc--rust-send-notification
+ default-directory
+ "textDocument/didChange"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 ""))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; didClose
+;;;;----------------------------------------------------------------------------
+
+(tlc--rust-send-notification
+ default-directory
+ "textDocument/didClose"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+
+;;;; ---------------------------------------------------------------------------
+;;;; End
+;;;;----------------------------------------------------------------------------
 
 (std-message "done")

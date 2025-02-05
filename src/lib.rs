@@ -269,9 +269,6 @@ unsafe extern "C" fn tlc__rust_send_notification(
             json_content_changes.push(json_content_change);
         }
 
-        println!("oska lenr: {:?}", content_changes_len);
-        println!("oskar: {:?}", json_content_changes);
-
         connection.send_notification(
             request_type,
             NotificationParams::DidChangeTextDocumentParams(
@@ -281,6 +278,23 @@ unsafe extern "C" fn tlc__rust_send_notification(
                         version,
                     },
                     content_changes: json_content_changes,
+                },
+            ),
+        );
+    } else if request_type == "textDocument/didClose" {
+        let request_args = *args.offset(2);
+
+        let file_path =
+            call(env, "nth", vec![make_integer(env, 0), request_args]);
+        let file_path = extract_string(env, file_path);
+        let file_content = fs::read_to_string(&file_path).unwrap();
+        let uri = file_path_to_uri(file_path);
+
+        connection.send_notification(
+            request_type,
+            NotificationParams::DidCloseTextDocumentParams(
+                DidCloseTextDocumentParams {
+                    text_document: TextDocumentIdentifier { uri },
                 },
             ),
         );
