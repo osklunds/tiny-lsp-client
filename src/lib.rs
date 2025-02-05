@@ -142,28 +142,36 @@ unsafe extern "C" fn tlc__rust_send_request(
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
     let request_type = extract_string(env, *args.offset(1));
-    if request_type == "textDocument/definition" {
-        let request_args = *args.offset(2);
+    let request_args = *args.offset(2);
 
-        let file_path = nth(env, 0, request_args);
-        let file_path = extract_string(env, file_path);
-        let uri = file_path_to_uri(file_path);
-
-        let line = nth(env, 1, request_args);
-        let line = extract_integer(env, line) as usize;
-
-        let character = nth(env, 2, request_args);
-        let character = extract_integer(env, character) as usize;
-
-        let params = RequestParams::DefinitionParams(DefinitionParams {
-            text_document: TextDocumentIdentifier { uri },
-            position: Position { line, character },
-        });
-        connection.send_request(request_type, params);
-        intern(env, "ok")
+    let request_params = if request_type == "textDocument/definition" {
+        build_text_document_definition(env, request_args, connection)
     } else {
         panic!("Incorrect request type")
-    }
+    };
+    connection.send_request(request_type, request_params);
+    intern(env, "ok")
+}
+
+unsafe fn build_text_document_definition(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    connection: &mut Connection,
+) -> RequestParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = extract_string(env, file_path);
+    let uri = file_path_to_uri(file_path);
+
+    let line = nth(env, 1, request_args);
+    let line = extract_integer(env, line) as usize;
+
+    let character = nth(env, 2, request_args);
+    let character = extract_integer(env, character) as usize;
+
+    RequestParams::DefinitionParams(DefinitionParams {
+        text_document: TextDocumentIdentifier { uri },
+        position: Position { line, character },
+    })
 }
 
 unsafe extern "C" fn tlc__rust_send_notification(
@@ -177,106 +185,109 @@ unsafe extern "C" fn tlc__rust_send_notification(
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
     let request_type = extract_string(env, *args.offset(1));
-    if request_type == "textDocument/didOpen" {
-        let request_args = *args.offset(2);
+    let request_args = *args.offset(2);
 
-        let file_path = nth(env, 0, request_args);
-        let file_path = extract_string(env, file_path);
-        let file_content = fs::read_to_string(&file_path).unwrap();
-        let uri = file_path_to_uri(file_path);
-
-        let language_id = "rust".to_string();
-        let version = 1;
-
-        connection.send_notification(
-            request_type,
-            NotificationParams::DidOpenTextDocumentParams(
-                DidOpenTextDocumentParams {
-                    text_document: TextDocumentItem {
-                        uri,
-                        language_id,
-                        version,
-                        text: file_content,
-                    },
-                },
-            ),
-        );
+    let notification_params = if request_type == "textDocument/didOpen" {
+        build_text_document_did_open(env, request_args, connection)
     } else if request_type == "textDocument/didChange" {
-        let request_args = *args.offset(2);
-
-        let file_path = nth(env, 0, request_args);
-        let file_path = extract_string(env, file_path);
-        let file_content = fs::read_to_string(&file_path).unwrap();
-        let uri = file_path_to_uri(file_path);
-
-        let language_id = "rust".to_string();
-        let version = 1;
-
-        let content_changes = nth(env, 1, request_args);
-        let content_changes_len = call(env, "length", vec![content_changes]);
-        let content_changes_len = extract_integer(env, content_changes_len);
-
-        let mut json_content_changes = Vec::new();
-
-        for i in 0..content_changes_len {
-            let content_change = nth(env, i, content_changes);
-
-            let start_line = nth(env, 0, content_change);
-            let start_character = nth(env, 1, content_change);
-            let end_line = nth(env, 2, content_change);
-            let end_character = nth(env, 3, content_change);
-            let text = nth(env, 4, content_change);
-
-            let json_content_change = TextDocumentContentChangeEvent {
-                range: Range {
-                    start: Position {
-                        line: extract_integer(env, start_line) as usize,
-                        character: extract_integer(env, start_character)
-                            as usize,
-                    },
-                    end: Position {
-                        line: extract_integer(env, end_line) as usize,
-                        character: extract_integer(env, end_character) as usize,
-                    },
-                },
-                text: extract_string(env, text),
-            };
-            json_content_changes.push(json_content_change);
-        }
-
-        connection.send_notification(
-            request_type,
-            NotificationParams::DidChangeTextDocumentParams(
-                DidChangeTextDocumentParams {
-                    text_document: VersionedTextDocumentIdentifier {
-                        uri,
-                        version,
-                    },
-                    content_changes: json_content_changes,
-                },
-            ),
-        );
+        build_text_document_did_change(env, request_args, connection)
     } else if request_type == "textDocument/didClose" {
-        let request_args = *args.offset(2);
-
-        let file_path = nth(env, 0, request_args);
-        let file_path = extract_string(env, file_path);
-        let file_content = fs::read_to_string(&file_path).unwrap();
-        let uri = file_path_to_uri(file_path);
-
-        connection.send_notification(
-            request_type,
-            NotificationParams::DidCloseTextDocumentParams(
-                DidCloseTextDocumentParams {
-                    text_document: TextDocumentIdentifier { uri },
-                },
-            ),
-        );
+        build_text_document_did_close(env, request_args, connection)
     } else {
         panic!("Incorrect request type")
-    }
+    };
+    connection.send_notification(request_type, notification_params);
 
     intern(env, "ok")
+}
+
+unsafe fn build_text_document_did_open(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    connection: &mut Connection,
+) -> NotificationParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = extract_string(env, file_path);
+    let file_content = fs::read_to_string(&file_path).unwrap();
+    let uri = file_path_to_uri(file_path);
+
+    let language_id = "rust".to_string();
+    let version = 1;
+    NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri,
+            language_id,
+            version,
+            text: file_content,
+        },
+    })
+}
+
+unsafe fn build_text_document_did_change(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    connection: &mut Connection,
+) -> NotificationParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = extract_string(env, file_path);
+    let file_content = fs::read_to_string(&file_path).unwrap();
+    let uri = file_path_to_uri(file_path);
+
+    let language_id = "rust".to_string();
+    let version = 1;
+
+    let content_changes = nth(env, 1, request_args);
+    let content_changes_len = call(env, "length", vec![content_changes]);
+    let content_changes_len = extract_integer(env, content_changes_len);
+
+    let mut json_content_changes = Vec::new();
+
+    for i in 0..content_changes_len {
+        let content_change = nth(env, i, content_changes);
+
+        let start_line = nth(env, 0, content_change);
+        let start_character = nth(env, 1, content_change);
+        let end_line = nth(env, 2, content_change);
+        let end_character = nth(env, 3, content_change);
+        let text = nth(env, 4, content_change);
+
+        let json_content_change = TextDocumentContentChangeEvent {
+            range: Range {
+                start: Position {
+                    line: extract_integer(env, start_line) as usize,
+                    character: extract_integer(env, start_character) as usize,
+                },
+                end: Position {
+                    line: extract_integer(env, end_line) as usize,
+                    character: extract_integer(env, end_character) as usize,
+                },
+            },
+            text: extract_string(env, text),
+        };
+        json_content_changes.push(json_content_change);
+    }
+
+    NotificationParams::DidChangeTextDocumentParams(
+        DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier { uri, version },
+            content_changes: json_content_changes,
+        },
+    )
+}
+
+unsafe fn build_text_document_did_close(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    connection: &mut Connection,
+) -> NotificationParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = extract_string(env, file_path);
+    let file_content = fs::read_to_string(&file_path).unwrap();
+    let uri = file_path_to_uri(file_path);
+
+    NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
+        text_document: TextDocumentIdentifier { uri },
+    })
 }
 
 unsafe extern "C" fn tlc__rust_recv_response(
