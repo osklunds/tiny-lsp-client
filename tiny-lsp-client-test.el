@@ -63,7 +63,7 @@
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
 ;;;; ---------------------------------------------------------------------------
-;;;; textDocument/definition
+;;;; definition
 ;;;;----------------------------------------------------------------------------
 
 ;; todo: support more results, so that this can bi skipped
@@ -100,7 +100,7 @@
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
 
 ;;;; ---------------------------------------------------------------------------
-;;;; textDocument/definition after didChange
+;;;; definition after didChange
 ;;;;----------------------------------------------------------------------------
 
 (tlc--rust-send-request
