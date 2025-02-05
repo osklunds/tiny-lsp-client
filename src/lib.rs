@@ -144,8 +144,6 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let extract_integer = (*env).extract_integer.unwrap();
-
     let root_path = extract_string(env, *args.offset(0));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -183,8 +181,6 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let extract_integer = (*env).extract_integer.unwrap();
-
     let root_path = extract_string(env, *args.offset(0));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -389,6 +385,10 @@ unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
 
 unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
     (*env).make_integer.unwrap()(env, integer)
+}
+
+unsafe fn extract_integer(env: *mut emacs_env, integer: emacs_value) -> i64 {
+    (*env).extract_integer.unwrap()(env, integer)
 }
 
 unsafe fn export_function(
