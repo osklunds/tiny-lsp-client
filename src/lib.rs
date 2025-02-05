@@ -211,12 +211,11 @@ unsafe fn build_text_document_did_open(
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
-    let version = 1;
     NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri,
             language_id: LANGUAGE_ID.to_string(),
-            version,
+            version: connection.inc_and_get_version_number(),
             text: file_content,
         },
     })
@@ -231,8 +230,6 @@ unsafe fn build_text_document_did_change(
     let file_path = extract_string(env, file_path);
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
-
-    let version = 1;
 
     let content_changes = nth(env, 1, request_args);
     let content_changes_len = call(env, "length", vec![content_changes]);
@@ -267,7 +264,10 @@ unsafe fn build_text_document_did_change(
 
     NotificationParams::DidChangeTextDocumentParams(
         DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier { uri, version },
+            text_document: VersionedTextDocumentIdentifier {
+                uri,
+                version: connection.inc_and_get_version_number(),
+            },
             content_changes: json_content_changes,
         },
     )

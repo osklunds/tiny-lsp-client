@@ -21,6 +21,7 @@ pub struct Connection {
     sender: Sender<Message>,
     receiver: Receiver<Message>,
     next_request_id: u32,
+    next_version_number: isize,
 }
 
 impl Connection {
@@ -110,6 +111,7 @@ impl Connection {
             sender: stdin_tx,
             receiver: stdout_rx,
             next_request_id: 0,
+            next_version_number: 0,
         }
     }
 
@@ -181,5 +183,11 @@ impl Connection {
         } else {
             panic!("hej")
         }
+    }
+
+    pub fn inc_and_get_version_number(&mut self) -> isize {
+        let version_number = self.next_version_number;
+        self.next_version_number += 1;
+        version_number
     }
 }
