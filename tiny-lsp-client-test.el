@@ -131,6 +131,27 @@
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
 ;;;; ---------------------------------------------------------------------------
+;;;; didOpen + definition again
+;;;;----------------------------------------------------------------------------
+
+;; Do a definition again to ensure that rust-analyzer did not crash due to
+;; faulty data sent in didClose above. Since it's a notification we can't
+;; wait for a response.
+
+(tlc--rust-send-notification
+ default-directory
+ "textDocument/didOpen"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+
+(tlc--rust-send-request
+ default-directory
+ "textDocument/definition"
+ (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10))
+
+(assert-equal (list "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)
+              (recv-response))
+
+;;;; ---------------------------------------------------------------------------
 ;;;; End
 ;;;;----------------------------------------------------------------------------
 
