@@ -55,7 +55,8 @@
     (if (equal 'no-response response)
         (progn
           (message "try again")
-          (sleep-for 1)
+          ;; todo: consider exponential back-off
+          (sleep-for 0.01)
           (tlc--wait-for-response request-id))
       response)))
 
