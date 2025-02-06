@@ -81,7 +81,7 @@
                 "todo"
                 (xref-make-file-location file-target line-target character-start))))
        )
-      (_ (error "incorrect response %s" response))
+      (_ nil)
       )
     )) 
 
