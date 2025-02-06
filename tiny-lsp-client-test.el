@@ -11,3 +11,5 @@
                         '((text-mode . "rust-analyzer")))
 
 (tlc-mode)
+
+(setq xref-backend-functions '(tlc-xref-backend))
