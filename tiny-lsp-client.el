@@ -43,6 +43,23 @@
           root))))
 
 ;; -----------------------------------------------------------------------------
+;; Request/response
+;;------------------------------------------------------------------------------
+
+(defun tlc--sync-request (method arguments)
+  (tlc--rust-send-request (tlc--find-root) method arguments)
+  (tlc--wait-for-response 123))
+
+(defun tlc--wait-for-response (request-id)
+  (let ((response (tlc--rust-recv-response (tlc--find-root))))
+    (if (equal 'no-response response)
+        (progn
+          (message "try again")
+          (sleep-for 1)
+          (tlc--wait-for-response request-id))
+      response)))
+
+;; -----------------------------------------------------------------------------
 ;; Xref
 ;;------------------------------------------------------------------------------
 
@@ -53,7 +70,20 @@
               'identifier-at-point t))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
-  (list (xref-make "hejhej" (xref-make-file-location "/home/oskar/own_repos/tiny-lsp-client/tiny-lsp-client.el" 1 2))))
+  (let* ((file (buffer-file-name))
+        (line (- (line-number-at-pos) 1))
+        (character (current-column))
+        (response (tlc--sync-request "textDocument/definition" (list file line character))))
+    (pcase response
+      (`(,file-target ,line-start ,character-start ,line-end ,character-end)
+       (let ((line-target (+ line-start 1)))
+         (list (xref-make
+                "todo"
+                (xref-make-file-location file-target line-target character-start))))
+       )
+      (_ (error "incorrect response %s" response))
+      )
+    )) 
 
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
