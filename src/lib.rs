@@ -314,7 +314,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                         env,
                         "list",
                         vec![
-                            make_string(env, uri.to_string()),
+                            make_string(env, uri_to_file_path(uri)),
                             make_integer(env, range.start.line as i64),
                             make_integer(env, range.start.character as i64),
                             make_integer(env, range.end.line as i64),
@@ -337,4 +337,10 @@ unsafe extern "C" fn tlc__rust_recv_response(
 
 fn file_path_to_uri<S: AsRef<str>>(file_path: S) -> String {
     format!("file://{}", file_path.as_ref())
+}
+
+fn uri_to_file_path<S: AsRef<str>>(uri: S) -> String {
+    let (first, last) = uri.as_ref().split_at(7);
+    assert_eq!("file://", first);
+    last.to_string()
 }

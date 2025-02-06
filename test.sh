@@ -3,7 +3,7 @@
 cargo build && RUST_BACKTRACE=1 emacs \
     -Q \
     --batch \
-    --eval '(load-file "tiny-lsp-client-test.el")'
+    --eval '(load-file "tiny-lsp-client-lisp-bindings-test.el")'
 
 code=$?
 
