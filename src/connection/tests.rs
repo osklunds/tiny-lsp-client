@@ -46,7 +46,7 @@ fn did_open_change_close_and_definition() {
 
     // textDocument/definition
     assert_eq!(None, connection.try_recv_response());
-    connection.send_request(
+    let id = connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -56,6 +56,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
+    assert_eq!(1, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -98,7 +99,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition after textDocument/didChange
-    connection.send_request(
+    let id = connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -108,6 +109,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
+    assert_eq!(2, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -124,7 +126,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition after textDocument/didChange again
-    connection.send_request(
+    let id = connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -133,7 +135,8 @@ fn did_open_change_close_and_definition() {
                 line: 4,
             },
         }),
-    );
+    ); 
+    assert_eq!(3, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -209,7 +212,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition
-    connection.send_request(
+    let id = connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -219,6 +222,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
+    assert_eq!(4, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
