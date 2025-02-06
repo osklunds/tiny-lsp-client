@@ -3,10 +3,18 @@
 (require 'subr-x)
 (require 'xref)
 
+;; -----------------------------------------------------------------------------
+;; Configuration
+;;------------------------------------------------------------------------------
+
 (defcustom tlc-server-cmds
   '((rust-mode . "rust-analyzer"))
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client)
+
+;; -----------------------------------------------------------------------------
+;; Start
+;;------------------------------------------------------------------------------
 
 (defun tlc--initialize ()
   (let* ((root (if-let ((r (tlc--find-root)))
@@ -34,6 +42,10 @@
         (unless (string-match-p "fatal:" root)
           root))))
 
+;; -----------------------------------------------------------------------------
+;; Xref
+;;------------------------------------------------------------------------------
+
 (defun tlc-xref-backend () 'xref-tlc)
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
@@ -42,6 +54,10 @@
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
   (list (xref-make "hejhej" (xref-make-file-location "/home/oskar/own_repos/tiny-lsp-client/tiny-lsp-client.el" 1 2))))
+
+;; -----------------------------------------------------------------------------
+;; Minor mode
+;;------------------------------------------------------------------------------
 
 ;;;###autoload
 (define-minor-mode tlc-mode
