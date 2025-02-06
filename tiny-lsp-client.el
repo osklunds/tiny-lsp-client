@@ -47,17 +47,32 @@
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
-  (tlc--rust-send-request (tlc--find-root) method arguments)
-  (tlc--wait-for-response 123))
+  (let ((request-id (tlc--rust-send-request (tlc--find-root) method arguments)))
+    (tlc--wait-for-response request-id)))
 
 (defun tlc--wait-for-response (request-id)
+  ;; todo: consider exponential back-off
+  (sleep-for 0.01)
   (let ((response (tlc--rust-recv-response (tlc--find-root))))
-    (if (equal 'no-response response)
-        (progn
-          ;; todo: consider exponential back-off
-          (sleep-for 0.01)
-          (tlc--wait-for-response request-id))
-      response)))
+    (pcase response
+      ;; normal case - response has arrived
+      (`(,id ,params)
+       (cond
+        ;; alternative but valid case - response to old request
+        ((< id request-id) (tlc--wait-for-response request-id))
+
+        ;; error case - response to request id not yet sent
+        ((> id request-id) (error "too big id"))
+
+        ;; normal case - response to current request
+        (t                 params)))
+
+      ;; normal case - no response yet
+      ( 'no-response (tlc--wait-for-response request-id))
+
+      ;; error case - some other response
+      (_ (error "bad response"))
+      )))
 
 ;; -----------------------------------------------------------------------------
 ;; Xref
@@ -71,9 +86,9 @@
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
   (let* ((file (buffer-file-name))
-        (line (- (line-number-at-pos) 1))
-        (character (current-column))
-        (response (tlc--sync-request "textDocument/definition" (list file line character))))
+         (line (- (line-number-at-pos) 1))
+         (character (current-column))
+         (response (tlc--sync-request "textDocument/definition" (list file line character))))
     (pcase response
       (`(,file-target ,line-start ,character-start ,line-end ,character-end)
        (let ((line-target (+ line-start 1)))
