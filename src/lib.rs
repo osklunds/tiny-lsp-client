@@ -149,8 +149,8 @@ unsafe extern "C" fn tlc__rust_send_request(
     } else {
         panic!("Incorrect request type")
     };
-    connection.send_request(request_type, request_params);
-    intern(env, "ok")
+    let id = connection.send_request(request_type, request_params);
+    make_integer(env, id as i64)
 }
 
 unsafe fn build_text_document_definition(
@@ -310,7 +310,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                     let uri = &location_link.target_uri;
                     let range = &location_link.target_selection_range;
 
-                    call(
+                    let response_params = call(
                         env,
                         "list",
                         vec![
@@ -320,7 +320,9 @@ unsafe extern "C" fn tlc__rust_recv_response(
                             make_integer(env, range.end.line as i64),
                             make_integer(env, range.end.character as i64),
                         ],
-                    )
+                    );
+                    let id = make_integer(env, response.id as i64);
+                    call(env, "list", vec![id, response_params])
                 } else {
                     intern(env, "other-response")
                 }
