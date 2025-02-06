@@ -54,7 +54,6 @@
   (let ((response (tlc--rust-recv-response (tlc--find-root))))
     (if (equal 'no-response response)
         (progn
-          (message "try again")
           ;; todo: consider exponential back-off
           (sleep-for 0.01)
           (tlc--wait-for-response request-id))
