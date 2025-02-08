@@ -29,12 +29,45 @@
                    r
                  (user-error "tiny-lsp-client only works for file-based buffers"))))
     (tlc--rust-start-server root server-cmd)
-    ;; todo: if buffer-revert-quick, this is sent again, but not didClose
+    (tlc--notify-text-document-did-open)
+    (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
+    (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
+    (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
+    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
+
+(defun tlc--kill-buffer-hook ()
+  (when tlc-mode
+    (tlc--notify-text-document-did-close)))
+
+(defun tlc--before-revert-hook ()
+  (tlc--notify-text-document-did-close))
+
+(defun tlc--after-revert-hook ()
+  (tlc--notify-text-document-did-open))
+
+(defun tlc--notify-text-document-did-open ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (file (if-let ((r (buffer-file-name)))
+                   r
+                 (user-error "tiny-lsp-client only works for file-based buffers"))))
     (tlc--rust-send-notification
      root
      "textDocument/didOpen"
-     (list file))
-    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
+     (list file))))
+
+(defun tlc--notify-text-document-did-close ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (file (if-let ((r (buffer-file-name)))
+                   r
+                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+    (tlc--rust-send-notification
+     root
+     "textDocument/didClose"
+     (list file))))
 
 (defun tlc--find-root ()
   (if (fboundp 'projectile-project-root)
@@ -47,19 +80,10 @@
 ;; Stop
 ;;------------------------------------------------------------------------------
 
+;; todo: if last buffer, stop the server
 (defun tlc--stop ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root")))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
-    ;; todo: if last buffer, stop the server
-    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (tlc--rust-send-notification
-     root
-     "textDocument/didClose"
-     (list file))))
+  (tlc--notify-text-document-did-close)
+  (remove-hook 'xref-backend-functions 'tlc-xref-backend t))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response

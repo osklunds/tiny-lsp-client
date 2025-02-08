@@ -74,3 +74,19 @@
 (tlc-mode -1)
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
+
+;; -----------------------------------------------------------------------------
+;; Enable tlc-mode again
+;;------------------------------------------------------------------------------
+
+(tlc-mode t)
+(assert-equal t tlc-mode)
+(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+;; -----------------------------------------------------------------------------
+;; Revert buffer
+;;------------------------------------------------------------------------------
+
+(revert-buffer-quick)
+(assert-equal t tlc-mode)
+(assert-equal '(tlc-xref-backend t) xref-backend-functions)
