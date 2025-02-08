@@ -49,10 +49,13 @@
 (assert-equal 5 (line-number-at-pos))
 (assert-equal 19 (current-column))
 
+(defun non-interactive-xref-find-definitions ()
+  (let ((xref-prompt-for-identifier nil))
+    (call-interactively 'xref-find-definitions)))
+
 (sleep-for 10)
 
-(let ((xref-prompt-for-identifier nil))
-  (call-interactively 'xref-find-definitions))
+(non-interactive-xref-find-definitions)
 
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
