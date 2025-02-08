@@ -51,8 +51,8 @@ fn did_open_change_close_and_definition() {
     };
     // Need to loop until response because rust-analyzer takes time to start
     // and sends different responses until it's ready
-    let current_id = 1;
-    let (response, current_id) =
+    let base_id = 1;
+    let (response, base_id) =
         request_definition_until_response_with_one_location(
             &mut connection,
             1,
@@ -109,7 +109,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
-    assert_eq!(current_id, id);
+    assert_eq!(base_id, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -136,7 +136,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
-    assert_eq!(current_id + 1, id);
+    assert_eq!(base_id + 1, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -222,7 +222,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
-    assert_eq!(current_id + 2, id);
+    assert_eq!(base_id + 2, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
