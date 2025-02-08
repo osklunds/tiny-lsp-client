@@ -57,7 +57,6 @@
 ;;;; didOpen
 ;;;;----------------------------------------------------------------------------
 
-;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
 
 (std-message "Sending didOpen")
@@ -71,7 +70,6 @@
 ;;;; definition
 ;;;;----------------------------------------------------------------------------
 
-;; todo: support more results, so that this can bi skipped
 (sleep-for 1)
 
 (std-message "Sending definition")
