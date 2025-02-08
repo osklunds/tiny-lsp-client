@@ -13,79 +13,6 @@
   :group 'tiny-lsp-client)
 
 ;; -----------------------------------------------------------------------------
-;; Start
-;;------------------------------------------------------------------------------
-
-(defun tlc--start ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root")))
-         (server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
-                         r
-                       (user-error
-                        "No server command found for major mode: %s"
-                        major-mode)))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
-    (tlc--rust-start-server root server-cmd)
-    (tlc--notify-text-document-did-open)
-    (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
-    (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
-    (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
-    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
-
-(defun tlc--kill-buffer-hook ()
-  (when tlc-mode
-    (tlc--notify-text-document-did-close)))
-
-(defun tlc--before-revert-hook ()
-  (tlc--notify-text-document-did-close))
-
-(defun tlc--after-revert-hook ()
-  (tlc--notify-text-document-did-open))
-
-(defun tlc--notify-text-document-did-open ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root")))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
-    (tlc--rust-send-notification
-     root
-     "textDocument/didOpen"
-     (list file))))
-
-(defun tlc--notify-text-document-did-close ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root")))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
-    (tlc--rust-send-notification
-     root
-     "textDocument/didClose"
-     (list file))))
-
-(defun tlc--find-root ()
-  (if (fboundp 'projectile-project-root)
-      (projectile-project-root)
-    (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
-        (unless (string-match-p "fatal:" root)
-          root))))
-
-;; -----------------------------------------------------------------------------
-;; Stop
-;;------------------------------------------------------------------------------
-
-;; todo: if last buffer, stop the server
-(defun tlc--stop ()
-  (tlc--notify-text-document-did-close)
-  (remove-hook 'xref-backend-functions 'tlc-xref-backend t))
-
-;; -----------------------------------------------------------------------------
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
@@ -158,8 +85,72 @@
   :lighter " tlc-mode"
   :group 'tiny-lsp-client
   (cond
-   (tlc-mode (tlc--start))
-   (t (tlc--stop))))
+   (tlc-mode
+    (tlc--start-server)
+    (tlc--notify-text-document-did-open)
+    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+    (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
+    (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
+    (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
+   (t
+    ;; todo: if last buffer, stop the server
+    (tlc--notify-text-document-did-close)
+    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
+    (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
+    (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))
+
+(defun tlc--start-server ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
+                         r
+                       (user-error
+                        "No server command found for major mode: %s"
+                        major-mode))))
+    (tlc--rust-start-server root server-cmd)))
+
+(defun tlc--kill-buffer-hook ()
+  (when tlc-mode
+    (tlc--notify-text-document-did-close)))
+
+(defun tlc--before-revert-hook ()
+  (tlc--notify-text-document-did-close))
+
+(defun tlc--after-revert-hook ()
+  (tlc--notify-text-document-did-open))
+
+(defun tlc--notify-text-document-did-open ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (file (if-let ((r (buffer-file-name)))
+                   r
+                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+    (tlc--rust-send-notification
+     root
+     "textDocument/didOpen"
+     (list file))))
+
+(defun tlc--notify-text-document-did-close ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (file (if-let ((r (buffer-file-name)))
+                   r
+                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+    (tlc--rust-send-notification
+     root
+     "textDocument/didClose"
+     (list file))))
+
+(defun tlc--find-root ()
+  (if (fboundp 'projectile-project-root)
+      (projectile-project-root)
+    (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
+        (unless (string-match-p "fatal:" root)
+          root))))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
