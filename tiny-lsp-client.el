@@ -89,16 +89,18 @@
          (line (- (line-number-at-pos) 1))
          (character (current-column))
          (response (tlc--sync-request "textDocument/definition" (list file line character))))
-    (pcase response
-      (`(,file-target ,line-start ,character-start ,line-end ,character-end)
-       (let ((line-target (+ line-start 1)))
-         (list (xref-make
-                "todo"
-                (xref-make-file-location file-target line-target character-start))))
-       )
-      (_ nil)
-      )
-    )) 
+    (mapcar (lambda (location)
+              (pcase-let ((`(,file-target
+                             ,line-start
+                             ,character-start
+                             ,line-end
+                             ,character-end)
+                           location))
+                (let ((line-target (+ line-start 1)))
+                  (xref-make
+                   "todo"
+                   (xref-make-file-location file-target line-target character-start)))))
+            response)))
 
 ;; -----------------------------------------------------------------------------
 ;; Minor mode

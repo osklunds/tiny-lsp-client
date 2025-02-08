@@ -79,7 +79,7 @@
 (assert-equal 1 (tlc--rust-send-request
                  default-directory
                  "textDocument/definition"
-                 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
 (defun recv-response ()
   (let ((response (tlc--rust-recv-response default-directory)))
@@ -90,7 +90,7 @@
           (recv-response))
       response)))
 
-(assert-equal (list 1 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18))
+(assert-equal '(1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -113,9 +113,9 @@
 (assert-equal 2 (tlc--rust-send-request
                  default-directory
                  "textDocument/definition"
-                 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal (list 2 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3 8 18))
+(assert-equal '(2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3 8 18)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -159,9 +159,9 @@
 (assert-equal 3 (tlc--rust-send-request
                  default-directory
                  "textDocument/definition"
-                 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal (list 3 (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18))
+(assert-equal '(3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------

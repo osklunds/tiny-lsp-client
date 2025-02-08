@@ -305,12 +305,13 @@ unsafe extern "C" fn tlc__rust_recv_response(
             {
                 let DefinitionResult::LocationLinkList(location_link_list) =
                     definition_result;
-                if !location_link_list.is_empty() {
-                    let location_link = &location_link_list[0];
+                let mut lisp_location_list_vec = Vec::new();
+
+                for location_link in location_link_list {
                     let uri = &location_link.target_uri;
                     let range = &location_link.target_selection_range;
 
-                    let response_params = call(
+                    let lisp_location = call(
                         env,
                         "list",
                         vec![
@@ -321,11 +322,11 @@ unsafe extern "C" fn tlc__rust_recv_response(
                             make_integer(env, range.end.character as i64),
                         ],
                     );
-                    let id = make_integer(env, response.id as i64);
-                    call(env, "list", vec![id, response_params])
-                } else {
-                    intern(env, "other-response")
+                    lisp_location_list_vec.push(lisp_location);
                 }
+                let lisp_location_list = call(env, "list", lisp_location_list_vec);
+                let id = make_integer(env, response.id as i64);
+                call(env, "list", vec![id, lisp_location_list])
             } else {
                 intern(env, "other-response")
             }
