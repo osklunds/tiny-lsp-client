@@ -11,5 +11,3 @@
 (add-hook 'rust-mode-hook 'tlc-mode)
 
 (find-file "src/dummy.rs")
-
-(setq xref-backend-functions '(tlc-xref-backend))
