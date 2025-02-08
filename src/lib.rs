@@ -330,7 +330,9 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 panic!("other response received")
             }
         } else {
-            intern(env, "other-response")
+            // Now response.error should be Some, but since no details are
+            // returned anyway, no need to unwrap and risk crash
+            intern(env, "error")
         }
     } else {
         intern(env, "no-response")

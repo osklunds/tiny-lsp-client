@@ -61,16 +61,24 @@
         ;; alternative but valid case - response to old request
         ((< id request-id) (tlc--wait-for-response request-id))
 
-        ;; error case - response to request id not yet sent
+        ;; bug case - response to request id not yet sent
         ((> id request-id) (error "too big id"))
 
         ;; normal case - response to current request
         (t                 params)))
 
       ;; normal case - no response yet
-      ( 'no-response (tlc--wait-for-response request-id))
+      ('no-response (tlc--wait-for-response request-id))
 
-      ;; error case - some other response
+      ;; alternative but valid case - some error response
+      ;; For now, just print a message, because so far I've only encountered it
+      ;; for temporary issues. In the future, consider passing code and msg.
+      ('error (user-error
+               (concat "Got error response from LSP server."
+                       "It might be a temporary issue."
+                       "But if it keeps happening, you can check the IO logs")))
+
+      ;; bug case - some other response
       (_ (error "bad response"))
       )))
 
