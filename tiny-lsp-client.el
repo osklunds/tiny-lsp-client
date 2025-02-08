@@ -16,7 +16,7 @@
 ;; Start
 ;;------------------------------------------------------------------------------
 
-(defun tlc--initialize ()
+(defun tlc--start ()
   (let* ((root (if-let ((r (tlc--find-root)))
                    r
                  (user-error "Can't find root")))
@@ -41,6 +41,24 @@
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
         (unless (string-match-p "fatal:" root)
           root))))
+
+;; -----------------------------------------------------------------------------
+;; Stop
+;;------------------------------------------------------------------------------
+
+(defun tlc--stop ()
+  (let* ((root (if-let ((r (tlc--find-root)))
+                   r
+                 (user-error "Can't find root")))
+         (file (if-let ((r (buffer-file-name)))
+                   r
+                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+    ;; todo: if last buffer, stop the server
+    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (tlc--rust-send-notification
+     root
+     "textDocument/didClose"
+     (list file))))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response
@@ -115,8 +133,8 @@
   :lighter " tlc-mode"
   :group 'tiny-lsp-client
   (cond
-   (tlc-mode (tlc--initialize))
-   (t nil)))
+   (tlc-mode (tlc--start))
+   (t (tlc--stop))))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
