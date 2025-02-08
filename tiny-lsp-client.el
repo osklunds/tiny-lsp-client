@@ -119,7 +119,12 @@
   (tlc--notify-text-document-did-close))
 
 (defun tlc--after-revert-hook ()
-  (tlc--notify-text-document-did-open))
+  ;; If revert-buffer-preserve-modes is nil (default), it means that tlc-mode is
+  ;; run and didOpen is called from there, and it would result in duplicate
+  ;; didOpen calls. See
+  ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Reverting.html
+  (when revert-buffer-preserve-modes
+    (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
   (let* ((root (if-let ((r (tlc--find-root)))

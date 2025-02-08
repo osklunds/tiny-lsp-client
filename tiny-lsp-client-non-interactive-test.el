@@ -87,6 +87,15 @@
 ;; Revert buffer
 ;;------------------------------------------------------------------------------
 
+;; Testing didOpen and didClose at revert. Note, I know no good way to
+;; automatically test did. Need to inspect the log and see that no duplicate
+;; error is printed.
+
 (revert-buffer-quick)
+(assert-equal t tlc-mode)
+(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+;; When preserve-modes is true
+(revert-buffer nil t t)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
