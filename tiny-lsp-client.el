@@ -56,7 +56,7 @@
   (let ((response (tlc--rust-recv-response (tlc--find-root))))
     (pcase response
       ;; normal case - response has arrived
-      (`(,id ,params)
+      (`(ok ,id ,params)
        (cond
         ;; alternative but valid case - response to old request
         ((< id request-id) (tlc--wait-for-response request-id))
