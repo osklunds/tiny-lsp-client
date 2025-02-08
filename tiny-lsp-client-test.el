@@ -1,15 +1,15 @@
 
 (add-to-list 'load-path default-directory)
 
+(define-derived-mode rust-mode prog-mode "Rust"
+  "Fake rust-mode for testing.")
+
+(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-mode))
+
 (require 'tiny-lsp-client)
 
+(add-hook 'rust-mode-hook 'tlc-mode)
+
 (find-file "src/dummy.rs")
-
-(text-mode)
-
-(customize-set-variable 'tlc-server-cmds
-                        '((text-mode . "rust-analyzer")))
-
-(tlc-mode)
 
 (setq xref-backend-functions '(tlc-xref-backend))
