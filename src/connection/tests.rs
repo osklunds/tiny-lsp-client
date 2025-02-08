@@ -49,6 +49,8 @@ fn did_open_change_close_and_definition() {
             line: 4,
         },
     };
+    // Need to loop until response because rust-analyzer takes time to start
+    // and sends different responses until it's ready
     let current_id = 1;
     let (response, current_id) =
         request_definition_until_response_with_one_location(
