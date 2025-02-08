@@ -29,6 +29,7 @@
                    r
                  (user-error "tiny-lsp-client only works for file-based buffers"))))
     (tlc--rust-start-server root server-cmd)
+    ;; todo: if buffer-revert-quick, this is sent again, but not didClose
     (tlc--rust-send-notification
      root
      "textDocument/didOpen"
