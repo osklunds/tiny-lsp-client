@@ -127,6 +127,7 @@
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
+  ;; todo: all these let with error check, have in wrapper
   (let* ((root (if-let ((r (tlc--find-root)))
                    r
                  (user-error "Can't find root")))
@@ -144,12 +145,14 @@
                  (user-error "Can't find root")))
          (file (if-let ((r (buffer-file-name)))
                    r
+                 ;; todo: check in mode def like lspce
                  (user-error "tiny-lsp-client only works for file-based buffers"))))
     (tlc--rust-send-notification
      root
      "textDocument/didClose"
      (list file))))
 
+;; todo: cache per server
 (defun tlc--find-root ()
   (if (fboundp 'projectile-project-root)
       (projectile-project-root)
