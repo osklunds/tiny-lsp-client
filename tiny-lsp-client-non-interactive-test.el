@@ -66,3 +66,11 @@
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+;; -----------------------------------------------------------------------------
+;; Disable tlc-mode by disabling major-mode
+;;------------------------------------------------------------------------------
+
+(text-mode)
+(assert-equal 'text-mode major-mode)
+(assert-equal nil tlc-mode)
+(assert-equal '(etags--xref-backend) xref-backend-functions)
