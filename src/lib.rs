@@ -318,8 +318,6 @@ unsafe extern "C" fn tlc__rust_recv_response(
                             make_string(env, uri_to_file_path(uri)),
                             make_integer(env, range.start.line as i64),
                             make_integer(env, range.start.character as i64),
-                            make_integer(env, range.end.line as i64),
-                            make_integer(env, range.end.character as i64),
                         ],
                     );
                     lisp_location_list_vec.push(lisp_location);

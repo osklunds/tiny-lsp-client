@@ -90,12 +90,7 @@
          (character (current-column))
          (response (tlc--sync-request "textDocument/definition" (list file line character))))
     (mapcar (lambda (location)
-              (pcase-let ((`(,file-target
-                             ,line-start
-                             ,character-start
-                             ,line-end
-                             ,character-end)
-                           location))
+              (pcase-let ((`(,file-target ,line-start ,character-start) location))
                 (let ((line-target (+ line-start 1)))
                   (xref-make
                    "todo"

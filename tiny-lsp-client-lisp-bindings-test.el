@@ -90,7 +90,7 @@
           (recv-response))
       response)))
 
-(assert-equal '(1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
+(assert-equal '(1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@
                  "textDocument/definition"
                  '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal '(2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3 8 18)))
+(assert-equal '(2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@
                  "textDocument/definition"
                  '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal '(3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3 7 18)))
+(assert-equal '(3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
