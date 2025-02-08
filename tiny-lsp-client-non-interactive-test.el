@@ -12,6 +12,10 @@
     (std-message "Act %s" act)
     (cl-assert (equal exp act) 'show)))
 
+(defun non-interactive-xref-find-definitions ()
+  (let ((xref-prompt-for-identifier nil))
+    (call-interactively 'xref-find-definitions)))
+
 ;; -----------------------------------------------------------------------------
 ;; Preparation
 ;;------------------------------------------------------------------------------
@@ -49,13 +53,15 @@
 (assert-equal 5 (line-number-at-pos))
 (assert-equal 19 (current-column))
 
-(defun non-interactive-xref-find-definitions ()
-  (let ((xref-prompt-for-identifier nil))
-    (call-interactively 'xref-find-definitions)))
+(defun xref-find-definition-until-success ()
+  (ignore-errors
+    (non-interactive-xref-find-definitions))
+  (if (equal 8 (line-number-at-pos))
+      'ok
+    (sleep-for 0.1)
+    (xref-find-definition-until-success)))
 
-(sleep-for 10)
-
-(non-interactive-xref-find-definitions)
+(xref-find-definition-until-success)
 
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
