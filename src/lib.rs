@@ -326,6 +326,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 let id = make_integer(env, response.id as i64);
                 call(env, "list", vec![id, lisp_location_list])
             } else {
+                // calling error in emacs might be better
                 panic!("other response received")
             }
         } else {
