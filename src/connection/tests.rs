@@ -19,10 +19,6 @@ fn did_open_change_close_and_definition() {
     );
     connection.initialize();
 
-    // let rust-analyzer have time to start
-    // todo: consider looping again
-    thread::sleep(Duration::from_millis(2000));
-
     let uri =
         "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string();
 
@@ -46,18 +42,20 @@ fn did_open_change_close_and_definition() {
 
     // textDocument/definition
     assert_eq!(None, connection.try_recv_response());
-    let id = connection.send_request(
-        "textDocument/definition".to_string(),
-        RequestParams::DefinitionParams(DefinitionParams {
-            text_document: TextDocumentIdentifier { uri: uri.clone() },
-            position: Position {
-                character: 4,
-                line: 4,
-            },
-        }),
-    );
-    assert_eq!(1, id);
-    let response = connection.recv_response();
+    let request_params = DefinitionParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        position: Position {
+            character: 4,
+            line: 4,
+        },
+    };
+    let current_id = 1;
+    let (response, current_id) =
+        request_definition_until_response_with_one_location(
+            &mut connection,
+            1,
+            request_params,
+        );
     assert_definition_response(
         Range {
             start: Position {
@@ -109,7 +107,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
-    assert_eq!(2, id);
+    assert_eq!(current_id, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -135,8 +133,8 @@ fn did_open_change_close_and_definition() {
                 line: 4,
             },
         }),
-    ); 
-    assert_eq!(3, id);
+    );
+    assert_eq!(current_id + 1, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -222,7 +220,7 @@ fn did_open_change_close_and_definition() {
             },
         }),
     );
-    assert_eq!(4, id);
+    assert_eq!(current_id + 2, id);
     let response = connection.recv_response();
     assert_definition_response(
         Range {
@@ -237,6 +235,54 @@ fn did_open_change_close_and_definition() {
         },
         response,
     );
+}
+
+fn request_definition_until_response_with_one_location(
+    connection: &mut Connection,
+    current_id: u32,
+    request_params: DefinitionParams,
+) -> (Response, u32) {
+    receive_until_definition_response_with_one_location_1(
+        connection,
+        current_id,
+        request_params,
+        1000,
+    )
+}
+
+fn receive_until_definition_response_with_one_location_1(
+    connection: &mut Connection,
+    current_id: u32,
+    request_params: DefinitionParams,
+    retries: usize,
+) -> (Response, u32) {
+    let id = connection.send_request(
+        "textDocument/definition".to_string(),
+        RequestParams::DefinitionParams(request_params.clone()),
+    );
+    assert_eq!(current_id, id);
+    let next_id = current_id + 1;
+    let response = connection.recv_response();
+    if let Some(result) = &response.result {
+        if let Result::TextDocumentDefinitionResult(result) = result {
+            if let DefinitionResult::LocationLinkList(result) = result {
+                if !result.is_empty() {
+                    return (response, next_id);
+                }
+            }
+        }
+    }
+    if retries > 0 {
+        thread::sleep(Duration::from_millis(100));
+        receive_until_definition_response_with_one_location_1(
+            connection,
+            next_id,
+            request_params,
+            retries - 1,
+        )
+    } else {
+        panic!()
+    }
 }
 
 fn assert_definition_response(exp_target_range: Range, response: Response) {
