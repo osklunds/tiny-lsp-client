@@ -79,7 +79,6 @@ impl Connection {
                 reader.read_exact(&mut json_buf);
                 // println!("oskar3: {:?}", json_buf);
                 let json = String::from_utf8(json_buf).unwrap();
-                thread::sleep(Duration::from_millis(100));
 
                 // Decode as serde_json::Value too, to be able to print fields
                 // not deserialized into msg.
