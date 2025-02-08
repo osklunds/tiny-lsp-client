@@ -9,6 +9,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 
 - phase 1
   - logging
+    - timing
   - garbage collect + --release
   - didChange
   - didClose
