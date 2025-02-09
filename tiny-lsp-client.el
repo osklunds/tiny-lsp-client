@@ -108,7 +108,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
       (error "tlc--change is not-nil in before-change")
-    (setq tlc--change (list (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
+    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
 
 ;; Heavily inspired by eglot
 (defun tlc--pos-to-lsp-pos (pos)
@@ -119,12 +119,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (list line character)))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
-  (let* ((start (car tlc--change))
-         (start-line (car start))
-         (start-character (cadr start))
-         (end1 (cadr tlc--change))
-         (end-line (car end1))
-         (end-character (cadr end1))
+  (let* ((start-line (nth 0 tlc--change))
+         (start-character (nth 1 tlc--change))
+         (end-line (nth 2 tlc--change))
+         (end-character (nth 3 tlc--change))
          (text (buffer-substring-no-properties beg end))
          )
     (setq tlc--change nil)
