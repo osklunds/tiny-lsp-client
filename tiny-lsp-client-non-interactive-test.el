@@ -107,6 +107,9 @@
 (defun current-line ()
   (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
 
+(defun current-buffer-string ()
+  (buffer-substring-no-properties (point-min) (point-max)))
+
 (goto-char 2)
 (assert-equal "// Don't change this file. It is used in tests" (current-line))
 (next-line)
@@ -134,13 +137,52 @@
 (re-search-forward "first_function")
 (assert-equal "    first_function(); // call from third }" (current-line))
 
-(message "full buffer: %s" (buffer-substring-no-properties (point-min) (point-max)))
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    first_function(); // call from third }
+fn first_function() {
+    second_function();
+}
+
+fn second_function() {
+
+}
+"
+ (current-buffer-string))
 
 (assert-equal 4 (line-number-at-pos))
 (assert-equal 18 (current-column))
 
 (non-interactive-xref-find-definitions)
 (assert-equal 5 (line-number-at-pos))
+(assert-equal 3 (current-column))
+
+(re-search-forward "fn second_function")
+(previous-line)
+(backward-delete-char 1)
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    first_function(); // call from third }
+fn first_function() {
+    second_function();
+}
+fn second_function() {
+
+}
+"
+ (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "second_function")
+
+(assert-equal 6 (line-number-at-pos))
+
+(non-interactive-xref-find-definitions)
+(assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
 ;; -----------------------------------------------------------------------------
