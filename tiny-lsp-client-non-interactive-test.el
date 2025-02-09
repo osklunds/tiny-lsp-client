@@ -104,16 +104,29 @@
 ;; Editing
 ;;------------------------------------------------------------------------------
 
-(defun current-line ()
-  (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
-
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
 
-(goto-char 2)
-(assert-equal "// Don't change this file. It is used in tests" (current-line))
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+
+fn first_function() {
+    second_function();
+}
+
+fn second_function() {
+
+}
+"
+ (current-buffer-string))
+
+;; Re-position
+(beginning-of-buffer)
 (next-line)
-(assert-equal "" (current-line))
+(next-line)
+(assert-equal 3 (line-number-at-pos))
+(assert-equal 0 (current-column))
 
 ;; Some single-character edits
 (insert "f")
@@ -130,13 +143,6 @@
 ;; finishing the function
 (insert "    first_function(); // call from third }")
 
-(assert-equal "    first_function(); // call from third }" (current-line))
-(previous-line)
-(assert-equal "fn third_function() {" (current-line))
-
-(re-search-forward "first_function")
-(assert-equal "    first_function(); // call from third }" (current-line))
-
 (assert-equal 
  "
 // Don't change this file. It is used in tests
@@ -152,14 +158,26 @@ fn second_function() {
 "
  (current-buffer-string))
 
+;; Re-position
+(beginning-of-buffer)
+(re-search-forward "    first_function")
 (assert-equal 4 (line-number-at-pos))
 (assert-equal 18 (current-column))
 
+;; Find definition
 (non-interactive-xref-find-definitions)
 (assert-equal 5 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+;; Re-position
+(beginning-of-buffer)
 (re-search-forward "fn second_function")
+(assert-equal 9 (line-number-at-pos))
+(assert-equal 18 (current-column))
+
+(message "oskar: %s" "hejjjjjjjjjjjjj")
+
+;; Edits
 (previous-line)
 (backward-delete-char 1)
 (assert-equal 
@@ -176,11 +194,14 @@ fn second_function() {
 "
  (current-buffer-string))
 
+;; Re-position
 (beginning-of-buffer)
 (re-search-forward "second_function")
 
 (assert-equal 6 (line-number-at-pos))
+(assert-equal 19 (current-column))
 
+;; Find definition
 (non-interactive-xref-find-definitions)
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
