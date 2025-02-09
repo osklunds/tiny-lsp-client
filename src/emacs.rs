@@ -1,5 +1,6 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use crate::logger::log_debug;
 use std::ffi::CString;
 
 macro_rules! c_string {
@@ -14,6 +15,7 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let mut len = 1000;
     let res =
         copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len);
+    log_debug!("extract_string length: {}", len);
     assert!(res);
     len -= 1;
     std::str::from_utf8(&buf[0..len as usize])
