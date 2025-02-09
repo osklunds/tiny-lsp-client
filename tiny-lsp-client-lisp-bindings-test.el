@@ -52,7 +52,12 @@
 
 (assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
 
-(assert-equal `((,root-path "rust-analyzer")) (tlc--rust-all-server-info))
+(pcase (tlc--rust-all-server-info)
+  (`((,r ,c ,i))
+   (assert-equal root-path r)
+   (assert-equal "rust-analyzer" c))
+  (x
+   (error "unexpected return: %s" x)))
 
 (assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
 

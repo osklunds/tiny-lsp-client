@@ -199,4 +199,8 @@ impl Connection {
     pub fn get_command(&self) -> String {
         self.command.clone()
     }
+
+    pub fn get_server_process_id(&self) -> u32 {
+        self.server_process.id()
+    }
 }

@@ -114,6 +114,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
             vec![
                 make_string(env, root_path),
                 make_string(env, connection.get_command()),
+                make_integer(env, connection.get_server_process_id() as i64),
             ],
         );
         server_info_list.push(info);
