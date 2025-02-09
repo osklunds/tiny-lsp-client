@@ -40,7 +40,7 @@
 
 (std-message "After load")
 
-(std-message "All server info: %s" (tlc--rust-all-server-info))
+(assert-equal nil (tlc--rust-all-server-info))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Initialize
@@ -49,6 +49,9 @@
 (std-message "Starting server")
 
 (assert-equal 'started (tlc--rust-start-server default-directory "rust-analyzer"))
+
+(assert-equal '(("~/own_repos/tiny-lsp-client/")) (tlc--rust-all-server-info))
+
 (assert-equal 'already-started (tlc--rust-start-server default-directory "rust-analyzer"))
 
 (std-message "Server started")

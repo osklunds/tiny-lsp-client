@@ -21,9 +21,9 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
         .to_string()
 }
 
-pub unsafe fn make_string(env: *mut emacs_env, string: String) -> emacs_value {
+pub unsafe fn make_string<S: AsRef<str>>(env: *mut emacs_env, string: S) -> emacs_value {
     let make_string = (*env).make_string.unwrap();
-    let c_string = CString::new(string).unwrap();
+    let c_string = CString::new(string.as_ref()).unwrap();
     let len = c_string.as_bytes().len() as isize;
     make_string(env, c_string.as_ptr(), len)
 }

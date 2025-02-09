@@ -103,11 +103,19 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let a = make_integer(env, 32);
-    let b = make_integer(env, 8);
-    let c = make_integer(env, 9);
+    let mut server_info_list = Vec::new();
+    let connections = connections().lock().unwrap();
 
-    call(env, "list", vec![a, b, c])
+    for (root_path, connection) in connections.iter() {
+        let info = call(
+            env,
+            "list",
+            vec![make_string(env, root_path)]
+        );
+        server_info_list.push(info);
+    }
+
+    call(env, "list", server_info_list)
 }
 
 unsafe extern "C" fn tlc__rust_start_server(
