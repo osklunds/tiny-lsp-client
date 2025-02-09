@@ -52,7 +52,7 @@
 
 (assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
 
-(assert-equal '(("/home/oskar/own_repos/tiny-lsp-client/")) (tlc--rust-all-server-info))
+(assert-equal `((,root-path)) (tlc--rust-all-server-info))
 
 (assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
 
