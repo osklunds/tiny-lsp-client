@@ -119,10 +119,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (list line character)))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
-  (let* ((start-line (nth 0 tlc--change))
+  (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
-         (end-line (nth 2 tlc--change))
-         (end-character (nth 3 tlc--change))
+         (end-line        (nth 2 tlc--change))
+         (end-character   (nth 3 tlc--change))
          (text (buffer-substring-no-properties beg end))
          )
     (setq tlc--change nil)
