@@ -131,15 +131,12 @@
       (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))))
 
 (defun tlc--start-server ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root")))
-         (server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
+  (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
                          r
                        (user-error
                         "No server command found for major mode: %s"
                         major-mode))))
-    (tlc--rust-start-server root server-cmd)))
+    (tlc--rust-start-server (tlc--find-root) server-cmd)))
 
 (defun tlc--kill-buffer-hook ()
   (when tlc-mode
@@ -157,23 +154,16 @@
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  ;; todo: all these let with error check, have in wrapper
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root"))))
-    (tlc--rust-send-notification
-     root
-     "textDocument/didOpen"
-     (list (tlc--buffer-file-name)))))
+  (tlc--rust-send-notification
+   (tlc--find-root)
+   "textDocument/didOpen"
+   (list (tlc--buffer-file-name))))
 
 (defun tlc--notify-text-document-did-close ()
-  (let* ((root (if-let ((r (tlc--find-root)))
-                   r
-                 (user-error "Can't find root"))))
-    (tlc--rust-send-notification
-     root
-     "textDocument/didClose"
-     (list (tlc--buffer-file-name)))))
+  (tlc--rust-send-notification
+   (tlc--find-root)
+   "textDocument/didClose"
+   (list (tlc--buffer-file-name))))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
