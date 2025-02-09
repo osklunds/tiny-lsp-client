@@ -63,7 +63,7 @@
               'identifier-at-point t))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
-  (let* ((file (buffer-file-name))
+  (let* ((file (tlc--buffer-file-name))
          (line (- (line-number-at-pos) 1))
          (character (current-column))
          (response (tlc--sync-request "textDocument/definition" (list file line character))))
@@ -76,6 +76,14 @@
             response)))
 
 ;; -----------------------------------------------------------------------------
+;; Misc helpers
+;;------------------------------------------------------------------------------
+
+(defun tlc--buffer-file-name ()
+  (cl-assert buffer-file-name)
+  buffer-file-name)
+
+;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
 
@@ -85,20 +93,25 @@
   :lighter " tlc-mode"
   :group 'tiny-lsp-client
   (cond
-   (tlc-mode
-    (tlc--start-server)
-    (tlc--notify-text-document-did-open)
-    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-    (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
-    (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
-    (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
+   ((not buffer-file-name)
+    (message "tiny-lsp-client can't be used in non-file buffers.")
+    (setq tlc-mode nil))
    (t
-    ;; todo: if last buffer, stop the server
-    (tlc--notify-text-document-did-close)
-    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
-    (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
-    (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))
+    (cond
+     (tlc-mode
+      (tlc--start-server)
+      (tlc--notify-text-document-did-open)
+      (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+      (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
+      (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
+      (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
+     (t
+      ;; todo: if last buffer, stop the server
+      (tlc--notify-text-document-did-close)
+      (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+      (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
+      (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
+      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))))
 
 (defun tlc--start-server ()
   (let* ((root (if-let ((r (tlc--find-root)))
@@ -130,27 +143,20 @@
   ;; todo: all these let with error check, have in wrapper
   (let* ((root (if-let ((r (tlc--find-root)))
                    r
-                 (user-error "Can't find root")))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+                 (user-error "Can't find root"))))
     (tlc--rust-send-notification
      root
      "textDocument/didOpen"
-     (list file))))
+     (list (tlc--buffer-file-name)))))
 
 (defun tlc--notify-text-document-did-close ()
   (let* ((root (if-let ((r (tlc--find-root)))
                    r
-                 (user-error "Can't find root")))
-         (file (if-let ((r (buffer-file-name)))
-                   r
-                 ;; todo: check in mode def like lspce
-                 (user-error "tiny-lsp-client only works for file-based buffers"))))
+                 (user-error "Can't find root"))))
     (tlc--rust-send-notification
      root
      "textDocument/didClose"
-     (list file))))
+     (list (tlc--buffer-file-name)))))
 
 ;; todo: cache per server
 (defun tlc--find-root ()
