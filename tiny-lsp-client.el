@@ -83,6 +83,20 @@
   (cl-assert buffer-file-name)
   buffer-file-name)
 
+(defvar-local tlc--cached-root nil)
+
+(defun tlc--find-root ()
+  (if tlc--cached-root
+      tlc--cached-root
+    (tlc--find-root-default-function)))
+
+(defun tlc--find-root-default-function ()
+  (if (fboundp 'projectile-project-root)
+      (projectile-project-root)
+    (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
+        (unless (string-match-p "fatal:" root)
+          root))))
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -94,7 +108,10 @@
   :group 'tiny-lsp-client
   (cond
    ((not buffer-file-name)
-    (message "tiny-lsp-client can't be used in non-file buffers.")
+    (message "tiny-lsp-client can only be used in file buffers.")
+    (setq tlc-mode nil))
+   ((not (tlc--find-root))
+    (message "tiny-lsp-client can only be used in buffers where root can be found.")
     (setq tlc-mode nil))
    (t
     (cond
@@ -157,14 +174,6 @@
      root
      "textDocument/didClose"
      (list (tlc--buffer-file-name)))))
-
-;; todo: cache per server
-(defun tlc--find-root ()
-  (if (fboundp 'projectile-project-root)
-      (projectile-project-root)
-    (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
-        (unless (string-match-p "fatal:" root)
-          root))))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
