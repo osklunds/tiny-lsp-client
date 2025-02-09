@@ -9,6 +9,7 @@ mod connection;
 mod emacs;
 mod learning_tests;
 mod message;
+mod logger;
 
 use crate::connection::Connection;
 use crate::emacs::*;
