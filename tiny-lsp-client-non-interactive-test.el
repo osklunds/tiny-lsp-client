@@ -101,6 +101,49 @@
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
 ;; -----------------------------------------------------------------------------
+;; Editing
+;;------------------------------------------------------------------------------
+
+(defun current-line ()
+  (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
+
+(goto-char 2)
+(assert-equal "// Don't change this file. It is used in tests" (current-line))
+(next-line)
+(assert-equal "" (current-line))
+
+;; Some single-character edits
+(insert "f")
+(insert "n")
+(insert " ")
+
+;; Some multi-character edits
+(insert "third_function")
+(insert "() {")
+
+;; newline
+(insert "\n")
+
+;; finishing the function
+(insert "    first_function(); // call from third }")
+
+(assert-equal "    first_function(); // call from third }" (current-line))
+(previous-line)
+(assert-equal "fn third_function() {" (current-line))
+
+(re-search-forward "first_function")
+(assert-equal "    first_function(); // call from third }" (current-line))
+
+(message "full buffer: %s" (buffer-substring-no-properties (point-min) (point-max)))
+
+(assert-equal 4 (line-number-at-pos))
+(assert-equal 18 (current-column))
+
+(non-interactive-xref-find-definitions)
+(assert-equal 5 (line-number-at-pos))
+(assert-equal 3 (current-column))
+
+;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
 
