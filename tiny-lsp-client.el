@@ -98,12 +98,17 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
+;; -----------------------------------------------------------------------------
+;; didChange
+;;------------------------------------------------------------------------------
+
 (defvar-local tlc--change nil)
 
 (defun tlc--before-change-hook (beg end)
-  (setq tlc--change (list (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))
-  (message "before: %s" tlc--change)
-  )
+  (if tlc--change
+      ;; I know this is overly simplified, but when this case happens, I fix it
+      (error "tlc--change is not-nil in before-change")
+    (setq tlc--change (list (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
 
 ;; Heavily inspired by eglot
 (defun tlc--pos-to-lsp-pos (pos)
@@ -113,7 +118,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                       (current-column))))
     (list line character)))
 
-(defun tlc--after-change-hook (beg end pre-change-length)
+(defun tlc--after-change-hook (beg end _pre-change-length)
   (let* ((start (car tlc--change))
          (start-line (car start))
          (start-character (cadr start))
@@ -122,6 +127,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (end-character (cadr end1))
          (text (buffer-substring-no-properties beg end))
          )
+    (setq tlc--change nil)
     (tlc--notify-text-document-did-change start-line
                                           start-character
                                           end-line
@@ -133,7 +139,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                                              end-line
                                              end-character
                                              text)
-  (message "oskar: %s" (list start-line start-character end-line end-character text))
   (tlc--rust-send-notification
    (tlc--root)
    "textDocument/didChange"
