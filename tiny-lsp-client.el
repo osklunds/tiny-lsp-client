@@ -15,10 +15,10 @@
   :group 'tiny-lsp-client)
 
 (defcustom tlc-find-root-function
-  'tlc--find-root-default-function
+  'tlc-find-root-default-function
   "Function used for finding the root path of a project.
 
-Default to `tlc--find-root-default-function` which first tries Projectile,
+Default to `tlc-find-root-default-function` which first tries Projectile,
 and if that fails, tries using git rev-parse --show-toplevel." 
   :group 'tiny-lsp-client)
 
@@ -100,7 +100,7 @@ and if that fails, tries using git rev-parse --show-toplevel."
       tlc--cached-root
     (funcall tlc-find-root-function)))
 
-(defun tlc--find-root-default-function ()
+(defun tlc-find-root-default-function ()
   (if (fboundp 'projectile-project-root)
       (projectile-project-root)
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
