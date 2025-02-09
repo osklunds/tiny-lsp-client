@@ -7,9 +7,19 @@
 ;; Configuration
 ;;------------------------------------------------------------------------------
 
+;; todo: specify types
+
 (defcustom tlc-server-cmds
   '((rust-mode . "rust-analyzer"))
   "Which server command to use for various major modes."
+  :group 'tiny-lsp-client)
+
+(defcustom tlc-find-root-function
+  'tlc--find-root-default-function
+  "Function used for finding the root path of a project.
+
+Default to `tlc--find-root-default-function` which first tries Projectile,
+and if that fails, tries using git rev-parse --show-toplevel." 
   :group 'tiny-lsp-client)
 
 ;; -----------------------------------------------------------------------------
@@ -88,7 +98,7 @@
 (defun tlc--find-root ()
   (if tlc--cached-root
       tlc--cached-root
-    (tlc--find-root-default-function)))
+    (funcall tlc-find-root-function)))
 
 (defun tlc--find-root-default-function ()
   (if (fboundp 'projectile-project-root)
