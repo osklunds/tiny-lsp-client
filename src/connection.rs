@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::message::*;
-use crate::logger;
+use crate::logger::log_io;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -49,8 +49,7 @@ impl Connection {
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
                 stdin.write(full.as_bytes()).unwrap();
-                logger::log_io(format!("Sent: {}",
-                                       serde_json::to_string_pretty(&msg).unwrap()));
+                log_io!("Sent: {}", serde_json::to_string_pretty(&msg).unwrap());
             } else {
                 return;
             }
@@ -86,7 +85,7 @@ impl Connection {
                 // Decode as serde_json::Value too, to be able to print fields
                 // not deserialized into msg.
                 let full_json: serde_json::Value = serde_json::from_str(&json).unwrap();
-                logger::log_io(format!("Received: {}", serde_json::to_string_pretty(&full_json).unwrap()));
+                log_io!("Received: {}", serde_json::to_string_pretty(&full_json).unwrap());
 
                 let msg = serde_json::from_str(&json).unwrap();
 
