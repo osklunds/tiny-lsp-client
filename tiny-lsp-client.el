@@ -196,8 +196,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
   (let* ((file (tlc--buffer-file-name))
-         (line (- (line-number-at-pos) 1))
-         (character (current-column))
+         (pos (tlc--pos-to-lsp-pos (point)))
+         (line (nth 0 pos))
+         (character (nth 1 pos))
          (response (tlc--sync-request "textDocument/definition" (list file line character))))
     (mapcar (lambda (location)
               (pcase-let ((`(,file-target ,line-start ,character-start) location))
