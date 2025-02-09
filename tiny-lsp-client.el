@@ -140,7 +140,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
       (error "tlc--change is not-nil in before-change")
-    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
+    ;; if revert in progress, it can happen that didChange is sent before didOpen,
+    ;; when discarding changes in magit
+    (unless revert-buffer-in-progress-p
+      (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
 ;; Heavily inspired by eglot
 ;; nil pos means current point
@@ -160,11 +163,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (text (buffer-substring-no-properties beg end))
          )
     (setq tlc--change nil)
-    (tlc--notify-text-document-did-change start-line
-                                          start-character
-                                          end-line
-                                          end-character
-                                          text)))
+    ;; if revert in progress, it can happen that didChange is sent before didOpen
+    ;; when discarding changes in magit
+    (unless revert-buffer-in-progress-p
+      (tlc--notify-text-document-did-change start-line
+                                            start-character
+                                            end-line
+                                            end-character
+                                            text))))
 
 (defun tlc--notify-text-document-did-change (start-line
                                              start-character
