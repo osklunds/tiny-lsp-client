@@ -49,8 +49,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
       (add-hook 'before-change-functions 'tlc--before-change-hook nil t)
       (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
-      ;; todo: can solve issue
-      ;; (add-hook 'change-major-mode-hook #'eglot--managed-mode-off nil t)
+      (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t)
       )
      (t
       ;; todo: if last buffer, stop the server
@@ -61,6 +60,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
       (remove-hook 'before-change-functions 'tlc--before-change-hook t)
       (remove-hook 'after-change-functions 'tlc--after-change-hook t)
+      (remove-hook 'change-major-mode-hook 'tlc--change-major-mode-hook t)
       )))))
 
 (defun tlc--start-server ()
@@ -97,6 +97,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    (tlc--root)
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
+
+(defun tlc--change-major-mode-hook ()
+  (tlc-mode -1))
 
 ;; -----------------------------------------------------------------------------
 ;; didChange

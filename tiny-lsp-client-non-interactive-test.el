@@ -70,7 +70,6 @@
 ;; Disable tlc-mode
 ;;------------------------------------------------------------------------------
 
-;; todo: body isn't called when major-mode disabled
 (tlc-mode -1)
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
@@ -80,6 +79,20 @@
 ;;------------------------------------------------------------------------------
 
 (tlc-mode t)
+(assert-equal t tlc-mode)
+(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+;; -----------------------------------------------------------------------------
+;; Toggle tlc-mode by changing major mode
+;;------------------------------------------------------------------------------
+
+(text-mode)
+(assert-equal 'text-mode major-mode)
+(assert-equal nil tlc-mode)
+(assert-equal '(etags--xref-backend) xref-backend-functions)
+
+(rust-mode)
+(assert-equal 'rust-mode major-mode)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
