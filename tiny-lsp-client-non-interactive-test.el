@@ -204,6 +204,62 @@ fn second_function() {
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+;; Re-position
+(beginning-of-buffer)
+(re-search-forward "second_function")
+(assert-equal 6 (line-number-at-pos))
+(assert-equal 19 (current-column))
+
+;; Edits
+(backward-delete-char 1)
+(backward-delete-char 1)
+(backward-delete-char 1)
+
+;; Re-position
+(beginning-of-buffer)
+(re-search-forward "fn second_function")
+(assert-equal 8 (line-number-at-pos))
+(assert-equal 18 (current-column))
+
+;; Edits
+(backward-delete-char 1)
+(backward-delete-char 1)
+(backward-delete-char 1)
+(previous-line)
+(insert "\n")
+(insert "\n")
+(insert "\n")
+(insert "\n")
+
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    first_function(); // call from third }
+fn first_function() {
+    second_funct();
+}
+
+
+
+
+fn second_funct() {
+
+}
+"
+ (current-buffer-string))
+
+;; Re-position
+(beginning-of-buffer)
+(re-search-forward "second_funct")
+(assert-equal 6 (line-number-at-pos))
+(assert-equal 16 (current-column))
+
+;; Find definition
+(non-interactive-xref-find-definitions)
+(assert-equal 12 (line-number-at-pos))
+(assert-equal 3 (current-column))
+
 ;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
