@@ -46,13 +46,15 @@
 ;;;; Initialize
 ;;;;----------------------------------------------------------------------------
 
+(setq root-path (file-truename default-directory))
+
 (std-message "Starting server")
 
-(assert-equal 'started (tlc--rust-start-server default-directory "rust-analyzer"))
+(assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
 
-(assert-equal '(("~/own_repos/tiny-lsp-client/")) (tlc--rust-all-server-info))
+(assert-equal '(("/home/oskar/own_repos/tiny-lsp-client/")) (tlc--rust-all-server-info))
 
-(assert-equal 'already-started (tlc--rust-start-server default-directory "rust-analyzer"))
+(assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
 
 (std-message "Server started")
 
@@ -65,7 +67,7 @@
 (std-message "Sending didOpen")
 
 (tlc--rust-send-notification
- default-directory
+ root-path
  "textDocument/didOpen"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
@@ -78,12 +80,12 @@
 (std-message "Sending definition")
 
 (assert-equal 1 (tlc--rust-send-request
-                 default-directory
+                 root-path
                  "textDocument/definition"
                  '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
 (defun recv-response ()
-  (let ((response (tlc--rust-recv-response default-directory)))
+  (let ((response (tlc--rust-recv-response root-path)))
     (if (equal 'no-response response)
         (progn
           (std-message "recv-response retry")
@@ -101,7 +103,7 @@
 (std-message "Sending didChange")
 
 (tlc--rust-send-notification
- default-directory
+ root-path
  "textDocument/didChange"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
 
@@ -112,7 +114,7 @@
 (std-message "Sending definition after didChange")
 
 (assert-equal 2 (tlc--rust-send-request
-                 default-directory
+                 root-path
                  "textDocument/definition"
                  '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
@@ -127,7 +129,7 @@
 (std-message "Sending didChange to revert")
 
 (tlc--rust-send-notification
- default-directory
+ root-path
  "textDocument/didChange"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 ""))))
 
@@ -138,7 +140,7 @@
 (std-message "Sending didClose")
 
 (tlc--rust-send-notification
- default-directory
+ root-path
  "textDocument/didClose"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
@@ -153,12 +155,12 @@
 (std-message "Sending didOpen+definition")
 
 (tlc--rust-send-notification
- default-directory
+ root-path
  "textDocument/didOpen"
  (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
 
 (assert-equal 3 (tlc--rust-send-request
-                 default-directory
+                 root-path
                  "textDocument/definition"
                  '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 

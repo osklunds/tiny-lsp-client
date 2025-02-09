@@ -20,6 +20,7 @@ use std::mem::MaybeUninit;
 use std::os::raw;
 use std::sync::Once;
 use std::sync::{Arc, Mutex};
+use std::path::Path;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -124,7 +125,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let root_path = extract_string(env, *args.offset(0));
+    let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
     let mut connections = connections().lock().unwrap();
@@ -145,7 +146,7 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let root_path = extract_string(env, *args.offset(0));
+    let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
@@ -167,7 +168,7 @@ unsafe fn build_text_document_definition(
     connection: &mut Connection,
 ) -> RequestParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
+    let file_path = check_path(extract_string(env, file_path));
     let uri = file_path_to_uri(file_path);
 
     let line = nth(env, 1, request_args);
@@ -188,7 +189,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let root_path = extract_string(env, *args.offset(0));
+    let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
@@ -215,7 +216,7 @@ unsafe fn build_text_document_did_open(
     connection: &mut Connection,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
+    let file_path = check_path(extract_string(env, file_path));
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
@@ -235,7 +236,7 @@ unsafe fn build_text_document_did_change(
     connection: &mut Connection,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
+    let file_path = check_path(extract_string(env, file_path));
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
@@ -287,7 +288,7 @@ unsafe fn build_text_document_did_close(
     connection: &mut Connection,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
+    let file_path = check_path(extract_string(env, file_path));
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
@@ -302,7 +303,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let root_path = extract_string(env, *args.offset(0));
+    let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
@@ -323,7 +324,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                         env,
                         "list",
                         vec![
-                            make_string(env, uri_to_file_path(uri)),
+                            make_string(env, check_path(uri_to_file_path(uri))),
                             make_integer(env, range.start.line as i64),
                             make_integer(env, range.start.character as i64),
                         ],
@@ -344,6 +345,12 @@ unsafe extern "C" fn tlc__rust_recv_response(
     } else {
         intern(env, "no-response")
     }
+}
+
+fn check_path<S: AsRef<str>>(file_path: S) -> S {
+    assert!(Path::new(file_path.as_ref()).is_absolute());
+
+    file_path
 }
 
 fn file_path_to_uri<S: AsRef<str>>(file_path: S) -> String {
