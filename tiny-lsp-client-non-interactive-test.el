@@ -175,8 +175,6 @@ fn second_function() {
 (assert-equal 9 (line-number-at-pos))
 (assert-equal 18 (current-column))
 
-(message "oskar: %s" "hejjjjjjjjjjjjj")
-
 ;; Edits
 (previous-line)
 (backward-delete-char 1)
