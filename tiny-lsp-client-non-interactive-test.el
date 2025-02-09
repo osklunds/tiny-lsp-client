@@ -99,3 +99,9 @@
 (revert-buffer nil t t)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+;; -----------------------------------------------------------------------------
+;; Kill buffer
+;;------------------------------------------------------------------------------
+
+(kill-buffer)
