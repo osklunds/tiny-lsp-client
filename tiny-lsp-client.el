@@ -111,10 +111,12 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
 
 ;; Heavily inspired by eglot
-(defun tlc--pos-to-lsp-pos (pos)
+;; nil pos means current point
+(defun tlc--pos-to-lsp-pos (&optional pos)
   (let* ((line (- (line-number-at-pos pos) 1))
          (character (save-excursion
-                      (goto-char pos)
+                      (when pos
+                        (goto-char pos))
                       (current-column))))
     (list line character)))
 
@@ -196,7 +198,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
   (let* ((file (tlc--buffer-file-name))
-         (pos (tlc--pos-to-lsp-pos (point)))
+         (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
          (response (tlc--sync-request "textDocument/definition" (list file line character))))
