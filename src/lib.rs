@@ -18,9 +18,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::mem::MaybeUninit;
 use std::os::raw;
+use std::path::Path;
 use std::sync::Once;
 use std::sync::{Arc, Mutex};
-use std::path::Path;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -111,7 +111,10 @@ unsafe extern "C" fn tlc__rust_all_server_info(
         let info = call(
             env,
             "list",
-            vec![make_string(env, root_path)]
+            vec![
+                make_string(env, root_path),
+                make_string(env, connection.get_command()),
+            ],
         );
         server_info_list.push(info);
     }
@@ -331,9 +334,14 @@ unsafe extern "C" fn tlc__rust_recv_response(
                     );
                     lisp_location_list_vec.push(lisp_location);
                 }
-                let lisp_location_list = call(env, "list", lisp_location_list_vec);
+                let lisp_location_list =
+                    call(env, "list", lisp_location_list_vec);
                 let id = make_integer(env, response.id as i64);
-                call(env, "list", vec![intern(env, "ok"), id, lisp_location_list])
+                call(
+                    env,
+                    "list",
+                    vec![intern(env, "ok"), id, lisp_location_list],
+                )
             } else {
                 intern(env, "error")
             }

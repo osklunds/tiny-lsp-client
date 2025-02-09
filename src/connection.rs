@@ -17,6 +17,7 @@ use std::time::Duration;
 
 pub struct Connection {
     server_process: Child,
+    command: String,
     root_path: String,
     sender: Sender<Message>,
     receiver: Receiver<Message>,
@@ -110,6 +111,7 @@ impl Connection {
 
         Connection {
             server_process: child,
+            command: command.to_string(),
             root_path: root_path.to_string(),
             sender: stdin_tx,
             receiver: stdout_rx,
@@ -192,5 +194,9 @@ impl Connection {
         let version_number = self.next_version_number;
         self.next_version_number += 1;
         version_number
+    }
+
+    pub fn get_command(&self) -> String {
+        self.command.clone()
     }
 }
