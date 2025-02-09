@@ -12,7 +12,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - timing
   - garbage collect + --release
   - didChange
-  - didClose
   - handle errors and alternative results
+  - server info list
 - phase 2
   - completions
