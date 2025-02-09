@@ -114,7 +114,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defun tlc--notify-text-document-did-open ()
   ;; todo: document this
   (when (buffer-modified-p)
-    (message "tiny-lsp-client can only open saved buffers, so saving for you."))
+    (message "tiny-lsp-client can only open saved buffers, so saving for you.")
     (save-buffer))
   (tlc--rust-send-notification
    (tlc--root)
