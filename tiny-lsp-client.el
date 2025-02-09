@@ -46,14 +46,22 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
-      (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
+      (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
+      (add-hook 'before-change-functions 'tlc--before-change-hook nil t)
+      (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
+      ;; todo: can solve issue
+      ;; (add-hook 'change-major-mode-hook #'eglot--managed-mode-off nil t)
+      )
      (t
       ;; todo: if last buffer, stop the server
       (tlc--notify-text-document-did-close)
       (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
       (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
       (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
-      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))))
+      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
+      (remove-hook 'before-change-functions 'tlc--before-change-hook t)
+      (remove-hook 'after-change-functions 'tlc--after-change-hook t)
+      )))))
 
 (defun tlc--start-server ()
   (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
@@ -89,6 +97,49 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    (tlc--root)
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
+
+(defvar-local tlc--change nil)
+
+(defun tlc--before-change-hook (beg end)
+  (setq tlc--change (list (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))
+  (message "before: %s" tlc--change)
+  )
+
+;; Heavily inspired by eglot
+(defun tlc--pos-to-lsp-pos (pos)
+  (let* ((line (- (line-number-at-pos pos) 1))
+         (character (save-excursion
+                      (goto-char pos)
+                      (current-column))))
+    (list line character)))
+
+(defun tlc--after-change-hook (beg end pre-change-length)
+  (let* ((start (car tlc--change))
+         (start-line (car start))
+         (start-character (cadr start))
+         (end1 (cadr tlc--change))
+         (end-line (car end1))
+         (end-character (cadr end1))
+         (text (buffer-substring-no-properties beg end))
+         )
+    (tlc--notify-text-document-did-change start-line
+                                          start-character
+                                          end-line
+                                          end-character
+                                          text)))
+
+(defun tlc--notify-text-document-did-change (start-line
+                                             start-character
+                                             end-line
+                                             end-character
+                                             text)
+  (message "oskar: %s" (list start-line start-character end-line end-character text))
+  (tlc--rust-send-notification
+   (tlc--root)
+   "textDocument/didChange"
+   (list (tlc--buffer-file-name)
+         `((,start-line ,start-character ,end-line ,end-character ,text))
+         )))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response
