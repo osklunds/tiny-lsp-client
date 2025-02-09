@@ -27,13 +27,13 @@ and if that fails, tries using git rev-parse --show-toplevel."
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--rust-send-request (tlc--find-root) method arguments)))
+  (let ((request-id (tlc--rust-send-request (tlc--root) method arguments)))
     (tlc--wait-for-response request-id)))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
   (sleep-for 0.01)
-  (let ((response (tlc--rust-recv-response (tlc--find-root))))
+  (let ((response (tlc--rust-recv-response (tlc--root))))
     (pcase response
       ;; normal case - response has arrived
       (`(ok ,id ,params)
@@ -95,7 +95,7 @@ and if that fails, tries using git rev-parse --show-toplevel."
 
 (defvar-local tlc--cached-root nil)
 
-(defun tlc--find-root ()
+(defun tlc--root ()
   (if tlc--cached-root
       tlc--cached-root
     (funcall tlc-find-root-function)))
@@ -120,7 +120,7 @@ and if that fails, tries using git rev-parse --show-toplevel."
    ((not buffer-file-name)
     (message "tiny-lsp-client can only be used in file buffers.")
     (setq tlc-mode nil))
-   ((not (tlc--find-root))
+   ((not (tlc--root))
     (message "tiny-lsp-client can only be used in buffers where root can be found.")
     (setq tlc-mode nil))
    (t
@@ -146,7 +146,7 @@ and if that fails, tries using git rev-parse --show-toplevel."
                        (user-error
                         "No server command found for major mode: %s"
                         major-mode))))
-    (tlc--rust-start-server (tlc--find-root) server-cmd)))
+    (tlc--rust-start-server (tlc--root) server-cmd)))
 
 (defun tlc--kill-buffer-hook ()
   (when tlc-mode
@@ -165,13 +165,13 @@ and if that fails, tries using git rev-parse --show-toplevel."
 
 (defun tlc--notify-text-document-did-open ()
   (tlc--rust-send-notification
-   (tlc--find-root)
+   (tlc--root)
    "textDocument/didOpen"
    (list (tlc--buffer-file-name))))
 
 (defun tlc--notify-text-document-did-close ()
   (tlc--rust-send-notification
-   (tlc--find-root)
+   (tlc--root)
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
