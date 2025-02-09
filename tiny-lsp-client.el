@@ -112,8 +112,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  ;; todo: document this
   (when (buffer-modified-p)
+    ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
     (save-buffer))
   (tlc--rust-send-notification
@@ -246,9 +246,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
 
+(defun std-message (format-string &rest args)
+  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
+
 (defun tlc--buffer-file-name ()
-  (cl-assert buffer-file-name)
-  buffer-file-name)
+  ;; In after-revert-hook, if there was a change, buffer-file-name is nil,
+  ;; so use this instead
+  (let ((name (file-truename buffer-file-truename)))
+    (cl-assert name)
+    name))
 
 (defvar-local tlc--cached-root nil)
 
