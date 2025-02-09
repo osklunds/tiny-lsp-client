@@ -18,8 +18,8 @@
   'tlc-find-root-default-function
   "Function used for finding the root path of a project.
 
-Default to `tlc-find-root-default-function` which first tries Projectile,
-and if that fails, tries using git rev-parse --show-toplevel." 
+Default to `tlc-find-root-default-function' which first tries Projectile,
+and if that fails, tries using \"git rev-parse --show-toplevel\"." 
   :group 'tiny-lsp-client)
 
 ;; -----------------------------------------------------------------------------
