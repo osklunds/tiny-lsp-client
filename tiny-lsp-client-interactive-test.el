@@ -1,4 +1,9 @@
 
+(split-window-below)
+(other-window 1)
+(switch-to-buffer "*Messages*")
+(other-window 1)
+
 (add-to-list 'load-path default-directory)
 
 (define-derived-mode rust-mode prog-mode "Rust"
