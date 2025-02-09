@@ -23,6 +23,74 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :group 'tiny-lsp-client)
 
 ;; -----------------------------------------------------------------------------
+;; Minor mode
+;;------------------------------------------------------------------------------
+
+;;;###autoload
+(define-minor-mode tlc-mode
+  "tiny-lsp-client: a minor mode for LSP."
+  :lighter " tlc-mode"
+  :group 'tiny-lsp-client
+  (cond
+   ((not buffer-file-name)
+    (message "tiny-lsp-client can only be used in file buffers.")
+    (setq tlc-mode nil))
+   ((not (tlc--root))
+    (message "tiny-lsp-client can only be used in buffers where root can be found.")
+    (setq tlc-mode nil))
+   (t
+    (cond
+     (tlc-mode
+      (tlc--start-server)
+      (tlc--notify-text-document-did-open)
+      (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+      (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
+      (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
+      (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
+     (t
+      ;; todo: if last buffer, stop the server
+      (tlc--notify-text-document-did-close)
+      (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+      (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
+      (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
+      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))))
+
+(defun tlc--start-server ()
+  (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
+                         r
+                       (user-error
+                        "No server command found for major mode: %s"
+                        major-mode))))
+    (tlc--rust-start-server (tlc--root) server-cmd)))
+
+(defun tlc--kill-buffer-hook ()
+  (when tlc-mode
+    (tlc--notify-text-document-did-close)))
+
+(defun tlc--before-revert-hook ()
+  (tlc--notify-text-document-did-close))
+
+(defun tlc--after-revert-hook ()
+  ;; If revert-buffer-preserve-modes is nil (default), it means that tlc-mode is
+  ;; run and didOpen is called from there, and it would result in duplicate
+  ;; didOpen calls. See
+  ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Reverting.html
+  (when revert-buffer-preserve-modes
+    (tlc--notify-text-document-did-open)))
+
+(defun tlc--notify-text-document-did-open ()
+  (tlc--rust-send-notification
+   (tlc--root)
+   "textDocument/didOpen"
+   (list (tlc--buffer-file-name))))
+
+(defun tlc--notify-text-document-did-close ()
+  (tlc--rust-send-notification
+   (tlc--root)
+   "textDocument/didClose"
+   (list (tlc--buffer-file-name))))
+
+;; -----------------------------------------------------------------------------
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
@@ -106,74 +174,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
         (unless (string-match-p "fatal:" root)
           root))))
-
-;; -----------------------------------------------------------------------------
-;; Minor mode
-;;------------------------------------------------------------------------------
-
-;;;###autoload
-(define-minor-mode tlc-mode
-  "tiny-lsp-client: a minor mode for LSP."
-  :lighter " tlc-mode"
-  :group 'tiny-lsp-client
-  (cond
-   ((not buffer-file-name)
-    (message "tiny-lsp-client can only be used in file buffers.")
-    (setq tlc-mode nil))
-   ((not (tlc--root))
-    (message "tiny-lsp-client can only be used in buffers where root can be found.")
-    (setq tlc-mode nil))
-   (t
-    (cond
-     (tlc-mode
-      (tlc--start-server)
-      (tlc--notify-text-document-did-open)
-      (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-      (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
-      (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
-      (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t))
-     (t
-      ;; todo: if last buffer, stop the server
-      (tlc--notify-text-document-did-close)
-      (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-      (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
-      (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
-      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t))))))
-
-(defun tlc--start-server ()
-  (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
-                         r
-                       (user-error
-                        "No server command found for major mode: %s"
-                        major-mode))))
-    (tlc--rust-start-server (tlc--root) server-cmd)))
-
-(defun tlc--kill-buffer-hook ()
-  (when tlc-mode
-    (tlc--notify-text-document-did-close)))
-
-(defun tlc--before-revert-hook ()
-  (tlc--notify-text-document-did-close))
-
-(defun tlc--after-revert-hook ()
-  ;; If revert-buffer-preserve-modes is nil (default), it means that tlc-mode is
-  ;; run and didOpen is called from there, and it would result in duplicate
-  ;; didOpen calls. See
-  ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Reverting.html
-  (when revert-buffer-preserve-modes
-    (tlc--notify-text-document-did-open)))
-
-(defun tlc--notify-text-document-did-open ()
-  (tlc--rust-send-notification
-   (tlc--root)
-   "textDocument/didOpen"
-   (list (tlc--buffer-file-name))))
-
-(defun tlc--notify-text-document-did-close ()
-  (tlc--rust-send-notification
-   (tlc--root)
-   "textDocument/didClose"
-   (list (tlc--buffer-file-name))))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
