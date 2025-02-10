@@ -16,6 +16,13 @@ macro_rules! log_io {
 }
 pub(crate) use log_io;
 
+macro_rules! log_stderr {
+    ($($arg:tt)*) => {
+        crate::logger::log_stderr(format!($($arg)*));
+    }
+}
+pub(crate) use log_stderr;
+
 macro_rules! log_debug {
     ($($arg:tt)*) => {
         crate::logger::log_debug_fun(format!($($arg)*));
@@ -25,7 +32,7 @@ pub(crate) use log_debug;
 
 static LOG_IO: AtomicBool = AtomicBool::new(true);
 static LOG_STDERR: AtomicBool = AtomicBool::new(true);
-static DEBUG_LOGS: AtomicBool = AtomicBool::new(true);
+static LOG_DEBUG: AtomicBool = AtomicBool::new(true);
 static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
@@ -46,11 +53,21 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
-    log("IO   ", msg);
+    if LOG_IO.load(Ordering::Relaxed) {
+        log("IO    ", msg);
+    }
+}
+
+pub fn log_stderr_fun<S: AsRef<str>>(msg: S) {
+    if LOG_STDERR.load(Ordering::Relaxed) {
+        log("STDERR", msg);
+    }
 }
 
 pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
-    log("DEBUG", msg);
+    if LOG_DEBUG.load(Ordering::Relaxed) {
+        log("DEBUG ", msg);
+    }
 }
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
