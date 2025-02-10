@@ -73,7 +73,7 @@ pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
     let formatted =
-        format!("{} - {} - {}", log_name.as_ref(), timestamp, msg.as_ref());
+        format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
     let mut binding = LOG_FILE.lock().unwrap();
     let (_, log_file) = binding.as_mut().unwrap();
