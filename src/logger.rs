@@ -27,15 +27,16 @@ static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
 pub fn set_log_file_name(new_log_file_name: String) {
     let mut binding = LOG_FILE.lock().unwrap();
-    let (ref mut log_file_name, ref mut log_file) = binding.as_mut().unwrap();
-    if new_log_file_name != *log_file_name {
-        let mut file = OpenOptions::new()
-            .append(true)
-            .open(&new_log_file_name)
-            .unwrap();
-        *log_file = file;
-        *log_file_name = new_log_file_name;
+    if let Some((ref mut log_file_name, ref mut log_file)) = binding.as_mut() {
+        if new_log_file_name == *log_file_name {
+            return;
+        }
     }
+    let mut file = OpenOptions::new()
+        .append(true)
+        .open(&new_log_file_name)
+        .unwrap();
+    *binding = Some((new_log_file_name, file));
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
