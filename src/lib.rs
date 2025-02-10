@@ -153,6 +153,13 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    let arg0 = *args.offset(0);
+    let string = call(env, "format", vec![make_string(env, "%s"), arg0]);
+    let string2 = extract_string(env, string);
+    logger::log_debug!("tlc__rust_send_request args: {}", string2);
+
+
+
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
