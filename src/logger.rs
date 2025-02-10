@@ -76,6 +76,7 @@ pub fn log_debug_enabled() -> bool {
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    // todo: include root path
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 

@@ -153,6 +153,7 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    // todo: use macro for func name
     log_args(env, nargs, args, "tlc__rust_send_request");
 
     let root_path = check_path(extract_string(env, *args.offset(0)));
