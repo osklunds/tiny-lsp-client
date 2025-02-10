@@ -23,19 +23,18 @@ macro_rules! log_debug {
 pub(crate) use log_debug;
 
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
-static LOG_FILE_NAME: Mutex<String> = Mutex::new(String::new());
-static LOGGER: Mutex<Option<File>> = Mutex::new(None);
+static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
-pub fn set_log_file_name(log_file_name: String) {
-    let mut static_log_file_name = LOG_FILE_NAME.lock().unwrap();
-    if log_file_name != *static_log_file_name {
-        let mut logger = LOGGER.lock().unwrap();
+pub fn set_log_file_name(new_log_file_name: String) {
+    let mut binding = LOG_FILE.lock().unwrap();
+    let (ref mut log_file_name, ref mut log_file) = binding.as_mut().unwrap();
+    if new_log_file_name != *log_file_name {
         let mut file = OpenOptions::new()
             .append(true)
-            .open(&log_file_name)
+            .open(&new_log_file_name)
             .unwrap();
-        *logger = Some(file);
-        *static_log_file_name = log_file_name;
+        *log_file = file;
+        *log_file_name = new_log_file_name;
     }
 }
 
