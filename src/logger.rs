@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -32,6 +33,7 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
             return;
         }
     }
+    fs::write(new_log_file_name.as_ref(), "").unwrap();
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
