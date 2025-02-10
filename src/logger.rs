@@ -25,18 +25,19 @@ pub(crate) use log_debug;
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
-pub fn set_log_file_name(new_log_file_name: String) {
+pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
     let mut binding = LOG_FILE.lock().unwrap();
     if let Some((ref mut log_file_name, ref mut log_file)) = binding.as_mut() {
-        if new_log_file_name == *log_file_name {
+        if new_log_file_name.as_ref() == *log_file_name {
             return;
         }
     }
     let mut file = OpenOptions::new()
+        .create(true)
         .append(true)
-        .open(&new_log_file_name)
+        .open(new_log_file_name.as_ref())
         .unwrap();
-    *binding = Some((new_log_file_name, file));
+    *binding = Some((new_log_file_name.as_ref().to_string(), file));
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {

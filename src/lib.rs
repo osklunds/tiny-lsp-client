@@ -96,6 +96,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
+    logger::set_log_file_name("/home/oskar/Downloads/tiny-lsp-client-log.txt");
+
     0
 }
 
