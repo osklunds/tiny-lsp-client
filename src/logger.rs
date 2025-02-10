@@ -70,6 +70,10 @@ pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
     }
 }
 
+pub fn log_debug_enabled() -> bool {
+    LOG_DEBUG.load(Ordering::Relaxed)
+}
+
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
     let formatted =

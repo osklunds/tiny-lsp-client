@@ -8,8 +8,8 @@ mod dummy;
 mod connection;
 mod emacs;
 mod learning_tests;
-mod message;
 mod logger;
+mod message;
 
 use crate::connection::Connection;
 use crate::emacs::*;
@@ -153,12 +153,7 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    let arg0 = *args.offset(0);
-    let string = call(env, "format", vec![make_string(env, "%s"), arg0]);
-    let string2 = extract_string(env, string);
-    logger::log_debug!("tlc__rust_send_request args: {}", string2);
-
-
+    log_args(env, nargs, args, "tlc__rust_send_request");
 
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
@@ -380,4 +375,33 @@ fn uri_to_file_path<S: AsRef<str>>(uri: S) -> String {
     let (first, last) = uri.as_ref().split_at(7);
     assert_eq!("file://", first);
     last.to_string()
+}
+
+unsafe fn log_args<S: AsRef<str>>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    function_name: S,
+) {
+    // logger::log_debug! already knows whether to log or not. But check
+    // anyway as an optimization so that lots of string and terms aren't
+    // created unecessarily.
+    if true || logger::log_debug_enabled() {
+        let mut args_list = Vec::new();
+        for i in 0..nargs {
+            args_list.push(*args.offset(i));
+        }
+        let list = call(env, "list", args_list);
+        let format_string = make_string(
+            env,
+            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs),
+        );
+        let formatted = call(
+            env,
+            "format",
+            vec![format_string, list],
+        );
+        let formatted = extract_string(env, formatted);
+        logger::log_debug!("{}", formatted);
+    }
 }
