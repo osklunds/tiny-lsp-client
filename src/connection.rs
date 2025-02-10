@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use crate::logger;
 use crate::message::*;
-use crate::logger::log_io;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -49,7 +49,10 @@ impl Connection {
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
                 stdin.write(full.as_bytes()).unwrap();
-                log_io!("Sent: {}", serde_json::to_string_pretty(&msg).unwrap());
+                logger::log_io!(
+                    "Sent: {}",
+                    serde_json::to_string_pretty(&msg).unwrap()
+                );
             } else {
                 return;
             }
@@ -66,7 +69,10 @@ impl Connection {
                 reader.read_line(&mut buf).unwrap();
                 buf.pop();
                 buf.pop();
-                // println!("oskar2: {:?}", buf);
+                logger::log_debug!(
+                    "Connection recv loop initial line: {}",
+                    buf
+                );
                 let parts: Vec<&str> = buf.split(": ").collect();
                 let header_name = parts[0];
                 let header_value = parts[1];
@@ -84,8 +90,12 @@ impl Connection {
 
                 // Decode as serde_json::Value too, to be able to print fields
                 // not deserialized into msg.
-                let full_json: serde_json::Value = serde_json::from_str(&json).unwrap();
-                log_io!("Received: {}", serde_json::to_string_pretty(&full_json).unwrap());
+                let full_json: serde_json::Value =
+                    serde_json::from_str(&json).unwrap();
+                logger::log_io!(
+                    "Received: {}",
+                    serde_json::to_string_pretty(&full_json).unwrap()
+                );
 
                 let msg = serde_json::from_str(&json).unwrap();
 
