@@ -23,7 +23,10 @@ macro_rules! log_debug {
 }
 pub(crate) use log_debug;
 
-pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
+static LOG_IO: AtomicBool = AtomicBool::new(true);
+static LOG_STDERR: AtomicBool = AtomicBool::new(true);
+static DEBUG_LOGS: AtomicBool = AtomicBool::new(true);
+static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
