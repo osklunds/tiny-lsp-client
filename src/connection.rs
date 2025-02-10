@@ -78,14 +78,12 @@ impl Connection {
                 let header_value = parts[1];
 
                 let size = header_value.parse::<usize>().unwrap();
-                // println!("oskar: {:?}", size);
 
                 let mut json_buf = Vec::new();
                 // todo: +2 might be related the the pops above. Anyway,
                 // need to find out why
                 json_buf.resize(size + 2, 0);
                 reader.read_exact(&mut json_buf);
-                // println!("oskar3: {:?}", json_buf);
                 let json = String::from_utf8(json_buf).unwrap();
 
                 // Decode as serde_json::Value too, to be able to print fields
