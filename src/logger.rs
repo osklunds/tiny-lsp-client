@@ -40,11 +40,7 @@ pub fn set_log_file_name(new_log_file_name: String) {
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-
-    if LOG_TO_STDIO.load(Ordering::Relaxed) {
-        print!("IO {} - {}\n", timestamp, msg.as_ref());
-    }
+    log("IO", msg);
 }
 
 pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
@@ -52,5 +48,18 @@ pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
         print!("DEBUG {} - {}\n", timestamp, msg.as_ref());
+    }
+}
+
+fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    let formatted = format!("{} - {} - {}", timestamp, log_name.as_ref(), msg.as_ref());
+
+    let mut binding = LOG_FILE.lock().unwrap();
+    let (_, log_file) = binding.as_mut().unwrap();
+    write!(log_file, "{}", formatted);
+
+    if LOG_TO_STDIO.load(Ordering::Relaxed) {
+        print!("{}", formatted);
     }
 }
