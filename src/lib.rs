@@ -107,6 +107,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
     let connections = connections().lock().unwrap();
 
@@ -132,6 +133,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_start_server");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
@@ -153,7 +155,6 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    // todo: use macro for func name
     log_args(env, nargs, args, "tlc__rust_send_request");
 
     let root_path = check_path(extract_string(env, *args.offset(0)));
@@ -199,6 +200,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_send_notification");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -313,6 +315,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_recv_response");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
