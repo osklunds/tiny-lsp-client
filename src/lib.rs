@@ -387,7 +387,7 @@ unsafe fn log_args<S: AsRef<str>>(
     // logger::log_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
-    if true || logger::log_debug_enabled() {
+    if logger::log_debug_enabled() {
         let mut args_list = Vec::new();
         for i in 0..nargs {
             args_list.push(*args.offset(i));
