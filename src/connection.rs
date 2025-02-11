@@ -108,13 +108,42 @@ impl Connection {
             }
         });
 
-        thread::spawn(move || loop {
-            let mut buf = [0; 500];
-            let len = stderr.read(&mut buf).unwrap();
-            logger::log_stderr!("{}", String::from_utf8(buf.to_vec()).unwrap());
+        thread::spawn(move || {
+            let (stderr_tx, stderr_rx) = mpsc::channel();
+            thread::spawn(move || loop {
+                let mut buf = [0; 500];
+                let len = stderr.read(&mut buf).unwrap();
+                stderr_tx.send(buf[0..len].to_vec());
+            });
 
-            if len == 0 {
-                return;
+            loop {
+                let mut buf = Vec::new();
+                // todo: see if can make the first blocking read less duplicated
+                // and more elegant.
+
+                // First do a blocking read until some data arrives. No point
+                // in doing non-blocking yet.
+                let partial = stderr_rx.recv().unwrap();
+                buf.extend_from_slice(&partial);
+
+                loop {
+                    // When some data has arrived, continue to attempt
+                    // non-blocking reads until it seems no more data will
+                    // arrive.
+                    match stderr_rx.recv_timeout(Duration::from_millis(1)) {
+                        Ok(partial) => {
+                            buf.extend_from_slice(&partial);
+                        }
+                        Err(mpsc::RecvTimeoutError::Timeout) => {
+                            break;
+                        }
+                        Err(mpsc::RecvTimeoutError::Disconnected) => {
+                            panic!();
+                        }
+                    }
+                }
+
+                logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
             }
         });
 
