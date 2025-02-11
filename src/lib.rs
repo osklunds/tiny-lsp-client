@@ -400,11 +400,7 @@ unsafe fn log_args<S: AsRef<str>>(
             env,
             format!("{} arguments ({}) : %S", function_name.as_ref(), nargs),
         );
-        let formatted = call(
-            env,
-            "format",
-            vec![format_string, list],
-        );
+        let formatted = call(env, "format", vec![format_string, list]);
         let formatted = extract_string(env, formatted);
         logger::log_debug!("{}", formatted);
     }
