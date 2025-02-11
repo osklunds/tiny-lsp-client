@@ -18,7 +18,7 @@ pub(crate) use log_io;
 
 macro_rules! log_stderr {
     ($($arg:tt)*) => {
-        crate::logger::log_stderr(format!($($arg)*));
+        crate::logger::log_stderr_fun(format!($($arg)*));
     }
 }
 pub(crate) use log_stderr;

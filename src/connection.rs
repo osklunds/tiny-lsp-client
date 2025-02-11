@@ -111,7 +111,7 @@ impl Connection {
         thread::spawn(move || loop {
             let mut buf = [0; 500];
             let len = stderr.read(&mut buf).unwrap();
-            print!("{}", String::from_utf8(buf.to_vec()).unwrap());
+            logger::log_stderr!("{}", String::from_utf8(buf.to_vec()).unwrap());
 
             if len == 0 {
                 return;
