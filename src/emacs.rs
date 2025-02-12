@@ -53,6 +53,18 @@ pub unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
     (*env).make_integer.unwrap()(env, integer)
 }
 
+pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
+    extract_string(env, call(env, "symbol-name", vec![value])) != "nil"
+}
+
+pub unsafe fn make_bool(env: *mut emacs_env, value: bool) -> emacs_value {
+    if value {
+        intern(env, "t")
+    } else {
+        intern(env, "nil")
+    }
+}
+
 pub unsafe fn export_function(
     env: *mut emacs_env,
     min_arity: isize,

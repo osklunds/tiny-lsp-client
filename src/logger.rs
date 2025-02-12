@@ -30,13 +30,23 @@ macro_rules! log_debug {
 }
 pub(crate) use log_debug;
 
-static LOG_IO: AtomicBool = AtomicBool::new(true);
-static LOG_STDERR: AtomicBool = AtomicBool::new(true);
-static LOG_DEBUG: AtomicBool = AtomicBool::new(true);
-static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
+pub static LOG_IO: AtomicBool = AtomicBool::new(true);
+pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
+pub static LOG_DEBUG: AtomicBool = AtomicBool::new(true);
+pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
 
+pub fn get_log_file_name() -> Option<String> {
+    let log_file = LOG_FILE.lock().unwrap();
+    if let Some((log_file_name, _log_file)) = &*log_file {
+        Some(log_file_name.clone())
+    } else {
+        None
+    }
+}
+
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
+    println!("oskar: {:?}", new_log_file_name.as_ref());
     let mut binding = LOG_FILE.lock().unwrap();
     if let Some((ref mut log_file_name, ref mut log_file)) = binding.as_mut() {
         if new_log_file_name.as_ref() == *log_file_name {

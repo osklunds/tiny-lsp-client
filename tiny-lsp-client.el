@@ -25,27 +25,45 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defcustom tlc-log-io nil
   "Whether JSON messages between tiny-lsp-client and the LSP server should be logged."
   :group 'tiny-lsp-client
-  :type 'boolean)
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
 
 (defcustom tlc-log-stderr t
   "Whether stderr output from the LSP server should be logged."
   :group 'tiny-lsp-client
-  :type 'boolean)
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
 
-(defcustom tlc-debug-logs nil
+(defcustom tlc-log-debug nil
   "Whether debug logging (in Rust code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
-  :type 'boolean)
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
 
 (defcustom tlc-log-to-stdio nil
   "In addition to logging to files, if logging should also happen to standard output. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
-  :type 'boolean)
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
 
-(defcustom tlc-log-dir user-emacs-directory
+(defcustom tlc-log-file (file-truename
+                         (file-name-concat
+                          user-emacs-directory
+                          "tiny-lsp-client.log"))
   "Directory in which log files are placed."
   :group 'tiny-lsp-client
-  :type 'string)
+  :type 'string
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
 
 ;; -----------------------------------------------------------------------------
 ;; Minor mode

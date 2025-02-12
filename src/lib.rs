@@ -22,6 +22,7 @@ use std::os::raw;
 use std::path::Path;
 use std::sync::Once;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::Ordering;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -92,6 +93,24 @@ pub unsafe extern "C" fn emacs_module_init(
         tlc__rust_send_notification,
         "doc todo",
         "tlc--rust-send-notification",
+    );
+
+    export_function(
+        env,
+        1,
+        1,
+        tlc__rust_get_log_option,
+        "doc todo",
+        "tlc--rust-get-log-option",
+    );
+
+    export_function(
+        env,
+        2,
+        2,
+        tlc__rust_set_log_option,
+        "doc todo",
+        "tlc--rust-set-log-option",
     );
 
     call(env, "provide", vec![intern(env, "tlc-rust")]);
@@ -363,6 +382,71 @@ unsafe extern "C" fn tlc__rust_recv_response(
     } else {
         intern(env, "no-response")
     }
+}
+
+unsafe extern "C" fn tlc__rust_get_log_option(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_get_log_option");
+    let symbol = *args.offset(0);
+    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
+
+    if symbol == "tlc-log-file" {
+        if let Some(log_file_name) = logger::get_log_file_name() {
+            make_string(env, log_file_name)
+        } else {
+            intern(env, "nil")
+        }
+    } else {
+        let value = if symbol == "tlc-log-io" {
+            logger::LOG_IO.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-stderr" {
+            logger::LOG_STDERR.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-debug" {
+            logger::LOG_DEBUG.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-to-stdio" {
+            logger::LOG_TO_STDIO.load(Ordering::Relaxed)
+        } else {
+            panic!("Incorrect log symbol")
+        };
+
+        make_bool(env, value)
+    }
+}
+
+unsafe extern "C" fn tlc__rust_set_log_option(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_set_log_option");
+    let symbol = *args.offset(0);
+    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
+    let value = *args.offset(1);
+
+    if symbol == "tlc-log-file" {
+        let path = extract_string(env, value);
+        logger::set_log_file_name(check_path(path));
+    } else {
+        let value = extract_bool(env, value);
+        if symbol == "tlc-log-io" {
+            logger::LOG_IO.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-stderr" {
+            logger::LOG_STDERR.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-debug" {
+            logger::LOG_DEBUG.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-to-stdio" {
+            logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
+        } else {
+            panic!("Incorrect log symbol")
+        };
+    }
+
+    intern(env, "nil")
 }
 
 fn check_path<S: AsRef<str>>(file_path: S) -> S {
