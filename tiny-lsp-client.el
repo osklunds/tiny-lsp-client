@@ -267,6 +267,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             response)))
 
 ;; -----------------------------------------------------------------------------
+;; Logging
+;;------------------------------------------------------------------------------
+
+(defun tlc-open-log-file ()
+  (interactive)
+  ;; todo: is this the correct way to get custom?
+  (find-file (tlc--rust-get-log-option 'tlc-log-file)))
+
+;; -----------------------------------------------------------------------------
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
 
