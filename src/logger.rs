@@ -52,6 +52,11 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
             return;
         }
     }
+
+    let old_content = fs::read_to_string(new_log_file_name.as_ref()).unwrap();
+    fs::write(format!("{}.old", new_log_file_name.as_ref()), old_content)
+        .unwrap();
+
     fs::write(new_log_file_name.as_ref(), "").unwrap();
     let mut file = OpenOptions::new()
         .create(true)
