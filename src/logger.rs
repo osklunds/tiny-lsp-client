@@ -46,7 +46,6 @@ pub fn get_log_file_name() -> Option<String> {
 }
 
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
-    println!("oskar: {:?}", new_log_file_name.as_ref());
     let mut binding = LOG_FILE.lock().unwrap();
     if let Some((ref mut log_file_name, ref mut log_file)) = binding.as_mut() {
         if new_log_file_name.as_ref() == *log_file_name {
