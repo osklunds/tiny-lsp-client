@@ -58,20 +58,9 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
         }
     }
 
-    let old_content = fs::read_to_string(new_log_file_name.as_ref()).unwrap();
-    fs::write(format!("{}.old", new_log_file_name.as_ref()), old_content)
-        .unwrap();
-
-    fs::write(new_log_file_name.as_ref(), "").unwrap();
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(new_log_file_name.as_ref())
-        .unwrap();
-
     let new_log_file_info = LogFileInfo {
         log_file_name: new_log_file_name.as_ref().to_string(),
-        file: Some(file)
+        file: None,
     };
 
     *locked_log_file_info = Some(new_log_file_info);
@@ -107,8 +96,26 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
 
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
-    let mut log_file = log_file_info.file.as_mut().unwrap();
-    write!(log_file, "{}", formatted);
+    if let Some(mut log_file) = log_file_info.file.as_mut() {
+        write!(log_file, "{}", formatted);
+    } else {
+        let new_log_file_name = &log_file_info.log_file_name;
+
+        // Can fail if new_log_file_name doesn't exist
+        if let Ok(old_content) = fs::read_to_string(new_log_file_name) {
+            fs::write(format!("{}.old", new_log_file_name), old_content)
+                .unwrap();
+        }
+
+        fs::write(new_log_file_name, "").unwrap();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(new_log_file_name)
+            .unwrap();
+        write!(file, "{}", formatted);
+        log_file_info.file = Some(file);
+    }
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
         print!("{}", formatted);
