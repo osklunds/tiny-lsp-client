@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::logger;
 use crate::message::*;
 
 use serde::Deserialize;
@@ -48,7 +49,10 @@ impl Connection {
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
                 stdin.write(full.as_bytes()).unwrap();
-                println!("Sent: {}", serde_json::to_string_pretty(&msg).unwrap());
+                logger::log_io!(
+                    "Sent: {}",
+                    serde_json::to_string_pretty(&msg).unwrap()
+                );
             } else {
                 return;
             }
@@ -63,28 +67,38 @@ impl Connection {
             loop {
                 let mut buf = String::new();
                 reader.read_line(&mut buf).unwrap();
+                logger::log_debug!(
+                    "Connection recv loop initial line: {:?}",
+                    buf
+                );
                 buf.pop();
                 buf.pop();
-                // println!("oskar2: {:?}", buf);
                 let parts: Vec<&str> = buf.split(": ").collect();
+                if parts.len() < 2 {
+                    logger::log_debug!("Note: strange header");
+                    continue;
+                }
+
                 let header_name = parts[0];
                 let header_value = parts[1];
 
                 let size = header_value.parse::<usize>().unwrap();
-                // println!("oskar: {:?}", size);
 
                 let mut json_buf = Vec::new();
                 // todo: +2 might be related the the pops above. Anyway,
                 // need to find out why
                 json_buf.resize(size + 2, 0);
                 reader.read_exact(&mut json_buf);
-                // println!("oskar3: {:?}", json_buf);
                 let json = String::from_utf8(json_buf).unwrap();
 
                 // Decode as serde_json::Value too, to be able to print fields
                 // not deserialized into msg.
-                let full_json: serde_json::Value = serde_json::from_str(&json).unwrap();
-                println!("Received: {}", serde_json::to_string_pretty(&full_json).unwrap());
+                let full_json: serde_json::Value =
+                    serde_json::from_str(&json).unwrap();
+                logger::log_io!(
+                    "Received: {}",
+                    serde_json::to_string_pretty(&full_json).unwrap()
+                );
 
                 let msg = serde_json::from_str(&json).unwrap();
 
@@ -99,13 +113,42 @@ impl Connection {
             }
         });
 
-        thread::spawn(move || loop {
-            let mut buf = [0; 500];
-            let len = stderr.read(&mut buf).unwrap();
-            print!("{}", String::from_utf8(buf.to_vec()).unwrap());
+        thread::spawn(move || {
+            let (stderr_tx, stderr_rx) = mpsc::channel();
+            thread::spawn(move || loop {
+                let mut buf = [0; 500];
+                let len = stderr.read(&mut buf).unwrap();
+                stderr_tx.send(buf[0..len].to_vec());
+            });
 
-            if len == 0 {
-                return;
+            loop {
+                let mut buf = Vec::new();
+                // todo: see if can make the first blocking read less duplicated
+                // and more elegant.
+
+                // First do a blocking read until some data arrives. No point
+                // in doing non-blocking yet.
+                let partial = stderr_rx.recv().unwrap();
+                buf.extend_from_slice(&partial);
+
+                loop {
+                    // When some data has arrived, continue to attempt
+                    // non-blocking reads until it seems no more data will
+                    // arrive.
+                    match stderr_rx.recv_timeout(Duration::from_millis(1)) {
+                        Ok(partial) => {
+                            buf.extend_from_slice(&partial);
+                        }
+                        Err(mpsc::RecvTimeoutError::Timeout) => {
+                            break;
+                        }
+                        Err(mpsc::RecvTimeoutError::Disconnected) => {
+                            panic!();
+                        }
+                    }
+                }
+
+                logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
             }
         });
 

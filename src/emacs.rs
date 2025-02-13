@@ -1,6 +1,8 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use crate::logger::log_debug;
 use std::ffi::CString;
+use std::ptr;
 
 macro_rules! c_string {
     ($x:expr) => {
@@ -10,18 +12,30 @@ macro_rules! c_string {
 
 pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let copy_string_contents = (*env).copy_string_contents.unwrap();
-    let mut buf = vec![0; 1000];
-    let mut len = 1000;
-    let res =
+
+    // First find the length
+    let mut len = 0;
+    let result_find_length =
+        copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len);
+    assert!(result_find_length);
+    assert!(len > 0);
+
+    // Then get the actual string
+    let mut buf = vec![0; len as usize];
+    let result_get_string =
         copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len);
-    assert!(res);
-    len -= 1;
+
+    assert!(result_get_string);
+    len -= 1; // remove null-terminator
     std::str::from_utf8(&buf[0..len as usize])
         .unwrap()
         .to_string()
 }
 
-pub unsafe fn make_string<S: AsRef<str>>(env: *mut emacs_env, string: S) -> emacs_value {
+pub unsafe fn make_string<S: AsRef<str>>(
+    env: *mut emacs_env,
+    string: S,
+) -> emacs_value {
     let make_string = (*env).make_string.unwrap();
     let c_string = CString::new(string.as_ref()).unwrap();
     let len = c_string.as_bytes().len() as isize;
@@ -37,6 +51,18 @@ pub unsafe fn extract_integer(
 
 pub unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
     (*env).make_integer.unwrap()(env, integer)
+}
+
+pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
+    extract_string(env, call(env, "symbol-name", vec![value])) != "nil"
+}
+
+pub unsafe fn make_bool(env: *mut emacs_env, value: bool) -> emacs_value {
+    if value {
+        intern(env, "t")
+    } else {
+        intern(env, "nil")
+    }
 }
 
 pub unsafe fn export_function(

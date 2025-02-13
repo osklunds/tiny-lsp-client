@@ -22,6 +22,49 @@ Default to `tlc-find-root-default-function' which first tries Projectile,
 and if that fails, tries using \"git rev-parse --show-toplevel\"." 
   :group 'tiny-lsp-client)
 
+(defcustom tlc-log-io nil
+  "Whether JSON messages between tiny-lsp-client and the LSP server should be logged."
+  :group 'tiny-lsp-client
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
+(defcustom tlc-log-stderr t
+  "Whether stderr output from the LSP server should be logged."
+  :group 'tiny-lsp-client
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
+(defcustom tlc-log-debug nil
+  "Whether debug logging (in Rust code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
+  :group 'tiny-lsp-client
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
+(defcustom tlc-log-to-stdio nil
+  "In addition to logging to files, if logging should also happen to standard output. Probably mainly useful for developing tiny-lsp-client."
+  :group 'tiny-lsp-client
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
+(defcustom tlc-log-file (file-truename
+                         (file-name-concat
+                          user-emacs-directory
+                          "tiny-lsp-client.log"))
+  "Directory in which log files are placed."
+  :group 'tiny-lsp-client
+  :type 'string
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -87,6 +130,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
+  (when (buffer-modified-p)
+    ;; todo: document this
+    (message "tiny-lsp-client can only open saved buffers, so saving for you.")
+    (save-buffer))
   (tlc--rust-send-notification
    (tlc--root)
    "textDocument/didOpen"
@@ -111,7 +158,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
       (error "tlc--change is not-nil in before-change")
-    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
+    ;; if revert in progress, it can happen that didChange is sent before didOpen,
+    ;; when discarding changes in magit
+    (unless revert-buffer-in-progress-p
+      (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
 ;; Heavily inspired by eglot
 ;; nil pos means current point
@@ -131,11 +181,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (text (buffer-substring-no-properties beg end))
          )
     (setq tlc--change nil)
-    (tlc--notify-text-document-did-change start-line
-                                          start-character
-                                          end-line
-                                          end-character
-                                          text)))
+    ;; if revert in progress, it can happen that didChange is sent before didOpen
+    ;; when discarding changes in magit
+    (unless revert-buffer-in-progress-p
+      (tlc--notify-text-document-did-change start-line
+                                            start-character
+                                            end-line
+                                            end-character
+                                            text))))
 
 (defun tlc--notify-text-document-did-change (start-line
                                              start-character
@@ -214,12 +267,27 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             response)))
 
 ;; -----------------------------------------------------------------------------
+;; Logging
+;;------------------------------------------------------------------------------
+
+(defun tlc-open-log-file ()
+  (interactive)
+  ;; todo: is this the correct way to get custom?
+  (find-file (tlc--rust-get-log-option 'tlc-log-file)))
+
+;; -----------------------------------------------------------------------------
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
 
+(defun std-message (format-string &rest args)
+  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
+
 (defun tlc--buffer-file-name ()
-  (cl-assert buffer-file-name)
-  buffer-file-name)
+  ;; In after-revert-hook, if there was a change, buffer-file-name is nil,
+  ;; so use this instead
+  (let ((name (file-truename buffer-file-truename)))
+    (cl-assert name)
+    name))
 
 (defvar-local tlc--cached-root nil)
 

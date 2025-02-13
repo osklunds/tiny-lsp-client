@@ -8,6 +8,7 @@ mod dummy;
 mod connection;
 mod emacs;
 mod learning_tests;
+mod logger;
 mod message;
 
 use crate::connection::Connection;
@@ -21,6 +22,7 @@ use std::os::raw;
 use std::path::Path;
 use std::sync::Once;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::Ordering;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -93,7 +95,27 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-send-notification",
     );
 
+    export_function(
+        env,
+        1,
+        1,
+        tlc__rust_get_log_option,
+        "doc todo",
+        "tlc--rust-get-log-option",
+    );
+
+    export_function(
+        env,
+        2,
+        2,
+        tlc__rust_set_log_option,
+        "doc todo",
+        "tlc--rust-set-log-option",
+    );
+
     call(env, "provide", vec![intern(env, "tlc-rust")]);
+
+    logger::set_log_file_name("/home/oskar/Downloads/tiny-lsp-client-log.txt");
 
     0
 }
@@ -104,6 +126,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
     let connections = connections().lock().unwrap();
 
@@ -129,6 +152,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_start_server");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
@@ -150,6 +174,8 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_send_request");
+
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -193,6 +219,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_send_notification");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -307,6 +334,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_recv_response");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
@@ -356,6 +384,71 @@ unsafe extern "C" fn tlc__rust_recv_response(
     }
 }
 
+unsafe extern "C" fn tlc__rust_get_log_option(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_get_log_option");
+    let symbol = *args.offset(0);
+    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
+
+    if symbol == "tlc-log-file" {
+        if let Some(log_file_name) = logger::get_log_file_name() {
+            make_string(env, log_file_name)
+        } else {
+            intern(env, "nil")
+        }
+    } else {
+        let value = if symbol == "tlc-log-io" {
+            logger::LOG_IO.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-stderr" {
+            logger::LOG_STDERR.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-debug" {
+            logger::LOG_DEBUG.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-to-stdio" {
+            logger::LOG_TO_STDIO.load(Ordering::Relaxed)
+        } else {
+            panic!("Incorrect log symbol")
+        };
+
+        make_bool(env, value)
+    }
+}
+
+unsafe extern "C" fn tlc__rust_set_log_option(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_set_log_option");
+    let symbol = *args.offset(0);
+    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
+    let value = *args.offset(1);
+
+    if symbol == "tlc-log-file" {
+        let path = extract_string(env, value);
+        logger::set_log_file_name(check_path(path));
+    } else {
+        let value = extract_bool(env, value);
+        if symbol == "tlc-log-io" {
+            logger::LOG_IO.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-stderr" {
+            logger::LOG_STDERR.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-debug" {
+            logger::LOG_DEBUG.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-to-stdio" {
+            logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
+        } else {
+            panic!("Incorrect log symbol")
+        };
+    }
+
+    intern(env, "nil")
+}
+
 fn check_path<S: AsRef<str>>(file_path: S) -> S {
     assert!(Path::new(file_path.as_ref()).is_absolute());
 
@@ -370,4 +463,29 @@ fn uri_to_file_path<S: AsRef<str>>(uri: S) -> String {
     let (first, last) = uri.as_ref().split_at(7);
     assert_eq!("file://", first);
     last.to_string()
+}
+
+unsafe fn log_args<S: AsRef<str>>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    function_name: S,
+) {
+    // logger::log_debug! already knows whether to log or not. But check
+    // anyway as an optimization so that lots of string and terms aren't
+    // created unecessarily.
+    if logger::log_debug_enabled() {
+        let mut args_list = Vec::new();
+        for i in 0..nargs {
+            args_list.push(*args.offset(i));
+        }
+        let list = call(env, "list", args_list);
+        let format_string = make_string(
+            env,
+            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs),
+        );
+        let formatted = call(env, "format", vec![format_string, list]);
+        let formatted = extract_string(env, formatted);
+        logger::log_debug!("{}", formatted);
+    }
 }
