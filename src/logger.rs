@@ -34,21 +34,26 @@ pub static LOG_IO: AtomicBool = AtomicBool::new(true);
 pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_DEBUG: AtomicBool = AtomicBool::new(true);
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
-static LOG_FILE: Mutex<Option<(String, File)>> = Mutex::new(None);
+static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
+
+struct LogFileInfo {
+    log_file_name: String,
+    file: Option<File>,
+}
 
 pub fn get_log_file_name() -> Option<String> {
-    let log_file = LOG_FILE.lock().unwrap();
-    if let Some((log_file_name, _log_file)) = &*log_file {
-        Some(log_file_name.clone())
+    let log_file_info = LOG_FILE_INFO.lock().unwrap();
+    if let Some(log_file_info) = &*log_file_info {
+        Some(log_file_info.log_file_name.clone())
     } else {
         None
     }
 }
 
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
-    let mut binding = LOG_FILE.lock().unwrap();
-    if let Some((ref mut log_file_name, ref mut log_file)) = binding.as_mut() {
-        if new_log_file_name.as_ref() == *log_file_name {
+    let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
+    if let Some(ref mut log_file_info) = locked_log_file_info.as_mut() {
+        if new_log_file_name.as_ref() == log_file_info.log_file_name {
             return;
         }
     }
@@ -63,7 +68,13 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
         .append(true)
         .open(new_log_file_name.as_ref())
         .unwrap();
-    *binding = Some((new_log_file_name.as_ref().to_string(), file));
+
+    let new_log_file_info = LogFileInfo {
+        log_file_name: new_log_file_name.as_ref().to_string(),
+        file: Some(file)
+    };
+
+    *locked_log_file_info = Some(new_log_file_info);
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
@@ -94,8 +105,9 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
-    let mut binding = LOG_FILE.lock().unwrap();
-    let (_, log_file) = binding.as_mut().unwrap();
+    let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
+    let mut log_file_info = locked_log_file_info.as_mut().unwrap();
+    let mut log_file = log_file_info.file.as_mut().unwrap();
     write!(log_file, "{}", formatted);
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
