@@ -14,6 +14,7 @@ use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
+use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
 
 pub struct Connection {
@@ -43,7 +44,7 @@ impl Connection {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        thread::spawn(move || loop {
+        spawn_named_thread("send", move || loop {
             if let Ok(msg) = stdin_rx.recv() {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
@@ -61,7 +62,7 @@ impl Connection {
         let (stdout_tx, stdout_rx) = mpsc::channel();
         // Sender of messages to application
         // Receiving from stdout from lsp server
-        thread::spawn(move || {
+        spawn_named_thread("recv", move || {
             let mut reader = std::io::BufReader::new(stdout);
 
             loop {
@@ -113,9 +114,9 @@ impl Connection {
             }
         });
 
-        thread::spawn(move || {
+        spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
-            thread::spawn(move || loop {
+            spawn_named_thread("stderr_inner", move || loop {
                 let mut buf = [0; 500];
                 let len = stderr.read(&mut buf).unwrap();
                 stderr_tx.send(buf[0..len].to_vec());
@@ -246,4 +247,15 @@ impl Connection {
     pub fn get_server_process_id(&self) -> u32 {
         self.server_process.id()
     }
+}
+
+fn spawn_named_thread<F, T, N: AsRef<str>>(
+    name: N,
+    f: F,
+) -> std::io::Result<JoinHandle<T>>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    Builder::new().name(name.as_ref().to_string()).spawn(f)
 }
