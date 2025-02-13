@@ -50,14 +50,12 @@ impl Connection {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-                // TODO: unclear when this can fail. Crash for now
-                stdin.write_all(full.as_bytes()).unwrap();
+                stdin.write(full.as_bytes()).unwrap();
                 logger::log_io!(
                     "Sent: {}",
                     serde_json::to_string_pretty(&msg).unwrap()
                 );
             } else {
-                logger::log_debug!("stdin_rx closed");
                 return;
             }
         });
@@ -70,49 +68,56 @@ impl Connection {
 
             loop {
                 let mut buf = String::new();
-                reader.read_line(&mut buf).unwrap();
-                logger::log_debug!(
-                    "Connection recv loop initial line: {:?}",
-                    buf
-                );
-                buf.pop();
-                buf.pop();
-                let parts: Vec<&str> = buf.split(": ").collect();
-                if parts.len() < 2 {
-                    logger::log_debug!("Note: strange header");
-                    continue;
-                }
-
-                let header_name = parts[0];
-                let header_value = parts[1];
-
-                let size = header_value.parse::<usize>().unwrap();
-
-                let mut json_buf = Vec::new();
-                // todo: +2 might be related the the pops above. Anyway,
-                // need to find out why
-                json_buf.resize(size + 2, 0);
-                reader.read_exact(&mut json_buf);
-                let json = String::from_utf8(json_buf).unwrap();
-
-                // Decode as serde_json::Value too, to be able to print fields
-                // not deserialized into msg.
-                let full_json: serde_json::Value =
-                    serde_json::from_str(&json).unwrap();
-                logger::log_io!(
-                    "Received: {}",
-                    serde_json::to_string_pretty(&full_json).unwrap()
-                );
-
-                let msg = serde_json::from_str(&json).unwrap();
-
-                // Only care about response so far, i.e. drop notifications
-                // about e.g. diagnostics
-                if let Message::Response(_) = msg {
-                    if let Ok(()) = stdout_tx.send(msg) {
-                    } else {
-                        return;
+                // todo: if error, need to restart or signal
+                // probably similar action as if len = 0
+                let len = reader.read_line(&mut buf).unwrap();
+                if len > 0 {
+                    logger::log_debug!(
+                        "Connection recv loop initial line: {:?}",
+                        buf
+                    );
+                    buf.pop();
+                    buf.pop();
+                    let parts: Vec<&str> = buf.split(": ").collect();
+                    if parts.len() < 2 {
+                        logger::log_debug!("Note: strange header");
+                        continue;
                     }
+
+                    let header_name = parts[0];
+                    let header_value = parts[1];
+
+                    let size = header_value.parse::<usize>().unwrap();
+
+                    let mut json_buf = Vec::new();
+                    // todo: +2 might be related the the pops above. Anyway,
+                    // need to find out why
+                    json_buf.resize(size + 2, 0);
+                    reader.read_exact(&mut json_buf);
+                    let json = String::from_utf8(json_buf).unwrap();
+
+                    // Decode as serde_json::Value too, to be able to print fields
+                    // not deserialized into msg.
+                    let full_json: serde_json::Value =
+                        serde_json::from_str(&json).unwrap();
+                    logger::log_io!(
+                        "Received: {}",
+                        serde_json::to_string_pretty(&full_json).unwrap()
+                    );
+
+                    let msg = serde_json::from_str(&json).unwrap();
+
+                    // Only care about response so far, i.e. drop notifications
+                    // about e.g. diagnostics
+                    if let Message::Response(_) = msg {
+                        if let Ok(()) = stdout_tx.send(msg) {
+                        } else {
+                            return;
+                        }
+                    }
+                } else {
+                    logger::log_debug!("stdio got EOF");
+                    return;
                 }
             }
         });
