@@ -13,6 +13,7 @@ use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
@@ -68,8 +69,6 @@ impl Connection {
 
             loop {
                 let mut buf = String::new();
-                // todo: if error, need to restart or signal
-                // probably similar action as if len = 0
                 match reader.read_line(&mut buf) {
                     Ok(len) => {
                         if len > 0 {
@@ -80,37 +79,86 @@ impl Connection {
                             buf.pop();
                             buf.pop();
                             let parts: Vec<&str> = buf.split(": ").collect();
-                            if parts.len() < 2 {
-                                logger::log_debug!("Note: strange header");
-                                continue;
+                            let num_parts = parts.len();
+                            if num_parts != 2 {
+                                logger::log_debug!(
+                                    "Incorrect number of parts after split: {}",
+                                    num_parts
+                                );
+                                return;
                             }
 
                             let header_name = parts[0];
-                            // Assert for now, make robuster when it goes wrong,
-                            // probably due to other LSP server
-                            assert_eq!("Content-Length", header_name);
+                            if header_name != "Content-Length" {
+                                // Actualy, there are other valid header names,
+                                // but handle them as they come.
+                                logger::log_debug!(
+                                    "Incorrect header name: {}",
+                                    header_name
+                                );
+                                return;
+                            }
                             let header_value = parts[1];
 
-                            let size = header_value.parse::<usize>().unwrap();
+                            let size = match header_value.parse::<usize>() {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    logger::log_debug!(
+                                        "Could not parse size: {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
 
                             let mut json_buf = Vec::new();
                             // todo: +2 might be related the the pops above. Anyway,
                             // need to find out why
                             json_buf.resize(size + 2, 0);
-                            reader.read_exact(&mut json_buf);
-                            let json = String::from_utf8(json_buf).unwrap();
+                            match reader.read_exact(&mut json_buf) {
+                                Ok(()) => (),
+                                Err(e) => {
+                                    logger::log_debug!(
+                                        "read_exact of json failed: {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            }
 
-                            // Decode as serde_json::Value too, to be able to print fields
-                            // not deserialized into msg.
-                            let full_json: serde_json::Value =
-                                serde_json::from_str(&json).unwrap();
-                            logger::log_io!(
-                                "Received: {}",
-                                serde_json::to_string_pretty(&full_json)
-                                    .unwrap()
-                            );
+                            let json = match String::from_utf8(json_buf) {
+                                Ok(json) => json,
+                                Err(e) => {
+                                    logger::log_debug!(
+                                        "from_utf8 failed: {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
 
-                            let msg = serde_json::from_str(&json).unwrap();
+                            if logger::LOG_IO.load(Ordering::Relaxed) {
+                                // Decode as serde_json::Value too, to be able
+                                // to print fields not deserialized into msg.
+                                let full_json: serde_json::Value =
+                                    serde_json::from_str(&json).unwrap();
+                                logger::log_io!(
+                                    "Received: {}",
+                                    serde_json::to_string_pretty(&full_json)
+                                        .unwrap()
+                                );
+                            }
+
+                            let msg = match serde_json::from_str(&json) {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    logger::log_debug!(
+                                        "serde_json::from_str failed: {:?}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
 
                             // Only care about response so far, i.e. drop notifications
                             // about e.g. diagnostics
@@ -124,7 +172,7 @@ impl Connection {
                             logger::log_debug!("stdio got EOF");
                             return;
                         }
-                    },
+                    }
                     Err(e) => {
                         logger::log_debug!("stdio got error {:?}", e);
                         return;
