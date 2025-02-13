@@ -284,6 +284,8 @@ impl Connection {
         );
     }
 
+    // all these should return Option. If None, then lib should close server
+    // and prompt user. If user says no, then disable mode
     pub fn send_request(
         &mut self,
         method: String,
