@@ -189,7 +189,12 @@ impl Connection {
                 let mut buf = [0; 500];
                 match stderr.read(&mut buf) {
                     Ok(len) => {
-                        stderr_tx.send(buf[0..len].to_vec());
+                        if len > 0 {
+                            stderr_tx.send(buf[0..len].to_vec());
+                        } else {
+                            logger::log_debug!("stderr_inner got EOF");
+                            return;
+                        }
                     }
                     Err(e) => {
                         logger::log_debug!("stderr_inner got error {:?}", e);
@@ -205,7 +210,7 @@ impl Connection {
                 // in doing non-blocking yet.
                 let mut result = match stderr_rx.recv() {
                     Ok(r) => Ok(r),
-                    RecvError => Err(TryRecvError::Disconnected)
+                    RecvError => Err(TryRecvError::Disconnected),
                 };
                 let mut disconnected = false;
 
@@ -229,7 +234,9 @@ impl Connection {
                     result = stderr_rx.try_recv();
                 }
 
-                logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
+                if buf.len() > 0 {
+                    logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
+                }
 
                 if disconnected {
                     logger::log_debug!("stderr_rx disconnected");
