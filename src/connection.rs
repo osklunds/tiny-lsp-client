@@ -56,7 +56,7 @@ impl Connection {
                     serde_json::to_string_pretty(&msg).unwrap()
                 );
             } else {
-                return;
+                logger::log_debug!("stdin_rx closed");
             }
         });
 
