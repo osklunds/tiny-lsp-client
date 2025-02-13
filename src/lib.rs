@@ -159,7 +159,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     if connections.contains_key(&root_path) {
         intern(env, "already-started")
     } else {
-        let mut connection = Connection::new(&server_cmd, &root_path);
+        let mut connection = Connection::new(&server_cmd, &root_path).unwrap();
         connection.initialize();
         connections.insert(root_path.to_string(), connection);
         intern(env, "started")

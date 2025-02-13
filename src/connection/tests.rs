@@ -8,7 +8,7 @@ fn initialize() {
     let mut connection = Connection::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
-    );
+    ).unwrap();
 
     connection.initialize();
 }
@@ -20,7 +20,7 @@ fn did_open_change_close_and_definition() {
     let mut connection = Connection::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
-    );
+    ).unwrap();
     connection.initialize();
 
     let uri =

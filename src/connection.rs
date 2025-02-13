@@ -7,6 +7,7 @@ use crate::message::*;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{json, Number, Value};
+use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -28,14 +29,13 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn new(command: &str, root_path: &str) -> Connection {
+    pub fn new(command: &str, root_path: &str) -> io::Result<Connection> {
         let mut child = Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
-            .spawn()
-            .unwrap();
+            .spawn()?;
 
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
@@ -154,7 +154,7 @@ impl Connection {
             }
         });
 
-        Connection {
+        Ok(Connection {
             server_process: child,
             command: command.to_string(),
             root_path: root_path.to_string(),
@@ -162,7 +162,7 @@ impl Connection {
             receiver: stdout_rx,
             next_request_id: 0,
             next_version_number: 0,
-        }
+        })
     }
 
     pub fn initialize(&mut self) {
