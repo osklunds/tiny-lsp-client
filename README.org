@@ -13,7 +13,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - handle errors and alternative results
   - server info list with buffers
   - emacs log
-  - Don't write to log file before needed so that the path can be customized
   - Fix duplicate didClose on revert
   - vdiff fix
   - Catch crashes or use Result instead
