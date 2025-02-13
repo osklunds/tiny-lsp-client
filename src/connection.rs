@@ -33,6 +33,7 @@ impl Connection {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .current_dir(root_path)
             .spawn()
             .unwrap();
 
