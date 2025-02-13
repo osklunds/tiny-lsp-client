@@ -203,26 +203,30 @@ impl Connection {
 
                 // First do a blocking read until some data arrives. No point
                 // in doing non-blocking yet.
-                let partial = stderr_rx.recv().unwrap();
-                buf.extend_from_slice(&partial);
+                let mut result = match stderr_rx.recv() {
+                    Ok(r) => Ok(r),
+                    RecvError => Err(TryRecvError::Disconnected)
+                };
                 let mut disconnected = false;
 
                 loop {
                     // When some data has arrived, continue to attempt
                     // non-blocking reads until it seems no more data will
                     // arrive.
-                    match stderr_rx.recv_timeout(Duration::from_millis(1)) {
+                    match result {
                         Ok(partial) => {
                             buf.extend_from_slice(&partial);
                         }
-                        Err(mpsc::RecvTimeoutError::Timeout) => {
+                        Err(TryRecvError::Empty) => {
                             break;
                         }
-                        Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        Err(TryRecvError::Disconnected) => {
                             disconnected = true;
                             break;
                         }
                     }
+
+                    result = stderr_rx.try_recv();
                 }
 
                 logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
