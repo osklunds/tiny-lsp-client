@@ -8,11 +8,21 @@ dir with test projects/repos
 for tests, have one .el file per test case. It loads the rust module, runs initialize, starts some LSP server, sends some requests and asserts responses. If fail, either due to crash or enexpected value, maybe then and only then error code is non-0? Can check error code in .sh script. Can have as arg to sh both .el file to run and whether to have gui. gui useful to manually debug, non-gui good for regression testing.
 
 - phase 1
-  - logging
-    - timing
+  - timing
   - garbage collect + --release
-  - didChange
   - handle errors and alternative results
-  - server info list
+  - server info list with buffers
+  - emacs log
+  - Don't write to log file before needed so that the path can be customized
+  - Fix duplicate didClose on revert
+  - vdiff fix
+  - Catch crashes or use Result instead
+  - thread names
+  - Don't use Chrono, call C for timestamp
+  - test organization (one lisp file, call from rust instead of sh)
+  - check stderr in tests
+  - check num didOpen didClose in tests
 - phase 2
+  - erlang
+- phase 3
   - completions
