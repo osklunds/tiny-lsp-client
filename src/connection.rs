@@ -86,6 +86,9 @@ impl Connection {
                             }
 
                             let header_name = parts[0];
+                            // Assert for now, make robuster when it goes wrong,
+                            // probably due to other LSP server
+                            assert_eq!("Content-Length", header_name);
                             let header_value = parts[1];
 
                             let size = header_value.parse::<usize>().unwrap();
