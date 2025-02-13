@@ -132,6 +132,8 @@ impl Connection {
                 }
             }
         });
+        // If any error in the thread, exit the thread gracefully, and then
+        // lib.rs will see that channel closed. Maybe this is the way?
 
         spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
