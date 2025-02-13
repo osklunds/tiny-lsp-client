@@ -115,8 +115,6 @@ pub unsafe extern "C" fn emacs_module_init(
 
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
-    logger::set_log_file_name("/home/oskar/Downloads/tiny-lsp-client-log.txt");
-
     0
 }
 
@@ -390,7 +388,8 @@ unsafe extern "C" fn tlc__rust_get_log_option(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_get_log_option");
+    // Don't log args so that log file can change location before
+    // any logging takes place
     let symbol = *args.offset(0);
     let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
 
@@ -423,7 +422,8 @@ unsafe extern "C" fn tlc__rust_set_log_option(
     args: *mut emacs_value,
     data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_set_log_option");
+    // Don't log args so that log file can change location before
+    // any logging takes place
     let symbol = *args.offset(0);
     let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
     let value = *args.offset(1);
