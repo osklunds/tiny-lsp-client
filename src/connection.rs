@@ -57,6 +57,7 @@ impl Connection {
                 );
             } else {
                 logger::log_debug!("stdin_rx closed");
+                return;
             }
         });
 
