@@ -3,6 +3,8 @@ use std::fs;
 
 #[test]
 fn initialize() {
+    logger::set_log_file_name("/tmp/tiny-lsp-client.log");
+
     let mut connection = Connection::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
@@ -13,6 +15,8 @@ fn initialize() {
 
 #[test]
 fn did_open_change_close_and_definition() {
+    logger::set_log_file_name("/tmp/tiny-lsp-client.log");
+
     let mut connection = Connection::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
