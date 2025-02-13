@@ -67,13 +67,18 @@ impl Connection {
             loop {
                 let mut buf = String::new();
                 reader.read_line(&mut buf).unwrap();
-                buf.pop();
-                buf.pop();
                 logger::log_debug!(
-                    "Connection recv loop initial line: {}",
+                    "Connection recv loop initial line: {:?}",
                     buf
                 );
+                buf.pop();
+                buf.pop();
                 let parts: Vec<&str> = buf.split(": ").collect();
+                if parts.len() < 2 {
+                    logger::log_debug!("Note: strange header");
+                    continue;
+                }
+
                 let header_name = parts[0];
                 let header_value = parts[1];
 
