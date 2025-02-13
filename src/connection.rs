@@ -187,19 +187,25 @@ impl Connection {
             let (stderr_tx, stderr_rx) = mpsc::channel();
             spawn_named_thread("stderr_inner", move || loop {
                 let mut buf = [0; 500];
-                let len = stderr.read(&mut buf).unwrap();
-                stderr_tx.send(buf[0..len].to_vec());
+                match stderr.read(&mut buf) {
+                    Ok(len) => {
+                        stderr_tx.send(buf[0..len].to_vec());
+                    }
+                    Err(e) => {
+                        logger::log_debug!("stderr_inner got error {:?}", e);
+                        return;
+                    }
+                }
             });
 
             loop {
                 let mut buf = Vec::new();
-                // todo: see if can make the first blocking read less duplicated
-                // and more elegant.
 
                 // First do a blocking read until some data arrives. No point
                 // in doing non-blocking yet.
                 let partial = stderr_rx.recv().unwrap();
                 buf.extend_from_slice(&partial);
+                let mut disconnected = false;
 
                 loop {
                     // When some data has arrived, continue to attempt
@@ -213,12 +219,18 @@ impl Connection {
                             break;
                         }
                         Err(mpsc::RecvTimeoutError::Disconnected) => {
-                            panic!();
+                            disconnected = true;
+                            break;
                         }
                     }
                 }
 
                 logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
+
+                if disconnected {
+                    logger::log_debug!("stderr_rx disconnected");
+                    return;
+                }
             }
         });
 
