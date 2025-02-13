@@ -50,7 +50,8 @@ impl Connection {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-                stdin.write(full.as_bytes()).unwrap();
+                // TODO: unclear when this can fail. Crash for now
+                stdin.write_all(full.as_bytes()).unwrap();
                 logger::log_io!(
                     "Sent: {}",
                     serde_json::to_string_pretty(&msg).unwrap()
