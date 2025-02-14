@@ -55,6 +55,8 @@
 
 (std-message "Starting server")
 
+(assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
+
 (assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
 
 (pcase (tlc--rust-all-server-info)
