@@ -45,7 +45,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition
-    assert_eq!(None, connection.try_recv_response());
+    assert_eq!(Some(None), connection.try_recv_response());
     let request_params = DefinitionParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         position: Position {
