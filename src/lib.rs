@@ -337,7 +337,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     let mut connections = connections().lock().unwrap();
     let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
-    if let Some(response) = connection.try_recv_response() {
+    if let Some(response) = connection.try_recv_response().unwrap() {
         if let Some(result) = response.result {
             if let Result::TextDocumentDefinitionResult(definition_result) =
                 result

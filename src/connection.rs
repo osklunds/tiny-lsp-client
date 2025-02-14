@@ -329,14 +329,15 @@ impl Connection {
         }
     }
 
-    pub fn try_recv_response(&self) -> Option<Response> {
+    // todo: inner means result, outer means if error. Try to improve
+    pub fn try_recv_response(&self) -> Option<Option<Response>> {
         let res = self.receiver.try_recv();
         if let Ok(Message::Response(response)) = res {
-            Some(response)
+            Some(Some(response))
         } else if let Err(TryRecvError::Empty) = res {
-            None
+            Some(None)
         } else {
-            panic!("hej")
+            None
         }
     }
 
