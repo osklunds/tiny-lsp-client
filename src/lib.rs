@@ -182,20 +182,25 @@ unsafe extern "C" fn tlc__rust_send_request(
 
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
-    let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
-    let request_type = extract_string(env, *args.offset(1));
-    let request_args = *args.offset(2);
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        let request_type = extract_string(env, *args.offset(1));
+        let request_args = *args.offset(2);
 
-    let request_params = if request_type == "textDocument/definition" {
-        build_text_document_definition(env, request_args, connection)
+        let request_params = if request_type == "textDocument/definition" {
+            build_text_document_definition(env, request_args, connection)
+        } else {
+            panic!("Incorrect request type")
+        };
+        if let Some(id) = connection.send_request(request_type, request_params)
+        {
+            make_integer(env, id as i64)
+        } else {
+            intern(env, "failed")
+        }
     } else {
-        panic!("Incorrect request type")
-    };
-    let id = connection
-        .send_request(request_type, request_params)
-        .unwrap();
-    make_integer(env, id as i64)
+        intern(env, "no-server")
+    }
 }
 
 unsafe fn build_text_document_definition(
@@ -228,23 +233,27 @@ unsafe extern "C" fn tlc__rust_send_notification(
     log_args(env, nargs, args, "tlc__rust_send_notification");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
-    let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
-    let request_type = extract_string(env, *args.offset(1));
-    let request_args = *args.offset(2);
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        let request_type = extract_string(env, *args.offset(1));
+        let request_args = *args.offset(2);
 
-    let notification_params = if request_type == "textDocument/didOpen" {
-        build_text_document_did_open(env, request_args, connection)
-    } else if request_type == "textDocument/didChange" {
-        build_text_document_did_change(env, request_args, connection)
-    } else if request_type == "textDocument/didClose" {
-        build_text_document_did_close(env, request_args, connection)
+        let notification_params = if request_type == "textDocument/didOpen" {
+            build_text_document_did_open(env, request_args, connection)
+        } else if request_type == "textDocument/didChange" {
+            build_text_document_did_change(env, request_args, connection)
+        } else if request_type == "textDocument/didClose" {
+            build_text_document_did_close(env, request_args, connection)
+        } else {
+            panic!("Incorrect request type")
+        };
+        match connection.send_notification(request_type, notification_params) {
+            Some(()) => intern(env, "ok"),
+            None => intern(env, "failed"),
+        }
     } else {
-        panic!("Incorrect request type")
-    };
-    connection.send_notification(request_type, notification_params);
-
-    intern(env, "ok")
+        intern(env, "no-server")
+    }
 }
 
 unsafe fn build_text_document_did_open(
@@ -254,6 +263,7 @@ unsafe fn build_text_document_did_open(
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
+    // todo: remove unwrap. But it should be relatively low risk
     let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
@@ -274,7 +284,6 @@ unsafe fn build_text_document_did_change(
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
-    let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
     let content_changes = nth(env, 1, request_args);
@@ -326,7 +335,6 @@ unsafe fn build_text_document_did_close(
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
-    let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
 
     NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
@@ -343,50 +351,58 @@ unsafe extern "C" fn tlc__rust_recv_response(
     log_args(env, nargs, args, "tlc__rust_recv_response");
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let mut connections = connections().lock().unwrap();
-    let mut connection = &mut connections.get_mut(&root_path).unwrap();
 
-    if let Some(response) = connection.try_recv_response().unwrap() {
-        if let Some(result) = response.result {
-            if let Result::TextDocumentDefinitionResult(definition_result) =
-                result
-            {
-                let DefinitionResult::LocationLinkList(location_link_list) =
-                    definition_result;
-                let mut lisp_location_list_vec = Vec::new();
-
-                for location_link in location_link_list {
-                    let uri = &location_link.target_uri;
-                    let range = &location_link.target_selection_range;
-
-                    let lisp_location = call(
-                        env,
-                        "list",
-                        vec![
-                            make_string(env, check_path(uri_to_file_path(uri))),
-                            make_integer(env, range.start.line as i64),
-                            make_integer(env, range.start.character as i64),
-                        ],
-                    );
-                    lisp_location_list_vec.push(lisp_location);
-                }
-                let lisp_location_list =
-                    call(env, "list", lisp_location_list_vec);
-                let id = make_integer(env, response.id as i64);
-                call(
-                    env,
-                    "list",
-                    vec![intern(env, "ok"), id, lisp_location_list],
-                )
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        if let Some(recv_result) = connection.try_recv_response() {
+            if let Some(response) = recv_result {
+                handle_response(env, response)
             } else {
-                intern(env, "error")
+                intern(env, "no-response")
             }
         } else {
-            // Now response.error should be Some, but since no details are
-            // returned anyway, no need to unwrap and risk crash
+            intern(env, "failed")
+        }
+    } else {
+        intern(env, "no-server")
+    }
+}
+
+unsafe fn handle_response(
+    env: *mut emacs_env,
+    response: Response,
+) -> emacs_value {
+    if let Some(result) = response.result {
+        if let Result::TextDocumentDefinitionResult(definition_result) = result
+        {
+            let DefinitionResult::LocationLinkList(location_link_list) =
+                definition_result;
+            let mut lisp_location_list_vec = Vec::new();
+
+            for location_link in location_link_list {
+                let uri = &location_link.target_uri;
+                let range = &location_link.target_selection_range;
+
+                let lisp_location = call(
+                    env,
+                    "list",
+                    vec![
+                        make_string(env, check_path(uri_to_file_path(uri))),
+                        make_integer(env, range.start.line as i64),
+                        make_integer(env, range.start.character as i64),
+                    ],
+                );
+                lisp_location_list_vec.push(lisp_location);
+            }
+            let lisp_location_list = call(env, "list", lisp_location_list_vec);
+            let id = make_integer(env, response.id as i64);
+            call(env, "list", vec![intern(env, "ok"), id, lisp_location_list])
+        } else {
             intern(env, "error")
         }
     } else {
-        intern(env, "no-response")
+        // Now response.error should be Some, but since no details are
+        // returned anyway, no need to unwrap and risk crash
+        intern(env, "error")
     }
 }
 

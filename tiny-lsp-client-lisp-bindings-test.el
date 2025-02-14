@@ -78,10 +78,10 @@
 
 (std-message "Sending didOpen")
 
-(tlc--rust-send-notification
- root-path
- "textDocument/didOpen"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+(assert-equal 'ok (tlc--rust-send-notification
+                   root-path
+                   "textDocument/didOpen"
+                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; definition
@@ -90,6 +90,11 @@
 (sleep-for 1)
 
 (std-message "Sending definition")
+
+(assert-equal 'no-server (tlc--rust-send-request
+                          "/some/root_path/that/does/not/exist"
+                          "textDocument/definition"
+                          '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
 (assert-equal 1 (tlc--rust-send-request
                  root-path
@@ -114,10 +119,10 @@
 
 (std-message "Sending didChange")
 
-(tlc--rust-send-notification
- root-path
- "textDocument/didChange"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n"))))
+(assert-equal 'ok (tlc--rust-send-notification
+                   root-path
+                   "textDocument/didChange"
+                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; definition after didChange
@@ -140,10 +145,10 @@
 
 (std-message "Sending didChange to revert")
 
-(tlc--rust-send-notification
- root-path
- "textDocument/didChange"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 ""))))
+(assert-equal 'ok (tlc--rust-send-notification
+                   root-path
+                   "textDocument/didChange"
+                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 "")))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didClose
@@ -151,10 +156,10 @@
 
 (std-message "Sending didClose")
 
-(tlc--rust-send-notification
- root-path
- "textDocument/didClose"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+(assert-equal 'ok (tlc--rust-send-notification
+                   root-path
+                   "textDocument/didClose"
+                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didOpen + definition again
@@ -166,10 +171,10 @@
 
 (std-message "Sending didOpen+definition")
 
-(tlc--rust-send-notification
- root-path
- "textDocument/didOpen"
- (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs"))
+(assert-equal 'ok (tlc--rust-send-notification
+                   root-path
+                   "textDocument/didOpen"
+                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
 (assert-equal 3 (tlc--rust-send-request
                  root-path
