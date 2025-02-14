@@ -160,6 +160,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         if connection.is_working() {
             return intern(env, "already-started");
         } else {
+            logger::log_debug!("Need to restart");
             connections.remove(&root_path);
         }
     }

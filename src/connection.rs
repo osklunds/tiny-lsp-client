@@ -392,7 +392,13 @@ impl Connection {
     }
 
     pub fn is_working(&mut self) -> bool {
-        self.server_process.try_wait().is_err()
+        let result =  self.server_process.try_wait();
+        logger::log_debug!("try_wait result {:?}", result);
+        if let Ok(None) = result {
+            true
+        } else {
+            false
+        }
     }
 }
 
