@@ -15,12 +15,13 @@ use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
 
 pub struct Connection {
-    server_process: Child,
+    server_process: Arc<Mutex<Child>>,
     command: String,
     root_path: String,
     sender: Sender<Message>,
@@ -44,10 +45,12 @@ impl Connection {
                 return None;
             }
         };
-
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
+
+        let child = Mutex::new(child);
+        let child = Arc::new(child);
 
         let (stdin_tx, stdin_rx) = mpsc::channel();
 
@@ -388,11 +391,11 @@ impl Connection {
     }
 
     pub fn get_server_process_id(&self) -> u32 {
-        self.server_process.id()
+        self.server_process.lock().unwrap().id()
     }
 
-    pub fn is_working(&mut self) -> bool {
-        let result =  self.server_process.try_wait();
+    pub fn is_working(&self) -> bool {
+        let result = self.server_process.lock().unwrap().try_wait();
         logger::log_debug!("try_wait result {:?}", result);
         if let Ok(None) = result {
             true
