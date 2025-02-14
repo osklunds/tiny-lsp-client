@@ -111,8 +111,16 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                          r
                        (user-error
                         "No server command found for major mode: %s"
-                        major-mode))))
-    (tlc--rust-start-server (tlc--root) server-cmd)))
+                        major-mode)))
+         (root (tlc--root))
+         (result (tlc--rust-start-server root server-cmd)))
+    (pcase result
+      ('started (message "Started '%s' in '%s'" server-cmd root))
+      ('already-started (message "Connected to already started server in '%s'" root))
+      ('start-failed (error "Failed to start '%s' in '%s'. Check log for details." server-cmd root))
+      (_ (error "bad result"))
+      )))
+    
 
 (defun tlc--kill-buffer-hook ()
   (when tlc-mode
@@ -307,7 +315,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           root))))
 
 (defun tlc--ask-start-server ()
-  (if (y-or-n-p "The LSP server crashed. Want to restart it?")
+  (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
     (error "No LSP server running")))
 
