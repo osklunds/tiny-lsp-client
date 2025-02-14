@@ -186,7 +186,7 @@ unsafe extern "C" fn tlc__rust_send_request(
     } else {
         panic!("Incorrect request type")
     };
-    let id = connection.send_request(request_type, request_params);
+    let id = connection.send_request(request_type, request_params).unwrap();
     make_integer(env, id as i64)
 }
 

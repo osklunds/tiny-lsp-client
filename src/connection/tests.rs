@@ -112,9 +112,9 @@ fn did_open_change_close_and_definition() {
                 line: 4,
             },
         }),
-    );
+    ).unwrap();
     assert_eq!(base_id, id);
-    let response = connection.recv_response();
+    let response = connection.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -139,9 +139,9 @@ fn did_open_change_close_and_definition() {
                 line: 4,
             },
         }),
-    );
+    ).unwrap();
     assert_eq!(base_id + 1, id);
-    let response = connection.recv_response();
+    let response = connection.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -225,9 +225,9 @@ fn did_open_change_close_and_definition() {
                 line: 4,
             },
         }),
-    );
+    ).unwrap();
     assert_eq!(base_id + 2, id);
-    let response = connection.recv_response();
+    let response = connection.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -265,10 +265,10 @@ fn receive_until_definition_response_with_one_location_1(
     let id = connection.send_request(
         "textDocument/definition".to_string(),
         RequestParams::DefinitionParams(request_params.clone()),
-    );
+    ).unwrap();
     assert_eq!(current_id, id);
     let next_id = current_id + 1;
-    let response = connection.recv_response();
+    let response = connection.recv_response().unwrap();
     if let Some(result) = &response.result {
         if let Result::TextDocumentDefinitionResult(result) = result {
             if let DefinitionResult::LocationLinkList(result) = result {

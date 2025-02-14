@@ -30,13 +30,20 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn new(command: &str, root_path: &str) -> io::Result<Connection> {
-        let mut child = Command::new(command)
+    pub fn new(command: &str, root_path: &str) -> Option<Connection> {
+        let mut child = match Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
-            .spawn()?;
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(e) => {
+                logger::log_debug!("start child failed: {:?}", e);
+                return None;
+            }
+        };
 
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
@@ -245,7 +252,7 @@ impl Connection {
             }
         });
 
-        Ok(Connection {
+        Some(Connection {
             server_process: child,
             command: command.to_string(),
             root_path: root_path.to_string(),
@@ -256,7 +263,7 @@ impl Connection {
         })
     }
 
-    pub fn initialize(&mut self) {
+    pub fn initialize(&mut self) -> Option<()> {
         let root_uri = format!("file://{}", self.root_path);
 
         let initialize_params = json!({
@@ -274,14 +281,16 @@ impl Connection {
         self.send_request(
             "initialize".to_string(),
             RequestParams::Untyped(initialize_params),
-        );
+        )?;
 
-        let _initialize_response = self.recv_response();
+        self.recv_response()?;
 
         self.send_notification(
             "initialized".to_string(),
             NotificationParams::Untyped(json!({})),
-        );
+        )?;
+
+        Some(())
     }
 
     // all these should return Option. If None, then lib should close server
@@ -290,30 +299,33 @@ impl Connection {
         &mut self,
         method: String,
         params: RequestParams,
-    ) -> u32 {
+    ) -> Option<u32> {
         let id = self.next_request_id;
         self.next_request_id += 1;
         let request = Request { id, method, params };
-        self.sender.send(Message::Request(request)).unwrap();
-        id
+        match self.sender.send(Message::Request(request)) {
+            Ok(()) => Some(id),
+            Err(_) => None,
+        }
     }
 
     pub fn send_notification(
         &self,
         method: String,
         params: NotificationParams,
-    ) {
+    ) -> Option<()> {
         let notification = Notification { method, params };
-        self.sender
-            .send(Message::Notification(notification))
-            .unwrap();
+        match self.sender.send(Message::Notification(notification)) {
+            Ok(()) => Some(()),
+            Err(_) => None,
+        }
     }
 
-    pub fn recv_response(&self) -> Response {
+    pub fn recv_response(&self) -> Option<Response> {
         if let Message::Response(response) = self.receiver.recv().unwrap() {
-            response
+            Some(response)
         } else {
-            panic!("hej")
+            None
         }
     }
 
