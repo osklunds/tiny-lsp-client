@@ -390,6 +390,10 @@ impl Connection {
     pub fn get_server_process_id(&self) -> u32 {
         self.server_process.id()
     }
+
+    pub fn is_working(&mut self) -> bool {
+        self.server_process.try_wait().is_err()
+    }
 }
 
 fn spawn_named_thread<F, T, N: AsRef<str>>(

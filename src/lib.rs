@@ -156,19 +156,22 @@ unsafe extern "C" fn tlc__rust_start_server(
 
     let mut connections = connections().lock().unwrap();
 
-    if connections.contains_key(&root_path) {
-        intern(env, "already-started")
-    } else {
-        match Connection::new(&server_cmd, &root_path) {
-            Some(mut connection) => match connection.initialize() {
-                Some(()) => {
-                    connections.insert(root_path.to_string(), connection);
-                    intern(env, "started")
-                }
-                None => intern(env, "start-failed"),
-            },
-            None => intern(env, "start-failed"),
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        if connection.is_working() {
+            return intern(env, "already-started");
+        } else {
+            connections.remove(&root_path);
         }
+    }
+    match Connection::new(&server_cmd, &root_path) {
+        Some(mut connection) => match connection.initialize() {
+            Some(()) => {
+                connections.insert(root_path.to_string(), connection);
+                intern(env, "started")
+            }
+            None => intern(env, "start-failed"),
+        },
+        None => intern(env, "start-failed"),
     }
 }
 

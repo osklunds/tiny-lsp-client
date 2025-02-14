@@ -208,7 +208,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 
 (defun tlc--sync-request (method arguments)
   (let ((request-id (tlc--rust-send-request (tlc--root) method arguments)))
-    (tlc--wait-for-response request-id)))
+    (if (integerp request-id)
+        (tlc--wait-for-response request-id)
+      (tlc--ask-start-server)
+      (tlc--sync-request method arguments))))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
@@ -302,6 +305,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
         (unless (string-match-p "fatal:" root)
           root))))
+
+(defun tlc--ask-start-server ()
+  (if (y-or-n-p "The LSP server crashed. Want to restart it?")
+      (tlc--start-server)
+    (error "No LSP server running")))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
