@@ -363,6 +363,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
             intern(env, "failed")
         }
     } else {
+        // todo: add with_connection that checks this for all
         intern(env, "no-server")
     }
 }
