@@ -110,6 +110,8 @@
           (recv-response))
       response)))
 
+(assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
+
 (assert-equal '(ok 1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
@@ -118,6 +120,11 @@
 ;;;;----------------------------------------------------------------------------
 
 (std-message "Sending didChange")
+
+(assert-equal 'no-server (tlc--rust-send-notification
+                          "/some/root/path/not/found"
+                          "textDocument/didChange"
+                          (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
 
 (assert-equal 'ok (tlc--rust-send-notification
                    root-path
