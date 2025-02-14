@@ -24,7 +24,7 @@ pub struct Connection {
     command: String,
     root_path: String,
     sender: Sender<Message>,
-    receiver: Receiver<Message>,
+    receiver: Receiver<Response>,
     next_request_id: u32,
     next_version_number: isize,
 }
@@ -58,7 +58,16 @@ impl Connection {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
-                stdin.write(full.as_bytes()).unwrap();
+                match stdin.write_all(full.as_bytes()) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        logger::log_debug!(
+                            "Error writing {} to stdin {:?}",
+                            full,
+                            e
+                        );
+                    }
+                }
                 logger::log_io!(
                     "Sent: {}",
                     serde_json::to_string_pretty(&msg).unwrap()
@@ -148,7 +157,17 @@ impl Connection {
                                 // Decode as serde_json::Value too, to be able
                                 // to print fields not deserialized into msg.
                                 let full_json: serde_json::Value =
-                                    serde_json::from_str(&json).unwrap();
+                                    match serde_json::from_str(&json) {
+                                        Ok(full_json) => full_json,
+                                        Err(e) => {
+                                            logger::log_debug!(
+                                                "Parse to full json failed: {:?} reason: {:?}",
+                                                json,
+                                                e
+                                            );
+                                            return;
+                                        }
+                                    };
                                 logger::log_io!(
                                     "Received: {}",
                                     serde_json::to_string_pretty(&full_json)
@@ -169,8 +188,8 @@ impl Connection {
 
                             // Only care about response so far, i.e. drop notifications
                             // about e.g. diagnostics
-                            if let Message::Response(_) = msg {
-                                if let Ok(()) = stdout_tx.send(msg) {
+                            if let Message::Response(response) = msg {
+                                if let Ok(()) = stdout_tx.send(response) {
                                 } else {
                                     return;
                                 }
@@ -242,7 +261,20 @@ impl Connection {
                 }
 
                 if buf.len() > 0 {
-                    logger::log_stderr!("{}", String::from_utf8(buf).unwrap());
+                    match String::from_utf8(buf.clone()) {
+                        Ok(string) => {
+                            logger::log_stderr!("{}", string);
+                        }
+                        Err(e) => {
+                            logger::log_stderr!("{:?}", buf);
+                            logger::log_debug!(
+                                "from_utf8 failed for stderr {:?} reason: {:?}",
+                                buf,
+                                e
+                            );
+                            return;
+                        }
+                    }
                 }
 
                 if disconnected {
@@ -322,7 +354,7 @@ impl Connection {
     }
 
     pub fn recv_response(&self) -> Option<Response> {
-        if let Message::Response(response) = self.receiver.recv().unwrap() {
+        if let Ok(response) = self.receiver.recv() {
             Some(response)
         } else {
             None
@@ -332,7 +364,7 @@ impl Connection {
     // todo: inner means result, outer means if error. Try to improve
     pub fn try_recv_response(&self) -> Option<Option<Response>> {
         let res = self.receiver.try_recv();
-        if let Ok(Message::Response(response)) = res {
+        if let Ok(response) = res {
             Some(Some(response))
         } else if let Err(TryRecvError::Empty) = res {
             Some(None)
