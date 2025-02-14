@@ -88,6 +88,7 @@ impl Connection {
                     break;
                 }
             }
+
             logger::log_debug!("send thread killing server");
             child_send_thread.lock().unwrap().kill();
         });
@@ -223,6 +224,14 @@ impl Connection {
                 }
             }
 
+            // todo: the intention was that if recv thread sees channel closed,
+            // it means we should kill the server, and then send thead closes
+            // automatically and detect before next request is sent. But
+            // of course, the send thread is still blocked on send channel
+            // so still too late. So maybe revert Arc<Mutex> and check is_working
+            // when calling request() etc. None or is_working() = false both have
+            // the same semantics, but None means it happened while handling
+            // something.
             logger::log_debug!("recv thread killing server");
             child_recv_thread.lock().unwrap().kill();
         });
