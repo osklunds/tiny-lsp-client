@@ -20,9 +20,9 @@ use std::fs;
 use std::mem::MaybeUninit;
 use std::os::raw;
 use std::path::Path;
+use std::sync::atomic::Ordering;
 use std::sync::Once;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::Ordering;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -159,10 +159,16 @@ unsafe extern "C" fn tlc__rust_start_server(
     if connections.contains_key(&root_path) {
         intern(env, "already-started")
     } else {
-        let mut connection = Connection::new(&server_cmd, &root_path).unwrap();
-        connection.initialize();
-        connections.insert(root_path.to_string(), connection);
-        intern(env, "started")
+        match Connection::new(&server_cmd, &root_path) {
+            Some(mut connection) => match connection.initialize() {
+                Some(()) => {
+                    connections.insert(root_path.to_string(), connection);
+                    intern(env, "started")
+                }
+                None => intern(env, "start-failed"),
+            },
+            None => intern(env, "start-failed"),
+        }
     }
 }
 
@@ -186,7 +192,9 @@ unsafe extern "C" fn tlc__rust_send_request(
     } else {
         panic!("Incorrect request type")
     };
-    let id = connection.send_request(request_type, request_params).unwrap();
+    let id = connection
+        .send_request(request_type, request_params)
+        .unwrap();
     make_integer(env, id as i64)
 }
 

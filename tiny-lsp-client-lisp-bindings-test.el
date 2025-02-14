@@ -40,6 +40,11 @@
 
 (std-message "After load")
 
+(tlc--rust-set-log-option 'tlc-log-file (file-truename
+                                         (file-name-concat
+                                          user-emacs-directory
+                                          "tiny-lsp-client-test.log")))
+
 (assert-equal nil (tlc--rust-all-server-info))
 
 ;;;; ---------------------------------------------------------------------------
