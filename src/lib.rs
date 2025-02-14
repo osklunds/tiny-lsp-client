@@ -397,12 +397,13 @@ unsafe fn handle_response(
             let id = make_integer(env, response.id as i64);
             call(env, "list", vec![intern(env, "ok"), id, lisp_location_list])
         } else {
-            intern(env, "error")
+            logger::log_debug!("Non-supported response received: {:?}", result);
+            intern(env, "error-response")
         }
     } else {
         // Now response.error should be Some, but since no details are
         // returned anyway, no need to unwrap and risk crash
-        intern(env, "error")
+        intern(env, "error-response")
     }
 }
 
