@@ -69,6 +69,7 @@ impl Connection {
                             full,
                             e
                         );
+                        return;
                     }
                 }
                 logger::log_io!(
