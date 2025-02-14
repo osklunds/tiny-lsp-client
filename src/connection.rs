@@ -58,6 +58,9 @@ impl Connection {
                 let json = serde_json::to_string(&msg).unwrap();
                 let full =
                     format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
+
+                // todo: stdin closed isn't noticed until try to send. See if
+                // that can be improved
                 match stdin.write_all(full.as_bytes()) {
                     Ok(()) => (),
                     Err(e) => {
