@@ -53,38 +53,48 @@ impl Connection {
         let child = Arc::new(child);
 
         let (stdin_tx, stdin_rx) = mpsc::channel();
+        let child_send_thread = Arc::clone(&child);
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        spawn_named_thread("send", move || loop {
-            if let Ok(msg) = stdin_rx.recv() {
-                let json = serde_json::to_string(&msg).unwrap();
-                let full =
-                    format!("Content-Length: {}\r\n\r\n{}", json.len(), &json);
+        spawn_named_thread("send", move || {
+            loop {
+                if let Ok(msg) = stdin_rx.recv() {
+                    let json = serde_json::to_string(&msg).unwrap();
+                    let full = format!(
+                        "Content-Length: {}\r\n\r\n{}",
+                        json.len(),
+                        &json
+                    );
 
-                // todo: stdin closed isn't noticed until try to send. See if
-                // that can be improved
-                match stdin.write_all(full.as_bytes()) {
-                    Ok(()) => (),
-                    Err(e) => {
-                        logger::log_debug!(
-                            "Error writing {} to stdin {:?}",
-                            full,
-                            e
-                        );
-                        return;
+                    // todo: stdin closed isn't noticed until try to send. See if
+                    // that can be improved
+                    match stdin.write_all(full.as_bytes()) {
+                        Ok(()) => (),
+                        Err(e) => {
+                            logger::log_debug!(
+                                "Error writing {} to stdin {:?}",
+                                full,
+                                e
+                            );
+                            break;
+                        }
                     }
+                    logger::log_io!(
+                        "Sent: {}",
+                        serde_json::to_string_pretty(&msg).unwrap()
+                    );
+                } else {
+                    break;
                 }
-                logger::log_io!(
-                    "Sent: {}",
-                    serde_json::to_string_pretty(&msg).unwrap()
-                );
-            } else {
-                return;
             }
+            logger::log_debug!("send thread killing server");
+            child_send_thread.lock().unwrap().kill();
         });
 
         let (stdout_tx, stdout_rx) = mpsc::channel();
+        let child_recv_thread = Arc::clone(&child);
+
         // Sender of messages to application
         // Receiving from stdout from lsp server
         spawn_named_thread("recv", move || {
@@ -108,7 +118,7 @@ impl Connection {
                                     "Incorrect number of parts after split: {}",
                                     num_parts
                                 );
-                                return;
+                                break;
                             }
 
                             let header_name = parts[0];
@@ -119,7 +129,7 @@ impl Connection {
                                     "Incorrect header name: {}",
                                     header_name
                                 );
-                                return;
+                                break;
                             }
                             let header_value = parts[1];
 
@@ -130,7 +140,7 @@ impl Connection {
                                         "Could not parse size: {:?}",
                                         e
                                     );
-                                    return;
+                                    break;
                                 }
                             };
 
@@ -145,7 +155,7 @@ impl Connection {
                                         "read_exact of json failed: {:?}",
                                         e
                                     );
-                                    return;
+                                    break;
                                 }
                             }
 
@@ -156,7 +166,7 @@ impl Connection {
                                         "from_utf8 failed: {:?}",
                                         e
                                     );
-                                    return;
+                                    break;
                                 }
                             };
 
@@ -172,7 +182,7 @@ impl Connection {
                                                 json,
                                                 e
                                             );
-                                            return;
+                                            break;
                                         }
                                     };
                                 logger::log_io!(
@@ -189,7 +199,7 @@ impl Connection {
                                         "serde_json::from_str failed: {:?}",
                                         e
                                     );
-                                    return;
+                                    break;
                                 }
                             };
 
@@ -198,24 +208,26 @@ impl Connection {
                             if let Message::Response(response) = msg {
                                 if let Ok(()) = stdout_tx.send(response) {
                                 } else {
-                                    return;
+                                    break;
                                 }
                             }
                         } else {
                             logger::log_debug!("stdio got EOF");
-                            return;
+                            break;
                         }
                     }
                     Err(e) => {
                         logger::log_debug!("stdio got error {:?}", e);
-                        return;
+                        break;
                     }
                 }
             }
-        });
-        // If any error in the thread, exit the thread gracefully, and then
-        // lib.rs will see that channel closed. Maybe this is the way?
 
+            logger::log_debug!("recv thread killing server");
+            child_recv_thread.lock().unwrap().kill();
+        });
+
+        let child_stderr_thread = Arc::clone(&child);
         spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
             spawn_named_thread("stderr_inner", move || loop {
@@ -226,12 +238,12 @@ impl Connection {
                             stderr_tx.send(buf[0..len].to_vec());
                         } else {
                             logger::log_debug!("stderr_inner got EOF");
-                            return;
+                            break;
                         }
                     }
                     Err(e) => {
                         logger::log_debug!("stderr_inner got error {:?}", e);
-                        return;
+                        break;
                     }
                 }
             });
@@ -279,16 +291,19 @@ impl Connection {
                                 buf,
                                 e
                             );
-                            return;
+                            break;
                         }
                     }
                 }
 
                 if disconnected {
                     logger::log_debug!("stderr_rx disconnected");
-                    return;
+                    break;
                 }
             }
+
+            logger::log_debug!("stderr thread killing server");
+            child_stderr_thread.lock().unwrap().kill();
         });
 
         Some(Connection {
@@ -402,6 +417,10 @@ impl Connection {
         } else {
             false
         }
+    }
+
+    pub fn stop_server(&self) {
+        self.server_process.lock().unwrap().kill();
     }
 }
 

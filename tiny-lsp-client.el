@@ -218,7 +218,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (let ((request-id (tlc--rust-send-request (tlc--root) method arguments)))
     (if (integerp request-id)
         (tlc--wait-for-response request-id)
-      (tlc--ask-start-server))))
+      (tlc--ask-start-server)
+      ;; if not error, then xref says incorrect type
+      (error "todo"))))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off

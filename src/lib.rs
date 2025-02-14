@@ -188,18 +188,24 @@ unsafe extern "C" fn tlc__rust_send_request(
     let mut connections = connections().lock().unwrap();
 
     if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        let request_type = extract_string(env, *args.offset(1));
-        let request_args = *args.offset(2);
+        if connection.is_working() {
+            let request_type = extract_string(env, *args.offset(1));
+            let request_args = *args.offset(2);
 
-        let request_params = if request_type == "textDocument/definition" {
-            build_text_document_definition(env, request_args, connection)
+            let request_params = if request_type == "textDocument/definition" {
+                build_text_document_definition(env, request_args, connection)
+            } else {
+                panic!("Incorrect request type")
+            };
+            if let Some(id) =
+                connection.send_request(request_type, request_params)
+            {
+                make_integer(env, id as i64)
+            } else {
+                intern(env, "failed")
+            }
         } else {
-            panic!("Incorrect request type")
-        };
-        if let Some(id) = connection.send_request(request_type, request_params)
-        {
-            make_integer(env, id as i64)
-        } else {
+            connection.stop_server();
             intern(env, "failed")
         }
     } else {
