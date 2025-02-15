@@ -27,4 +27,13 @@ fn millisecond_padding() {
             break;
         }
     }
+
+    let regex = Regex::new(r"\.[5-9]00$").unwrap();
+    loop {
+        let timestamp = get_timestamp();
+        if regex.is_match(&timestamp) {
+            println!("Timestamp: {}", timestamp);
+            break;
+        }
+    }
 }
