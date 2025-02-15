@@ -374,7 +374,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defun tlc--log (format-string &rest objects)
   (when tlc-log-emacs-debug
     (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
-  
+
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
