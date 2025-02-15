@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cargo build && RUST_BACKTRACE=1 emacs \
+cargo build --release && RUST_BACKTRACE=1 emacs \
     -Q \
     --batch \
     --eval '(load-file "tiny-lsp-client-lisp-bindings-test.el")'

@@ -15,7 +15,7 @@
 
 (defun tlc-reload ()
   (interactive)
-  (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/debug/libtiny_lsp_client.so"))
+  (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/release/libtiny_lsp_client.so"))
 
 (defun assert-equal (exp act)
   (unless (equal exp act)
@@ -31,6 +31,14 @@
   (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
     (shell-command (format "kill %s" i))))
 
+;; Before, there used to be a bug that if garbage-collect was done with
+;; --release emacs would crash. But now it seems to work, even though no
+;; non-test code change was needed as of this commit to make it work.
+(defun test-garbage-collect (mark)
+  (std-message "garbage-collect before (%s)" mark)
+  (std-message "%s" (garbage-collect))
+  (std-message "garbage-collect after (%s)" mark))
+
 ;; -----------------------------------------------------------------------------
 ;; Test
 ;;------------------------------------------------------------------------------
@@ -45,12 +53,16 @@
 
 (std-message "After load")
 
+(test-garbage-collect "after load")
+
 (tlc--rust-set-log-option 'tlc-log-file (file-truename
                                          (file-name-concat
                                           user-emacs-directory
                                           "tiny-lsp-client-test.log")))
 
 (assert-equal nil (tlc--rust-all-server-info))
+
+(test-garbage-collect "after some calls")
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Initialize
@@ -74,6 +86,8 @@
 (assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
 
 (std-message "Server started")
+
+(test-garbage-collect "after server started")
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didOpen
@@ -122,6 +136,8 @@
 
 (assert-equal '(ok-response 1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
+
+(test-garbage-collect "after textDocument/definition")
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didChange
@@ -210,6 +226,8 @@
 ;;;; Stopping the LSP server
 ;;;;----------------------------------------------------------------------------
 
+(std-message "killing server")
+
 (kill-server)
 
 ;; to avoid race condition
@@ -232,5 +250,7 @@
 ;;;; ---------------------------------------------------------------------------
 ;;;; End
 ;;;;----------------------------------------------------------------------------
+
+(test-garbage-collect "in the end")
 
 (std-message "done")
