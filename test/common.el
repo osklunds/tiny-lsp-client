@@ -1,4 +1,6 @@
 
+(require 'cl-lib)
+
 (defun assert-equal (exp act)
   (unless (equal exp act)
     (std-message "Exp %s" exp)
