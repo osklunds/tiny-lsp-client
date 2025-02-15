@@ -1,5 +1,3 @@
-include!(concat!(env!("OUT_DIR"), "/time_h_bindings.rs"));
-
 #[cfg(test)]
 mod tests;
 
@@ -170,11 +168,15 @@ fn rotate_to_old_file(log_file_name: &str) {
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
     unsafe {
-        let timer: time_t = time(ptr::null_mut());
-        let tm_info: *mut tm = localtime(&timer as *const time_t);
-
+        let mut tv: libc::timeval = libc::timeval {
+            tv_sec: 0,
+            tv_usec: 0
+        };
+            
+        libc::gettimeofday(&mut tv as *mut libc::timeval, ptr::null_mut());
+        let tm_info: *mut libc::tm = libc::localtime(&tv.tv_sec as *const libc::time_t);
         let format = CString::new("%Y-%m-%d %H:%M:%S").unwrap();
-        strftime(buffer.as_mut_ptr() as *mut i8, 26, format.as_ptr(), tm_info);
+        libc::strftime(buffer.as_mut_ptr() as *mut i8, 26, format.as_ptr(), tm_info);
     }
 
     // todo: instead of trim_matches, maybe iter and index is faster
