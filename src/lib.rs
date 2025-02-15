@@ -356,43 +356,6 @@ unsafe extern "C" fn tlc__rust_recv_response(
     })
 }
 
-unsafe fn handle_call<
-    F: FnOnce(
-        *mut emacs_env,
-        Vec<emacs_value>,
-        &mut Connection,
-    ) -> Option<emacs_value>,
->(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    f: F,
-) -> emacs_value {
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-
-    let root_path = check_path(extract_string(env, args_vec[0]));
-    let mut connections = connections().lock().unwrap();
-
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        if connection.is_working() {
-            if let Some(result) = f(env, args_vec, connection) {
-                result
-            } else {
-                // This means it failed during handling this call
-                connections.remove(&root_path);
-                intern(env, "no-server")
-            }
-        } else {
-            // This means the server wasn't working before this call
-            connections.remove(&root_path);
-            intern(env, "no-server")
-        }
-    } else {
-        // This means the server wasn't existing before this call
-        intern(env, "no-server")
-    }
-}
-
 unsafe fn handle_response(
     env: *mut emacs_env,
     response: Response,
@@ -535,6 +498,43 @@ unsafe fn log_args<S: AsRef<str>>(
         let formatted = call(env, "format", vec![format_string, list]);
         let formatted = extract_string(env, formatted);
         logger::log_debug!("{}", formatted);
+    }
+}
+
+unsafe fn handle_call<
+    F: FnOnce(
+        *mut emacs_env,
+        Vec<emacs_value>,
+        &mut Connection,
+    ) -> Option<emacs_value>,
+>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    f: F,
+) -> emacs_value {
+    let args_vec = args_pointer_to_args_vec(nargs, args);
+
+    let root_path = check_path(extract_string(env, args_vec[0]));
+    let mut connections = connections().lock().unwrap();
+
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        if connection.is_working() {
+            if let Some(result) = f(env, args_vec, connection) {
+                result
+            } else {
+                // This means it failed during handling this call
+                connections.remove(&root_path);
+                intern(env, "no-server")
+            }
+        } else {
+            // This means the server wasn't working before this call
+            connections.remove(&root_path);
+            intern(env, "no-server")
+        }
+    } else {
+        // This means the server wasn't existing before this call
+        intern(env, "no-server")
     }
 }
 
