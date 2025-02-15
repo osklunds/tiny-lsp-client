@@ -11,8 +11,6 @@ use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
-// todo: remove this dependency
-use chrono::Local;
 use std::ffi::CString;
 
 // todo: consider some rust-level automated tests for this module. At least
@@ -116,7 +114,7 @@ pub fn log_rust_debug_enabled() -> bool {
 }
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    let timestamp = get_timestamp();
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
