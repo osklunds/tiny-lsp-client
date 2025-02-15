@@ -118,6 +118,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                         major-mode)))
          (root (tlc--root))
          (result (tlc--rust-start-server root server-cmd)))
+    (tlc--log "Start server result: %s" result)
     (pcase result
       ('started (message "Started '%s' in '%s'" server-cmd root))
       ('already-started (message "Connected to already started server in '%s'" root))
@@ -128,13 +129,18 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     ))
 
 (defun tlc--kill-buffer-hook ()
+  (tlc--log "tlc--kill-buffer-hook called. tlc-mode: %s" tlc-mode)
   (when tlc-mode
     (tlc--notify-text-document-did-close)))
 
 (defun tlc--before-revert-hook ()
+  (tlc--log "tlc--before-revert-hook called. tlc-mode: %s" tlc-mode)
   (tlc--notify-text-document-did-close))
 
 (defun tlc--after-revert-hook ()
+  (tlc--log "tlc--after-revert-hook called. tlc-mode: %s. revert-buffer-preserve-modes: %s"
+            tlc-mode
+            revert-buffer-preserve-modes)
   ;; If revert-buffer-preserve-modes is nil (default), it means that tlc-mode is
   ;; run and didOpen is called from there, and it would result in duplicate
   ;; didOpen calls. See
@@ -170,6 +176,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    (list (tlc--buffer-file-name))))
 
 (defun tlc--change-major-mode-hook ()
+  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s" tlc-mode)
   (tlc-mode -1))
 
 ;; -----------------------------------------------------------------------------
@@ -179,7 +186,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defvar-local tlc--change nil)
 
 (defun tlc--before-change-hook (beg end)
-  (tlc--log "tlc--before-change-hook called %s %s" beg end)
+  (tlc--log "tlc--before-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+            beg
+            end
+            revert-buffer-in-progress-p
+            tlc--change)
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
       ;; one idea could be send full document since these cases should hopefully
@@ -201,6 +212,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (list line character)))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
+  (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+            beg
+            end
+            revert-buffer-in-progress-p
+            tlc--change)
   (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
