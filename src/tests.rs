@@ -3,11 +3,17 @@ use std::path::Component;
 
 #[test]
 fn hej() {
-    build();
+    build(false);
+    build(true);
 }
 
-fn build() {
-    let mut build = Command::new("cargo").args(vec!["build"]).spawn().unwrap();
+fn build(release: bool) {
+    let mut args = vec!["build"];
+    if release {
+        args.push("--release");
+    }
+
+    let mut build = Command::new("cargo").args(args).spawn().unwrap();
     assert!(build.wait().unwrap().success());
 }
 
