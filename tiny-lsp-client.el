@@ -85,7 +85,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (cond
      (tlc-mode
       (tlc--start-server)
-      (tlc--notify-text-document-did-open)
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
@@ -119,8 +118,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       ('already-started (message "Connected to already started server in '%s'" root))
       ('start-failed (error "Failed to start '%s' in '%s'. Check log for details." server-cmd root))
       (_ (error "bad result"))
-      )))
-    
+      )
+    (tlc--notify-text-document-did-open)
+    ))
 
 (defun tlc--kill-buffer-hook ()
   (when tlc-mode
@@ -142,14 +142,25 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
     (save-buffer))
-  (tlc--rust-send-notification
-   (tlc--root)
-   "textDocument/didOpen"
-   (list (tlc--buffer-file-name))))
+  (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
+
+(defun tlc--send-notification (method params)
+  (let ((result (tlc--rust-send-notification
+                 (tlc--root)
+                 method
+                 params)))
+    (pcase result
+        ;; normal case - could send the notifcation
+        ('ok nil)
+
+      ;; alternative but valid case - server crashed or not started
+      ('no-server (tlc--ask-start-server))
+
+      ;; bug case - some other return
+      (_ (error "bad return")))))
 
 (defun tlc--notify-text-document-did-close ()
-  (tlc--rust-send-notification
-   (tlc--root)
+  (tlc--send-notification
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
@@ -203,8 +214,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                                              end-line
                                              end-character
                                              text)
-  (tlc--rust-send-notification
-   (tlc--root)
+  (tlc--send-notification
    "textDocument/didChange"
    (list (tlc--buffer-file-name)
          `((,start-line ,start-character ,end-line ,end-character ,text))
@@ -250,8 +260,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                                 "It might be a temporary issue."
                                 "But if it keeps happening, you can check the IO logs")))
 
+      ;; alternative but valid case - server crashed/stopped while waiting
+      ;; for response. After server maybe restarted, exit.
+      ('no-server (progn
+                    (tlc--ask-start-server)
+                    (error "")))
+
       ;; bug case - some other response
-      (_ (error "bad response"))
+      (_ (error "bad return"))
       )))
 
 ;; -----------------------------------------------------------------------------
