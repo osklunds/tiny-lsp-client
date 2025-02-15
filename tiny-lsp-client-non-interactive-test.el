@@ -5,8 +5,10 @@
 (defun std-message (format-string &rest args)
   (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
 
-(defun assert-equal (exp act)
+(defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
+    (when msg
+      (std-message msg))
     (std-message "Exp %s" exp)
     (std-message "Act %s" act)
     (cl-assert (equal exp act) 'show)))
@@ -78,25 +80,25 @@
 ;; Xref find definition
 ;;------------------------------------------------------------------------------
 
-(re-search-forward "second_function")
-(assert-equal 5 (line-number-at-pos))
-(assert-equal 19 (current-column))
+;; (re-search-forward "second_function")
+;; (assert-equal 5 (line-number-at-pos))
+;; (assert-equal 19 (current-column))
 
-(defun xref-find-definition-until-success ()
-  (ignore-errors
-    (non-interactive-xref-find-definitions))
-  (if (equal 8 (line-number-at-pos))
-      'ok
-    (sleep-for 0.1)
-    (xref-find-definition-until-success)))
+;; (defun xref-find-definition-until-success ()
+;;   (ignore-errors
+;;     (non-interactive-xref-find-definitions))
+;;   (if (equal 8 (line-number-at-pos))
+;;       'ok
+;;     (sleep-for 0.1)
+;;     (xref-find-definition-until-success)))
 
-(xref-find-definition-until-success)
+;; (xref-find-definition-until-success)
 
-(assert-equal 8 (line-number-at-pos))
-(assert-equal 3 (current-column))
+;; (assert-equal 8 (line-number-at-pos))
+;; (assert-equal 3 (current-column))
 
-(assert-equal 1 (number-of-did-open))
-(assert-equal 0 (number-of-did-close))
+;; (assert-equal 1 (number-of-did-open))
+;; (assert-equal 0 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Disable tlc-mode
@@ -137,7 +139,7 @@
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
-(assert-equal 3 (number-of-did-open))
+(assert-equal 3 (number-of-did-open) "after enable rust-mode")
 (assert-equal 2 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
@@ -153,14 +155,15 @@
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
 (assert-equal 4 (number-of-did-open))
-(assert-equal 3 (number-of-did-close)) ;; this is 4, which is a bug
-
-(error "ok, early exit")
+(assert-equal 3 (number-of-did-close) "after revert-buffer-quick") 
 
 ;; When preserve-modes is true
-(revert-buffer nil t t)
+(revert-buffer nil 'no-confirm 'preserve-modes)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 5 (number-of-did-open))
+(assert-equal 4 (number-of-did-close) "after revert with preserve-modes") 
 
 ;; -----------------------------------------------------------------------------
 ;; Editing

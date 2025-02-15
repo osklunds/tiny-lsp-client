@@ -182,9 +182,13 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
+;; todo: is this even good? Do other minor/major behave like this?
 (defun tlc--change-major-mode-hook ()
-  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s" tlc-mode)
-  (tlc-mode -1))
+  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s. Revert in progress: %s"
+            tlc-mode
+            revert-buffer-in-progress-p)
+  (unless revert-buffer-in-progress-p
+    (tlc-mode -1)))
 
 ;; -----------------------------------------------------------------------------
 ;; didChange
