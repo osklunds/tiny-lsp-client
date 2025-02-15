@@ -1,6 +1,5 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use crate::logger::log_debug;
 use std::ffi::CString;
 use std::ptr;
 

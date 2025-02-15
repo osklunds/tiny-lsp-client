@@ -38,7 +38,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
 
-(defcustom tlc-log-debug nil
+(defcustom tlc-log-rust-debug nil
   "Whether debug logging (in Rust code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
