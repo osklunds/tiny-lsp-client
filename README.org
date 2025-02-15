@@ -11,7 +11,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - timing
   - server info list with buffers
   - Don't use Chrono, call C for timestamp
-  - test organization (one lisp file, call from rust instead of sh)
   - in general, compare against lsp-mode's didChange
     - After rename, there are diffs and STDERR
   - max log file size
