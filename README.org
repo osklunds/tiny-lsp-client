@@ -13,7 +13,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - handle errors and alternative results
   - server info list with buffers
   - Fix duplicate didClose on revert
-  - vdiff fix
   - Don't use Chrono, call C for timestamp
   - test organization (one lisp file, call from rust instead of sh)
   - check stderr in tests
