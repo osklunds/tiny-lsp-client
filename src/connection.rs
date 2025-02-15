@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{json, Number, Value};
 use std::io;
+use std::io::ErrorKind;
 use std::io::Read;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -250,11 +251,18 @@ impl Connection {
                         }
                     }
                     Err(e) => {
-                        logger::log_rust_debug!(
-                            "stderr_inner got error {:?}",
-                            e
-                        );
-                        break;
+                        if e.kind() == ErrorKind::Interrupted {
+                            // Continue to loop
+                            logger::log_rust_debug!(
+                                "stderr_inner got Interrupted"
+                            );
+                        } else {
+                            logger::log_rust_debug!(
+                                "stderr_inner got error {:?}",
+                                e
+                            );
+                            break;
+                        }
                     }
                 }
             });
