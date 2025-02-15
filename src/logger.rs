@@ -30,6 +30,13 @@ macro_rules! log_debug {
 }
 pub(crate) use log_debug;
 
+macro_rules! log_emacs_debug {
+    ($($arg:tt)*) => {
+        crate::logger::log_emacs_debug_fun(format!($($arg)*));
+    }
+}
+pub(crate) use log_emacs_debug;
+
 pub static LOG_IO: AtomicBool = AtomicBool::new(true);
 pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_DEBUG: AtomicBool = AtomicBool::new(true);
@@ -68,7 +75,7 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
     if LOG_IO.load(Ordering::Relaxed) {
-        log("IO    ", msg);
+        log("IO", msg);
     }
 }
 
@@ -80,7 +87,13 @@ pub fn log_stderr_fun<S: AsRef<str>>(msg: S) {
 
 pub fn log_debug_fun<S: AsRef<str>>(msg: S) {
     if LOG_DEBUG.load(Ordering::Relaxed) {
-        log("DEBUG ", msg);
+        log("DEBUG", msg);
+    }
+}
+
+pub fn log_emacs_debug_fun<S: AsRef<str>>(msg: S) {
+    if LOG_DEBUG.load(Ordering::Relaxed) {
+        log("EMACS_DEBUG", msg);
     }
 }
 

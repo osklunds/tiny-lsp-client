@@ -113,6 +113,15 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-set-log-option",
     );
 
+    export_function(
+        env,
+        1,
+        1,
+        tlc__rust_log_emacs_debug,
+        "doc todo",
+        "tlc--rust-log-emacs-debug",
+    );
+
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
     0
@@ -459,6 +468,19 @@ unsafe extern "C" fn tlc__rust_set_log_option(
             panic!("Incorrect log symbol")
         };
     }
+
+    intern(env, "nil")
+}
+
+unsafe extern "C" fn tlc__rust_log_emacs_debug(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    let msg = *args.offset(0);
+    let msg = extract_string(env, msg);
+    logger::log_emacs_debug!("{}", msg);
 
     intern(env, "nil")
 }

@@ -20,6 +20,7 @@
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-debug t)
+(customize-set-variable 'tlc-log-emacs-debug t)
 (customize-set-variable 'tlc-log-to-stdio t)
 
 (add-hook 'rust-mode-hook 'tlc-mode)

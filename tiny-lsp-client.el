@@ -46,6 +46,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
 
+(defcustom tlc-log-emacs-debug nil
+  "Whether debug logging (in Emacs lisp code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
+  :group 'tiny-lsp-client
+  :type 'boolean)
+
 (defcustom tlc-log-to-stdio nil
   "In addition to logging to files, if logging should also happen to standard output. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
@@ -174,6 +179,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defvar-local tlc--change nil)
 
 (defun tlc--before-change-hook (beg end)
+  (tlc--log "tlc--before-change-hook called %s %s" beg end)
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
       (error "tlc--change is not-nil in before-change")
@@ -335,6 +341,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
     (error "No LSP server running")))
+
+(defun tlc--log (format-string &rest objects)
+  (when tlc-log-emacs-debug
+    (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
+  
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
