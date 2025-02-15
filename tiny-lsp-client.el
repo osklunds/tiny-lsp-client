@@ -156,13 +156,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
 
 (defun tlc--send-notification (method params)
-  (let ((result (tlc--rust-send-notification
+  (let ((return (tlc--rust-send-notification
                  (tlc--root)
                  method
                  params)))
-    (pcase result
-        ;; normal case - could send the notifcation
-        ('ok nil)
+    (tlc--log "Send notification return: %s" return)
+    (pcase return
+      ;; normal case - could send the notifcation
+      ('ok nil)
 
       ;; alternative but valid case - server crashed or not started
       ('no-server (tlc--ask-start-server))
@@ -249,19 +250,29 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--rust-send-request (tlc--root) method arguments)))
-    (if (integerp request-id)
-        (tlc--wait-for-response request-id)
-      (tlc--ask-start-server)
-      ;; if not error, then xref says incorrect type
-      (error ""))))
+  (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
+    (tlc--log "Send request return: %s" return)
+    (cond
+     ;; normal case - request sent and request-id returned
+     ((integerp return) (tlc--wait-for-response return))
+
+     ;; alternative but valid case - server crashed or not started
+     ((equal 'no-server return) (progn
+                                  (tlc--ask-start-server)
+                                  ;; if not error, then xref says incorrect type
+                                  (error "")))
+
+     ;; bug case - bad return
+     (t (error "bad return")))))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
   (sleep-for 0.01)
-  (let ((response (tlc--rust-recv-response (tlc--root))))
-    (pcase response
+  (let ((return (tlc--rust-recv-response (tlc--root))))
+    (tlc--log "tlc--rust-recv-response return: %s" return)
+    (pcase return
       ;; normal case - response has arrived
+      ;; todo: change ok to ok-response
       (`(ok ,id ,params)
        (cond
         ;; alternative but valid case - response to old request
@@ -290,7 +301,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                     (tlc--ask-start-server)
                     (error "")))
 
-      ;; bug case - some other response
+      ;; bug case - bad return
       (_ (error "bad return"))
       )))
 
