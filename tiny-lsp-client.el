@@ -153,7 +153,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             (buffer-modified-p)
             revert-buffer-in-progress-p
             )
-  ;; todo: Why not revert? Related to vdiff
+  ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
+  ;; it lead to that those changes were overwritten.
   (when (and (buffer-modified-p) (not revert-buffer-in-progress-p))
     ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
@@ -182,9 +183,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
+;; todo: lsp-mode becomes disabled if rust-mode becomes disabled, but something
+;; like this wasn't needed. Why? Eglot has it too though, but doesn't check
+;; revert-buffer-in-progress-p
 (defun tlc--change-major-mode-hook ()
-  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s" tlc-mode)
-  (tlc-mode -1))
+  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s. Revert in progress: %s"
+            tlc-mode
+            revert-buffer-in-progress-p)
+  (unless revert-buffer-in-progress-p
+    (tlc-mode -1)))
 
 ;; -----------------------------------------------------------------------------
 ;; didChange

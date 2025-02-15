@@ -5,8 +5,10 @@
 (defun std-message (format-string &rest args)
   (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
 
-(defun assert-equal (exp act)
+(defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
+    (when msg
+      (std-message msg))
     (std-message "Exp %s" exp)
     (std-message "Act %s" act)
     (cl-assert (equal exp act) 'show)))
@@ -14,6 +16,26 @@
 (defun non-interactive-xref-find-definitions ()
   (let ((xref-prompt-for-identifier nil))
     (call-interactively 'xref-find-definitions)))
+
+(setq log-file-name (file-truename
+                     (file-name-concat
+                      user-emacs-directory
+                      "tiny-lsp-client-test.log")))
+
+;; Since this should always be 0, it's hard to know if it's working
+;; properly
+(defun number-of-STDERR ()
+  (count-in-log-file "STDERR"))
+
+(defun number-of-did-open ()
+  (count-in-log-file "\"method\": \"textDocument/didOpen\","))
+
+(defun number-of-did-close ()
+  (count-in-log-file "\"method\": \"textDocument/didClose\","))
+
+(defun count-in-log-file (pattern)
+  (string-to-number (shell-command-to-string
+   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
 
 ;; -----------------------------------------------------------------------------
 ;; Preparation
@@ -32,10 +54,7 @@
 
 (require 'tiny-lsp-client)
 
-(customize-set-variable 'tlc-log-file (file-truename
-                                       (file-name-concat
-                                        user-emacs-directory
-                                        "tiny-lsp-client-test.log")))
+(customize-set-variable 'tlc-log-file log-file-name)
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
@@ -44,15 +63,23 @@
 
 (add-hook 'rust-mode-hook 'tlc-mode)
 
+(delete-file log-file-name)
+
 ;; -----------------------------------------------------------------------------
 ;; Opening a file
 ;;------------------------------------------------------------------------------
+
+(assert-equal 0 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
 
 (find-file "src/dummy.rs")
 
 (assert-equal 'rust-mode major-mode)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Xref find definition
@@ -75,6 +102,9 @@
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Disable tlc-mode
 ;;------------------------------------------------------------------------------
@@ -83,6 +113,9 @@
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
 
+(assert-equal 1 (number-of-did-open))
+(assert-equal 1 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Enable tlc-mode again
 ;;------------------------------------------------------------------------------
@@ -90,6 +123,9 @@
 (tlc-mode t)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 2 (number-of-did-open))
+(assert-equal 1 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Toggle tlc-mode by changing major mode
@@ -100,10 +136,16 @@
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
 
+(assert-equal 2 (number-of-did-open))
+(assert-equal 2 (number-of-did-close))
+
 (rust-mode)
 (assert-equal 'rust-mode major-mode)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 3 (number-of-did-open) "after enable rust-mode")
+(assert-equal 2 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Revert buffer
@@ -117,10 +159,16 @@
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
+(assert-equal 4 (number-of-did-open))
+(assert-equal 3 (number-of-did-close) "after revert-buffer-quick") 
+
 ;; When preserve-modes is true
-(revert-buffer nil t t)
+(revert-buffer nil 'no-confirm 'preserve-modes)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 5 (number-of-did-open))
+(assert-equal 4 (number-of-did-close) "after revert with preserve-modes") 
 
 ;; -----------------------------------------------------------------------------
 ;; Editing
@@ -282,8 +330,16 @@ fn second_funct() {
 (assert-equal 12 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+(assert-equal 5 (number-of-did-open))
+(assert-equal 4 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
 
 (kill-buffer)
+
+(assert-equal 5 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
+
+(assert-equal 0 (number-of-STDERR))
