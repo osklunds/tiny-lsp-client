@@ -23,6 +23,9 @@
 (defun number-of-did-open ()
   (count-in-log-file "\"method\": \"textDocument/didOpen\","))
 
+(defun number-of-did-close ()
+  (count-in-log-file "\"method\": \"textDocument/didClose\","))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
    (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
@@ -60,6 +63,7 @@
 ;;------------------------------------------------------------------------------
 
 (assert-equal 0 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
 
 (find-file "src/dummy.rs")
 
@@ -68,8 +72,7 @@
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
 (assert-equal 1 (number-of-did-open))
-
-(error "exit")
+(assert-equal 0 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Xref find definition
@@ -92,6 +95,9 @@
 (assert-equal 8 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Disable tlc-mode
 ;;------------------------------------------------------------------------------
@@ -100,6 +106,9 @@
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
 
+(assert-equal 1 (number-of-did-open))
+(assert-equal 1 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Enable tlc-mode again
 ;;------------------------------------------------------------------------------
@@ -107,6 +116,9 @@
 (tlc-mode t)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 2 (number-of-did-open))
+(assert-equal 1 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Toggle tlc-mode by changing major mode
@@ -117,10 +129,16 @@
 (assert-equal nil tlc-mode)
 (assert-equal '(etags--xref-backend) xref-backend-functions)
 
+(assert-equal 2 (number-of-did-open))
+(assert-equal 2 (number-of-did-close))
+
 (rust-mode)
 (assert-equal 'rust-mode major-mode)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 3 (number-of-did-open))
+(assert-equal 2 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Revert buffer
@@ -133,6 +151,11 @@
 (revert-buffer-quick)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 4 (number-of-did-open))
+(assert-equal 3 (number-of-did-close)) ;; this is 4, which is a bug
+
+(error "ok, early exit")
 
 ;; When preserve-modes is true
 (revert-buffer nil t t)
