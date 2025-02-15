@@ -152,6 +152,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (when (buffer-modified-p)
     ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
+    (tlc--log "saving buffer")
     (save-buffer))
   (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
 
