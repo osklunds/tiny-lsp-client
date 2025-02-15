@@ -85,25 +85,25 @@
 ;; Xref find definition
 ;;------------------------------------------------------------------------------
 
-;; (re-search-forward "second_function")
-;; (assert-equal 5 (line-number-at-pos))
-;; (assert-equal 19 (current-column))
+(re-search-forward "second_function")
+(assert-equal 5 (line-number-at-pos))
+(assert-equal 19 (current-column))
 
-;; (defun xref-find-definition-until-success ()
-;;   (ignore-errors
-;;     (non-interactive-xref-find-definitions))
-;;   (if (equal 8 (line-number-at-pos))
-;;       'ok
-;;     (sleep-for 0.1)
-;;     (xref-find-definition-until-success)))
+(defun xref-find-definition-until-success ()
+  (ignore-errors
+    (non-interactive-xref-find-definitions))
+  (if (equal 8 (line-number-at-pos))
+      'ok
+    (sleep-for 0.1)
+    (xref-find-definition-until-success)))
 
-;; (xref-find-definition-until-success)
+(xref-find-definition-until-success)
 
-;; (assert-equal 8 (line-number-at-pos))
-;; (assert-equal 3 (current-column))
+(assert-equal 8 (line-number-at-pos))
+(assert-equal 3 (current-column))
 
-;; (assert-equal 1 (number-of-did-open))
-;; (assert-equal 0 (number-of-did-close))
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
 ;; Disable tlc-mode
@@ -330,10 +330,16 @@ fn second_funct() {
 (assert-equal 12 (line-number-at-pos))
 (assert-equal 3 (current-column))
 
+(assert-equal 5 (number-of-did-open))
+(assert-equal 4 (number-of-did-close))
+
 ;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
 
 (kill-buffer)
+
+(assert-equal 5 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
 
 (assert-equal 0 (number-of-STDERR))
