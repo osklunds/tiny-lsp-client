@@ -1,8 +1,10 @@
 
 (require 'cl-lib)
 
-(defun assert-equal (exp act)
+(defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
+    (when msg
+      (std-message msg))
     (std-message "Exp %s" exp)
     (std-message "Act %s" act)
     (cl-assert (equal exp act) 'show)))

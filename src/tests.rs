@@ -3,10 +3,16 @@ use std::process::Command;
 
 #[test]
 fn lisp_bindings() {
-    build(false);
     build(true);
 
     run_lisp_file("test/lisp-bindings-test.el");
+}
+
+#[test]
+fn mode_test() {
+    build(false);
+
+    run_lisp_file("test/mode-test.el");
 }
 
 fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S) {
