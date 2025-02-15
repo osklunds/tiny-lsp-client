@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
+use std::ops::Drop;
 
 pub struct Connection {
     server_process: Arc<Mutex<Child>>,
@@ -428,6 +429,12 @@ impl Connection {
 
     pub fn stop_server(&self) {
         self.server_process.lock().unwrap().kill();
+    }
+}
+
+impl Drop for Connection {
+    fn drop(&mut self) {
+        self.stop_server();
     }
 }
 
