@@ -163,6 +163,9 @@ fn rotate_to_old_file(log_file_name: &str) {
     fs::write(log_file_name, "").unwrap();
 }
 
+// Nothing against Chrono at all, but for this project I wanted to avoid non
+// rust-lang dependencies except serde. But it seems e.g. rust-bindgen has non
+// rust-lang dependencies anyway... Oh well :)
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
     let mut ms;
