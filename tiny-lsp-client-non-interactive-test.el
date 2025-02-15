@@ -22,6 +22,11 @@
                       user-emacs-directory
                       "tiny-lsp-client-test.log")))
 
+;; Since this should always be 0, it's hard to know if it's working
+;; properly
+(defun number-of-STDERR ()
+  (count-in-log-file "STDERR"))
+
 (defun number-of-did-open ()
   (count-in-log-file "\"method\": \"textDocument/didOpen\","))
 
@@ -330,3 +335,5 @@ fn second_funct() {
 ;;------------------------------------------------------------------------------
 
 (kill-buffer)
+
+(assert-equal 0 (number-of-STDERR))
