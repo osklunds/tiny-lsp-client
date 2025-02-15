@@ -9,6 +9,11 @@ use std::sync::Mutex;
 // todo: remove this dependency
 use chrono::Local;
 
+// todo: consider some rust-level automated tests for this module. At least
+// mode-test covers it partially. There are some subtle aspects, such as
+// no write to file until user has been able to change path, that would
+// be good to test
+
 macro_rules! log_io {
     ($($arg:tt)*) => {
         crate::logger::log_io_fun(format!($($arg)*));
@@ -42,6 +47,9 @@ pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
+
+const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
+const MAX_LOG_ENTRY_LEN_BYTES: usize = 2000;
 
 struct LogFileInfo {
     log_file_name: String,
@@ -103,34 +111,50 @@ pub fn log_rust_debug_enabled() -> bool {
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-    // todo: include root path
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
+    let truncated = if formatted.len() > MAX_LOG_ENTRY_LEN_BYTES {
+        format!("{}...TRUNCATED\n", &formatted[0..MAX_LOG_ENTRY_LEN_BYTES])
+    } else {
+        formatted
+    };
+
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
-    if let Some(mut log_file) = log_file_info.file.as_mut() {
-        write!(log_file, "{}", formatted);
-    } else {
+
+    // No file because nothing has been logged yet or because nothing
+    // has been logged since last time it was changed
+    if log_file_info.file.is_none() {
         let new_log_file_name = &log_file_info.log_file_name;
 
-        // Can fail if new_log_file_name doesn't exist
-        if let Ok(old_content) = fs::read_to_string(new_log_file_name) {
-            fs::write(format!("{}.old", new_log_file_name), old_content)
-                .unwrap();
-        }
+        rotate_to_old_file(new_log_file_name);
 
-        fs::write(new_log_file_name, "").unwrap();
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(new_log_file_name)
             .unwrap();
-        write!(file, "{}", formatted);
         log_file_info.file = Some(file);
+    };
+
+    let mut log_file = log_file_info.file.as_mut().unwrap();
+    write!(log_file, "{}", truncated);
+
+    if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
+        rotate_to_old_file(&log_file_info.log_file_name);
     }
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
-        print!("{}", formatted);
+        print!("{}", truncated);
     }
+}
+
+fn rotate_to_old_file(log_file_name: &str) {
+    // Can fail if new_log_file_name doesn't exist. So don't unwrap
+    // and only write existing content if the new file already has content
+    if let Ok(existing_content) = fs::read_to_string(log_file_name) {
+        fs::write(format!("{}.old", log_file_name), existing_content).unwrap();
+    }
+    fs::write(log_file_name, "").unwrap();
 }
