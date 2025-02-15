@@ -14,6 +14,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - in general, compare against lsp-mode's didChange
     - After rename, there are diffs and STDERR
   - max log file size
+    - and truncate long entries (think 100K long files and didOpen)
+  - enable and fix warnings
 - phase 2: erlang
 - phase 3: completions
 - phase 4: make public
