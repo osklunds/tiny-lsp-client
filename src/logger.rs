@@ -167,6 +167,7 @@ fn rotate_to_old_file(log_file_name: &str) {
 
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
+    let mut ms;
     unsafe {
         let mut tv: libc::timeval = libc::timeval {
             tv_sec: 0,
@@ -183,10 +184,11 @@ fn get_timestamp() -> String {
             format.as_ptr(),
             tm_info,
         );
+        ms = tv.tv_usec as f32 / 1000.0;
     }
 
     // todo: instead of trim_matches, maybe iter and index is faster
     let utf8 = str::from_utf8(&buffer[0..26]).unwrap();
     let trimmed = utf8.trim_matches('\0');
-    trimmed.to_string()
+    format!("{}.{:03.0}", trimmed, ms)
 }
