@@ -115,12 +115,10 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
 
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
-    if let Some(mut log_file) = log_file_info.file.as_mut() {
-        write!(log_file, "{}", formatted);
-        if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
-            rotate_to_old_file(&log_file_info.log_file_name);
-        }
-    } else {
+
+    // No file because nothing has been logged yet or because nothing
+    // has been logged since last time it was changed
+    if log_file_info.file.is_none() {
         let new_log_file_name = &log_file_info.log_file_name;
 
         rotate_to_old_file(new_log_file_name);
@@ -130,8 +128,14 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
             .append(true)
             .open(new_log_file_name)
             .unwrap();
-        write!(file, "{}", formatted);
         log_file_info.file = Some(file);
+    };
+
+    let mut log_file = log_file_info.file.as_mut().unwrap();
+    write!(log_file, "{}", formatted);
+
+    if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
+        rotate_to_old_file(&log_file_info.log_file_name);
     }
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
