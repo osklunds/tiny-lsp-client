@@ -67,8 +67,6 @@ impl Connection {
                         &json
                     );
 
-                    // todo: stdin closed isn't noticed until try to send. See if
-                    // that can be improved
                     match stdin.write_all(full.as_bytes()) {
                         Ok(()) => (),
                         Err(e) => {
