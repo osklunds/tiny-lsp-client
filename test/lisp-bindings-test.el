@@ -1,35 +1,15 @@
 
-(require 'cl-lib)
+;; -----------------------------------------------------------------------------
+;; Load common test functions
+;; -----------------------------------------------------------------------------
+
+(add-to-list 'load-path default-directory)
+
+(load "test/common.el")
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers
-;;------------------------------------------------------------------------------
-
-;; copied from https://emacs.stackexchange.com/questions/33976/how-do-you-reload-a-dynamic-module
-(defun fake-module-reload (module)
-  (interactive "fReload Module file: ")
-  (let ((tmpfile (make-temp-file
-                  (file-name-nondirectory module) nil module-file-suffix)))
-    (copy-file module tmpfile t)
-    (module-load tmpfile)))
-
-(defun tlc-reload ()
-  (interactive)
-  (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/release/libtiny_lsp_client.so"))
-
-(defun assert-equal (exp act)
-  (unless (equal exp act)
-    (std-message "Exp %s" exp)
-    (std-message "Act %s" act)
-    (cl-assert (equal exp act) 'show)))
-
-(defun std-message (format-string &rest args)
-  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
-
-(defun kill-server ()
-  (interactive)
-  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
-    (shell-command (format "kill %s" i))))
+;; -----------------------------------------------------------------------------
 
 ;; Before, there used to be a bug that if garbage-collect was done with
 ;; --release emacs would crash. But now it seems to work, even though no
@@ -40,16 +20,12 @@
   (std-message "garbage-collect after (%s)" mark))
 
 ;; -----------------------------------------------------------------------------
-;; Test
-;;------------------------------------------------------------------------------
-
-;;;; ---------------------------------------------------------------------------
-;;;; Load the module
-;;;;----------------------------------------------------------------------------
+;; Load the module
+;; -----------------------------------------------------------------------------
 
 (std-message "Before load")
 
-(tlc-reload)
+(require 'tlc-rust "target/release/libtiny_lsp_client.so")
 
 (std-message "After load")
 
@@ -64,9 +40,9 @@
 
 (test-garbage-collect "after some calls")
 
-;;;; ---------------------------------------------------------------------------
-;;;; Initialize
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; Initialize
+;; -----------------------------------------------------------------------------
 
 (setq root-path (file-truename default-directory))
 
@@ -89,9 +65,9 @@
 
 (test-garbage-collect "after server started")
 
-;;;; ---------------------------------------------------------------------------
-;;;; didOpen
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; didOpen
+;; -----------------------------------------------------------------------------
 
 ;; todo: need to loop even if less clear, becase now is unstable
 (sleep-for 2)
@@ -103,9 +79,9 @@
                    "textDocument/didOpen"
                    (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
-;;;; ---------------------------------------------------------------------------
-;;;; definition
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; definition
+;; -----------------------------------------------------------------------------
 
 (sleep-for 10)
 
@@ -139,9 +115,9 @@
 
 (test-garbage-collect "after textDocument/definition")
 
-;;;; ---------------------------------------------------------------------------
-;;;; didChange
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; didChange
+;; -----------------------------------------------------------------------------
 
 (std-message "Sending didChange")
 
@@ -157,9 +133,9 @@
                "textDocument/didChange"
                (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
 
-;;;; ---------------------------------------------------------------------------
-;;;; definition after didChange
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; definition after didChange
+;; -----------------------------------------------------------------------------
 
 (std-message "Sending definition after didChange")
 
@@ -172,10 +148,10 @@
 (assert-equal '(ok-response 2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3)))
               (recv-response))
 
-;;;; ---------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 ;; textDocument/didChange to revert the previous change, so that rust-analyzer's
 ;; view matches the file system
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
 (std-message "Sending didChange to revert")
 
@@ -185,9 +161,9 @@
                "textDocument/didChange"
                (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 "")))))
 
-;;;; ---------------------------------------------------------------------------
-;;;; didClose
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; didClose
+;; -----------------------------------------------------------------------------
 
 (std-message "Sending didClose")
 
@@ -197,9 +173,9 @@
                "textDocument/didClose"
                (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
-;;;; ---------------------------------------------------------------------------
-;;;; didOpen + definition again
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; didOpen + definition again
+;; -----------------------------------------------------------------------------
 
 ;; Do a definition again to ensure that rust-analyzer did not crash due to
 ;; faulty data sent in didClose above. Since it's a notification we can't
@@ -222,9 +198,9 @@
 (assert-equal '(ok-response 3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
-;;;; ---------------------------------------------------------------------------
-;;;; Stopping the LSP server
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; Stopping the LSP server
+;; -----------------------------------------------------------------------------
 
 (std-message "killing server")
 
@@ -247,9 +223,9 @@
 
 (assert-equal 'no-server (recv-response))
 
-;;;; ---------------------------------------------------------------------------
-;;;; End
-;;;;----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; End
+;; -----------------------------------------------------------------------------
 
 (test-garbage-collect "in the end")
 

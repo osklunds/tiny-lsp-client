@@ -1,17 +1,15 @@
+
+;; -----------------------------------------------------------------------------
+;; Load common test functions
+;; -----------------------------------------------------------------------------
+
+(add-to-list 'load-path default-directory)
+
+(load "test/common.el")
+
 ;; -----------------------------------------------------------------------------
 ;; Helpers
 ;;------------------------------------------------------------------------------
-
-(defun std-message (format-string &rest args)
-  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
-
-(defun assert-equal (exp act &optional msg)
-  (unless (equal exp act)
-    (when msg
-      (std-message msg))
-    (std-message "Exp %s" exp)
-    (std-message "Act %s" act)
-    (cl-assert (equal exp act) 'show)))
 
 (defun non-interactive-xref-find-definitions ()
   (let ((xref-prompt-for-identifier nil))
