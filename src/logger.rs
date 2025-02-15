@@ -103,7 +103,6 @@ pub fn log_rust_debug_enabled() -> bool {
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-    // todo: include root path
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
@@ -111,17 +110,14 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
     if let Some(mut log_file) = log_file_info.file.as_mut() {
         write!(log_file, "{}", formatted);
+        if log_file.metadata().unwrap().len() > 1000000 {
+            rotate_to_old_file(&log_file_info.log_file_name);
+        }
     } else {
         let new_log_file_name = &log_file_info.log_file_name;
 
-        // Can fail if new_log_file_name doesn't exist. So don't unwrap
-        // and only write existing content if the new file already has content
-        if let Ok(existing_content) = fs::read_to_string(new_log_file_name) {
-            fs::write(format!("{}.old", new_log_file_name), existing_content)
-                .unwrap();
-        }
+        rotate_to_old_file(new_log_file_name);
 
-        fs::write(new_log_file_name, "").unwrap();
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -134,4 +130,13 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
         print!("{}", formatted);
     }
+}
+
+fn rotate_to_old_file(log_file_name: &str) {
+    // Can fail if new_log_file_name doesn't exist. So don't unwrap
+    // and only write existing content if the new file already has content
+    if let Ok(existing_content) = fs::read_to_string(log_file_name) {
+        fs::write(format!("{}.old", log_file_name), existing_content).unwrap();
+    }
+    fs::write(log_file_name, "").unwrap();
 }
