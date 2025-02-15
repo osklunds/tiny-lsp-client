@@ -369,6 +369,7 @@ dependencies = [
  "bindgen",
  "chrono",
  "libc",
+ "regex",
  "serde",
  "serde_json",
 ]

@@ -180,9 +180,5 @@ fn get_timestamp() -> String {
     // todo: instead of trim_matches, maybe iter and index is faster
     let utf8 = str::from_utf8(&buffer[0..26]).unwrap();
     let trimmed = utf8.trim_matches('\0');
-
-    println!("oskar: {:?}", trimmed);
-
-    // strftime();
-    "hej".to_string()
+    trimmed.to_string()
 }
