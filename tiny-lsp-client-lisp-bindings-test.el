@@ -74,7 +74,8 @@
 ;;;; didOpen
 ;;;;----------------------------------------------------------------------------
 
-(sleep-for 1)
+;; todo: need to loop even if less clear, becase now is unstable
+(sleep-for 2)
 
 (std-message "Sending didOpen")
 
@@ -87,7 +88,7 @@
 ;;;; definition
 ;;;;----------------------------------------------------------------------------
 
-(sleep-for 1)
+(sleep-for 2)
 
 (std-message "Sending definition")
 
