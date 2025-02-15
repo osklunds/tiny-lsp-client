@@ -11,6 +11,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
+use std::ptr;
 // todo: remove this dependency
 use chrono::Local;
 
@@ -162,4 +163,13 @@ fn rotate_to_old_file(log_file_name: &str) {
         fs::write(format!("{}.old", log_file_name), existing_content).unwrap();
     }
     fs::write(log_file_name, "").unwrap();
+}
+
+fn get_timestamp() -> String {
+    unsafe {
+        let timer: time_t = time(ptr::null_mut());
+    }
+
+    // strftime();
+    "hej".to_string()
 }

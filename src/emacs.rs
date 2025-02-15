@@ -85,7 +85,7 @@ pub unsafe fn export_function(
         max_arity,
         Some(fun),
         c_string!(docstring),
-        std::ptr::null_mut(),
+        ptr::null_mut(),
     );
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);
 }
