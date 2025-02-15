@@ -170,13 +170,19 @@ fn get_timestamp() -> String {
     unsafe {
         let mut tv: libc::timeval = libc::timeval {
             tv_sec: 0,
-            tv_usec: 0
+            tv_usec: 0,
         };
-            
+
         libc::gettimeofday(&mut tv as *mut libc::timeval, ptr::null_mut());
-        let tm_info: *mut libc::tm = libc::localtime(&tv.tv_sec as *const libc::time_t);
+        let tm_info: *mut libc::tm =
+            libc::localtime(&tv.tv_sec as *const libc::time_t);
         let format = CString::new("%Y-%m-%d %H:%M:%S").unwrap();
-        libc::strftime(buffer.as_mut_ptr() as *mut i8, 26, format.as_ptr(), tm_info);
+        libc::strftime(
+            buffer.as_mut_ptr() as *mut i8,
+            26,
+            format.as_ptr(),
+            tm_info,
+        );
     }
 
     // todo: instead of trim_matches, maybe iter and index is faster
