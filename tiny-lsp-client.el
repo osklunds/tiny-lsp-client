@@ -149,11 +149,16 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  (when (buffer-modified-p)
+  (tlc--log "didOpen. Modified: %s. Revert in progress: %s"
+            (buffer-modified-p)
+            revert-buffer-in-progress-p
+            )
+  ;; todo: Why not revert? Related to vdiff
+  (when (and (buffer-modified-p) (not revert-buffer-in-progress-p))
     ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
-    (tlc--log "saving buffer")
-    (save-buffer))
+    (save-buffer)
+    )
   (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
 
 (defun tlc--send-notification (method params)
