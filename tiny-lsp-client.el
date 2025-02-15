@@ -183,7 +183,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    "textDocument/didClose"
    (list (tlc--buffer-file-name))))
 
-;; todo: is this even good? Do other minor/major behave like this?
+;; todo: lsp-mode becomes disabled if rust-mode becomes disabled, but something
+;; like this wasn't needed. Why? Eglot has it too though, but doesn't check
+;; revert-buffer-in-progress-p
 (defun tlc--change-major-mode-hook ()
   (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s. Revert in progress: %s"
             tlc-mode
