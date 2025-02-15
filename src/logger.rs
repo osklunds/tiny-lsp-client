@@ -188,8 +188,7 @@ fn get_timestamp() -> String {
         ms = tv.tv_usec as f32 / 1000.0;
     }
 
-    // todo: instead of trim_matches, maybe iter and index is faster
-    let utf8 = str::from_utf8(&buffer[0..26]).unwrap();
-    let trimmed = utf8.trim_matches('\0');
-    format!("{}.{:03.0}", trimmed, ms)
+    let len = buffer.iter().position(|&e| e == 0).unwrap();
+    let utf8 = str::from_utf8(&buffer[0..len]).unwrap();
+    format!("{}.{:03.0}", utf8, ms)
 }
