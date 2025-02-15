@@ -49,6 +49,7 @@ pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
 
 const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
+const MAX_LOG_ENTRY_LEN_BYTES: usize = 2000;
 
 struct LogFileInfo {
     log_file_name: String,
@@ -113,6 +114,12 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
+    let truncated = if formatted.len() > MAX_LOG_ENTRY_LEN_BYTES {
+        format!("{}...TRUNCATED\n", &formatted[0..MAX_LOG_ENTRY_LEN_BYTES])
+    } else {
+        formatted
+    };
+
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
 
@@ -132,14 +139,14 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     };
 
     let mut log_file = log_file_info.file.as_mut().unwrap();
-    write!(log_file, "{}", formatted);
+    write!(log_file, "{}", truncated);
 
     if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
         rotate_to_old_file(&log_file_info.log_file_name);
     }
 
     if LOG_TO_STDIO.load(Ordering::Relaxed) {
-        print!("{}", formatted);
+        print!("{}", truncated);
     }
 }
 
