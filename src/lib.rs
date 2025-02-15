@@ -160,9 +160,11 @@ unsafe extern "C" fn tlc__rust_start_server(
         if connection.is_working() {
             return intern(env, "already-started");
         } else {
-            logger::log_debug!("Need to restart");
+            logger::log_debug!("Need to restart existing");
             connections.remove(&root_path);
         }
+    } else {
+        logger::log_debug!("Need to start new");
     }
     match Connection::new(&server_cmd, &root_path) {
         Some(mut connection) => match connection.initialize() {
@@ -184,33 +186,21 @@ unsafe extern "C" fn tlc__rust_send_request(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_request");
 
-    let root_path = check_path(extract_string(env, *args.offset(0)));
-    let mut connections = connections().lock().unwrap();
+    handle_call(env, nargs, args, |env, args, connection| {
+        let request_type = extract_string(env, args[1]);
+        let request_args = args[2];
 
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        if connection.is_working() {
-            let request_type = extract_string(env, *args.offset(1));
-            let request_args = *args.offset(2);
-
-            let request_params = if request_type == "textDocument/definition" {
-                build_text_document_definition(env, request_args, connection)
-            } else {
-                panic!("Incorrect request type")
-            };
-            if let Some(id) =
-                connection.send_request(request_type, request_params)
-            {
-                make_integer(env, id as i64)
-            } else {
-                intern(env, "failed")
-            }
+        let request_params = if request_type == "textDocument/definition" {
+            build_text_document_definition(env, request_args, connection)
         } else {
-            connection.stop_server();
-            intern(env, "failed")
-        }
-    } else {
-        intern(env, "no-server")
-    }
+            panic!("Incorrect request type")
+        };
+        let x = connection
+            .send_request(request_type, request_params)
+            .unwrap();
+        Some(make_integer(env, x as i64))
+        // .map(|id| make_integer(env, id as i64))
+    })
 }
 
 unsafe fn build_text_document_definition(
@@ -378,6 +368,43 @@ unsafe extern "C" fn tlc__rust_recv_response(
     }
 }
 
+unsafe fn handle_call<
+    F: FnOnce(
+        *mut emacs_env,
+        Vec<emacs_value>,
+        &mut Connection,
+    ) -> Option<emacs_value>,
+>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    f: F,
+) -> emacs_value {
+    let args_vec = args_pointer_to_args_vec(nargs, args);
+
+    let root_path = check_path(extract_string(env, args_vec[0]));
+    let mut connections = connections().lock().unwrap();
+
+    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+        if connection.is_working() {
+            if let Some(result) = f(env, args_vec, connection) {
+                result
+            } else {
+                // This means it failed during handling this call
+                connections.remove(&root_path);
+                intern(env, "no-server")
+            }
+        } else {
+            // This means the server wasn't working before this call
+            connections.remove(&root_path);
+            intern(env, "no-server")
+        }
+    } else {
+        // This means the server wasn't existing before this call
+        intern(env, "no-server")
+    }
+}
+
 unsafe fn handle_response(
     env: *mut emacs_env,
     response: Response,
@@ -511,10 +538,7 @@ unsafe fn log_args<S: AsRef<str>>(
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
     if logger::log_debug_enabled() {
-        let mut args_list = Vec::new();
-        for i in 0..nargs {
-            args_list.push(*args.offset(i));
-        }
+        let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
         let format_string = make_string(
             env,
@@ -524,4 +548,15 @@ unsafe fn log_args<S: AsRef<str>>(
         let formatted = extract_string(env, formatted);
         logger::log_debug!("{}", formatted);
     }
+}
+
+unsafe fn args_pointer_to_args_vec(
+    nargs: isize,
+    args: *mut emacs_value,
+) -> Vec<emacs_value> {
+    let mut args_list = Vec::new();
+    for i in 0..nargs {
+        args_list.push(*args.offset(i));
+    }
+    args_list
 }
