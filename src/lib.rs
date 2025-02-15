@@ -7,7 +7,6 @@
 mod dummy;
 mod connection;
 mod emacs;
-mod learning_tests;
 mod logger;
 mod message;
 #[cfg(test)]
