@@ -1,6 +1,10 @@
 
 (require 'cl-lib)
 
+(add-to-list 'load-path default-directory)
+
+(load "test/common.el")
+
 ;; -----------------------------------------------------------------------------
 ;; Helpers
 ;;------------------------------------------------------------------------------
@@ -16,20 +20,6 @@
 (defun tlc-reload ()
   (interactive)
   (fake-module-reload "/home/oskar/own_repos/tiny-lsp-client/target/release/libtiny_lsp_client.so"))
-
-(defun assert-equal (exp act)
-  (unless (equal exp act)
-    (std-message "Exp %s" exp)
-    (std-message "Act %s" act)
-    (cl-assert (equal exp act) 'show)))
-
-(defun std-message (format-string &rest args)
-  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
-
-(defun kill-server ()
-  (interactive)
-  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
-    (shell-command (format "kill %s" i))))
 
 ;; Before, there used to be a bug that if garbage-collect was done with
 ;; --release emacs would crash. But now it seems to work, even though no
