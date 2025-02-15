@@ -15,6 +15,18 @@
   (let ((xref-prompt-for-identifier nil))
     (call-interactively 'xref-find-definitions)))
 
+(setq log-file-name (file-truename
+                     (file-name-concat
+                      user-emacs-directory
+                      "tiny-lsp-client-test.log")))
+
+(defun number-of-did-open ()
+  (count-in-log-file "\"method\": \"textDocument/didOpen\","))
+
+(defun count-in-log-file (pattern)
+  (string-to-number (shell-command-to-string
+   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+
 ;; -----------------------------------------------------------------------------
 ;; Preparation
 ;;------------------------------------------------------------------------------
@@ -32,10 +44,7 @@
 
 (require 'tiny-lsp-client)
 
-(customize-set-variable 'tlc-log-file (file-truename
-                                       (file-name-concat
-                                        user-emacs-directory
-                                        "tiny-lsp-client-test.log")))
+(customize-set-variable 'tlc-log-file log-file-name)
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
@@ -44,15 +53,23 @@
 
 (add-hook 'rust-mode-hook 'tlc-mode)
 
+(delete-file log-file-name)
+
 ;; -----------------------------------------------------------------------------
 ;; Opening a file
 ;;------------------------------------------------------------------------------
+
+(assert-equal 0 (number-of-did-open))
 
 (find-file "src/dummy.rs")
 
 (assert-equal 'rust-mode major-mode)
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 1 (number-of-did-open))
+
+(error "exit")
 
 ;; -----------------------------------------------------------------------------
 ;; Xref find definition
