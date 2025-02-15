@@ -14,7 +14,7 @@ fn run_lisp_file() {
         "-Q",
         "--batch",
         "--eval",
-        "(load-file \"tiny-lsp-client-lisp-bindings-test.el\")",
+        "(load-file \"test/tiny-lsp-client-lisp-bindings-test.el\")",
     ];
 
     let mut child = Command::new("emacs").args(args).spawn().unwrap();
