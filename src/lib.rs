@@ -10,6 +10,8 @@ mod emacs;
 mod learning_tests;
 mod logger;
 mod message;
+#[cfg(test)]
+mod tests;
 
 use crate::connection::Connection;
 use crate::emacs::*;
