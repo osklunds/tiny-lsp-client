@@ -43,6 +43,8 @@ pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
 
+const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
+
 struct LogFileInfo {
     log_file_name: String,
     file: Option<File>,
@@ -110,7 +112,7 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let mut log_file_info = locked_log_file_info.as_mut().unwrap();
     if let Some(mut log_file) = log_file_info.file.as_mut() {
         write!(log_file, "{}", formatted);
-        if log_file.metadata().unwrap().len() > 1000000 {
+        if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
             rotate_to_old_file(&log_file_info.log_file_name);
         }
     } else {
