@@ -87,7 +87,7 @@ pub fn log_stderr_fun<S: AsRef<str>>(msg: S) {
 
 pub fn log_rust_debug_fun<S: AsRef<str>>(msg: S) {
     if LOG_RUST_DEBUG.load(Ordering::Relaxed) {
-        log("DEBUG", msg);
+        log("RUST_DEBUG", msg);
     }
 }
 
