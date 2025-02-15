@@ -114,7 +114,8 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     } else {
         let new_log_file_name = &log_file_info.log_file_name;
 
-        // Can fail if new_log_file_name doesn't exist
+        // Can fail if new_log_file_name doesn't exist. So don't unwrap
+        // and only write existing content if the new file already has content
         if let Ok(old_content) = fs::read_to_string(new_log_file_name) {
             fs::write(format!("{}.old", new_log_file_name), old_content)
                 .unwrap();
