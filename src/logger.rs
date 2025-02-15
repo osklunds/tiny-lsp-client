@@ -1,3 +1,8 @@
+include!(concat!(env!("OUT_DIR"), "/time_h_bindings.rs"));
+
+#[cfg(test)]
+mod tests;
+
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
