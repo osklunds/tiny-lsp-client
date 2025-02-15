@@ -38,13 +38,18 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
 
-(defcustom tlc-log-debug nil
+(defcustom tlc-log-rust-debug nil
   "Whether debug logging (in Rust code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
+
+(defcustom tlc-log-emacs-debug nil
+  "Whether debug logging (in Emacs lisp code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
+  :group 'tiny-lsp-client
+  :type 'boolean)
 
 (defcustom tlc-log-to-stdio nil
   "In addition to logging to files, if logging should also happen to standard output. Probably mainly useful for developing tiny-lsp-client."
@@ -113,6 +118,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                         major-mode)))
          (root (tlc--root))
          (result (tlc--rust-start-server root server-cmd)))
+    (tlc--log "Start server result: %s" result)
     (pcase result
       ('started (message "Started '%s' in '%s'" server-cmd root))
       ('already-started (message "Connected to already started server in '%s'" root))
@@ -123,13 +129,18 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     ))
 
 (defun tlc--kill-buffer-hook ()
+  (tlc--log "tlc--kill-buffer-hook called. tlc-mode: %s" tlc-mode)
   (when tlc-mode
     (tlc--notify-text-document-did-close)))
 
 (defun tlc--before-revert-hook ()
+  (tlc--log "tlc--before-revert-hook called. tlc-mode: %s" tlc-mode)
   (tlc--notify-text-document-did-close))
 
 (defun tlc--after-revert-hook ()
+  (tlc--log "tlc--after-revert-hook called. tlc-mode: %s. revert-buffer-preserve-modes: %s"
+            tlc-mode
+            revert-buffer-preserve-modes)
   ;; If revert-buffer-preserve-modes is nil (default), it means that tlc-mode is
   ;; run and didOpen is called from there, and it would result in duplicate
   ;; didOpen calls. See
@@ -145,13 +156,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
 
 (defun tlc--send-notification (method params)
-  (let ((result (tlc--rust-send-notification
+  (let ((return (tlc--rust-send-notification
                  (tlc--root)
                  method
                  params)))
-    (pcase result
-        ;; normal case - could send the notifcation
-        ('ok nil)
+    (tlc--log "Send notification return: %s" return)
+    (pcase return
+      ;; normal case - could send the notifcation
+      ('ok nil)
 
       ;; alternative but valid case - server crashed or not started
       ('no-server (tlc--ask-start-server))
@@ -165,6 +177,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    (list (tlc--buffer-file-name))))
 
 (defun tlc--change-major-mode-hook ()
+  (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s" tlc-mode)
   (tlc-mode -1))
 
 ;; -----------------------------------------------------------------------------
@@ -174,8 +187,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defvar-local tlc--change nil)
 
 (defun tlc--before-change-hook (beg end)
+  (tlc--log "tlc--before-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+            beg
+            end
+            revert-buffer-in-progress-p
+            tlc--change)
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
+      ;; one idea could be send full document since these cases should hopefully
+      ;; be rare
       (error "tlc--change is not-nil in before-change")
     ;; if revert in progress, it can happen that didChange is sent before didOpen,
     ;; when discarding changes in magit
@@ -193,6 +213,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (list line character)))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
+  (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+            beg
+            end
+            revert-buffer-in-progress-p
+            tlc--change)
   (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
@@ -225,20 +250,29 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--rust-send-request (tlc--root) method arguments)))
-    (if (integerp request-id)
-        (tlc--wait-for-response request-id)
-      (tlc--ask-start-server)
-      ;; if not error, then xref says incorrect type
-      (error ""))))
+  (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
+    (tlc--log "Send request return: %s" return)
+    (cond
+     ;; normal case - request sent and request-id returned
+     ((integerp return) (tlc--wait-for-response return))
+
+     ;; alternative but valid case - server crashed or not started
+     ((equal 'no-server return) (progn
+                                  (tlc--ask-start-server)
+                                  ;; if not error, then xref says incorrect type
+                                  (error "")))
+
+     ;; bug case - bad return
+     (t (error "bad return")))))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
   (sleep-for 0.01)
-  (let ((response (tlc--rust-recv-response (tlc--root))))
-    (pcase response
+  (let ((return (tlc--rust-recv-response (tlc--root))))
+    (tlc--log "tlc--rust-recv-response return: %s" return)
+    (pcase return
       ;; normal case - response has arrived
-      (`(ok ,id ,params)
+      (`(ok-response ,id ,params)
        (cond
         ;; alternative but valid case - response to old request
         ((< id request-id) (tlc--wait-for-response request-id))
@@ -266,7 +300,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                     (tlc--ask-start-server)
                     (error "")))
 
-      ;; bug case - some other response
+      ;; bug case - bad return
       (_ (error "bad return"))
       )))
 
@@ -335,6 +369,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
     (error "No LSP server running")))
+
+(defun tlc--log (format-string &rest objects)
+  (when tlc-log-emacs-debug
+    (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
+
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here

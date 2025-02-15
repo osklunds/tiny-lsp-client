@@ -113,6 +113,15 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-set-log-option",
     );
 
+    export_function(
+        env,
+        1,
+        1,
+        tlc__rust_log_emacs_debug,
+        "doc todo",
+        "tlc--rust-log-emacs-debug",
+    );
+
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
     0
@@ -160,11 +169,11 @@ unsafe extern "C" fn tlc__rust_start_server(
         if connection.is_working() {
             return intern(env, "already-started");
         } else {
-            logger::log_debug!("Need to restart existing");
+            logger::log_rust_debug!("Need to restart existing");
             connections.remove(&root_path);
         }
     } else {
-        logger::log_debug!("Need to start new");
+        logger::log_rust_debug!("Need to start new");
     }
     match Connection::new(&server_cmd, &root_path) {
         Some(mut connection) => match connection.initialize() {
@@ -384,9 +393,9 @@ unsafe fn handle_response(
             }
             let lisp_location_list = call(env, "list", lisp_location_list_vec);
             let id = make_integer(env, response.id as i64);
-            call(env, "list", vec![intern(env, "ok"), id, lisp_location_list])
+            call(env, "list", vec![intern(env, "ok-response"), id, lisp_location_list])
         } else {
-            logger::log_debug!("Non-supported response received: {:?}", result);
+            logger::log_rust_debug!("Non-supported response received: {:?}", result);
             intern(env, "error-response")
         }
     } else {
@@ -418,8 +427,8 @@ unsafe extern "C" fn tlc__rust_get_log_option(
             logger::LOG_IO.load(Ordering::Relaxed)
         } else if symbol == "tlc-log-stderr" {
             logger::LOG_STDERR.load(Ordering::Relaxed)
-        } else if symbol == "tlc-log-debug" {
-            logger::LOG_DEBUG.load(Ordering::Relaxed)
+        } else if symbol == "tlc-log-rust-debug" {
+            logger::LOG_RUST_DEBUG.load(Ordering::Relaxed)
         } else if symbol == "tlc-log-to-stdio" {
             logger::LOG_TO_STDIO.load(Ordering::Relaxed)
         } else {
@@ -451,14 +460,27 @@ unsafe extern "C" fn tlc__rust_set_log_option(
             logger::LOG_IO.store(value, Ordering::Relaxed)
         } else if symbol == "tlc-log-stderr" {
             logger::LOG_STDERR.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-debug" {
-            logger::LOG_DEBUG.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-log-rust-debug" {
+            logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
         } else if symbol == "tlc-log-to-stdio" {
             logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
         } else {
             panic!("Incorrect log symbol")
         };
     }
+
+    intern(env, "nil")
+}
+
+unsafe extern "C" fn tlc__rust_log_emacs_debug(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    let msg = *args.offset(0);
+    let msg = extract_string(env, msg);
+    logger::log_emacs_debug!("{}", msg);
 
     intern(env, "nil")
 }
@@ -485,10 +507,10 @@ unsafe fn log_args<S: AsRef<str>>(
     args: *mut emacs_value,
     function_name: S,
 ) {
-    // logger::log_debug! already knows whether to log or not. But check
+    // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
-    if logger::log_debug_enabled() {
+    if logger::log_rust_debug_enabled() {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
         let format_string = make_string(
@@ -497,7 +519,7 @@ unsafe fn log_args<S: AsRef<str>>(
         );
         let formatted = call(env, "format", vec![format_string, list]);
         let formatted = extract_string(env, formatted);
-        logger::log_debug!("{}", formatted);
+        logger::log_rust_debug!("{}", formatted);
     }
 }
 

@@ -11,6 +11,7 @@ use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
+use std::ops::Drop;
 use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::Ordering;
@@ -19,7 +20,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
-use std::ops::Drop;
 
 pub struct Connection {
     server_process: Arc<Mutex<Child>>,
@@ -42,7 +42,7 @@ impl Connection {
         {
             Ok(child) => child,
             Err(e) => {
-                logger::log_debug!("start child failed: {:?}", e);
+                logger::log_rust_debug!("start child failed: {:?}", e);
                 return None;
             }
         };
@@ -71,7 +71,7 @@ impl Connection {
                     match stdin.write_all(full.as_bytes()) {
                         Ok(()) => (),
                         Err(e) => {
-                            logger::log_debug!(
+                            logger::log_rust_debug!(
                                 "Error writing {} to stdin {:?}",
                                 full,
                                 e
@@ -88,7 +88,7 @@ impl Connection {
                 }
             }
 
-            logger::log_debug!("send thread killing server");
+            logger::log_rust_debug!("send thread killing server");
             child_send_thread.lock().unwrap().kill();
         });
 
@@ -105,7 +105,7 @@ impl Connection {
                 match reader.read_line(&mut buf) {
                     Ok(len) => {
                         if len > 0 {
-                            logger::log_debug!(
+                            logger::log_rust_debug!(
                                 "Connection recv loop initial line: {:?}",
                                 buf
                             );
@@ -114,7 +114,7 @@ impl Connection {
                             let parts: Vec<&str> = buf.split(": ").collect();
                             let num_parts = parts.len();
                             if num_parts != 2 {
-                                logger::log_debug!(
+                                logger::log_rust_debug!(
                                     "Incorrect number of parts after split: {}",
                                     num_parts
                                 );
@@ -125,7 +125,7 @@ impl Connection {
                             if header_name != "Content-Length" {
                                 // Actualy, there are other valid header names,
                                 // but handle them as they come.
-                                logger::log_debug!(
+                                logger::log_rust_debug!(
                                     "Incorrect header name: {}",
                                     header_name
                                 );
@@ -136,7 +136,7 @@ impl Connection {
                             let size = match header_value.parse::<usize>() {
                                 Ok(s) => s,
                                 Err(e) => {
-                                    logger::log_debug!(
+                                    logger::log_rust_debug!(
                                         "Could not parse size: {:?}",
                                         e
                                     );
@@ -151,7 +151,7 @@ impl Connection {
                             match reader.read_exact(&mut json_buf) {
                                 Ok(()) => (),
                                 Err(e) => {
-                                    logger::log_debug!(
+                                    logger::log_rust_debug!(
                                         "read_exact of json failed: {:?}",
                                         e
                                     );
@@ -162,7 +162,7 @@ impl Connection {
                             let json = match String::from_utf8(json_buf) {
                                 Ok(json) => json,
                                 Err(e) => {
-                                    logger::log_debug!(
+                                    logger::log_rust_debug!(
                                         "from_utf8 failed: {:?}",
                                         e
                                     );
@@ -177,7 +177,7 @@ impl Connection {
                                     match serde_json::from_str(&json) {
                                         Ok(full_json) => full_json,
                                         Err(e) => {
-                                            logger::log_debug!(
+                                            logger::log_rust_debug!(
                                                 "Parse to full json failed: {:?} reason: {:?}",
                                                 json,
                                                 e
@@ -195,7 +195,7 @@ impl Connection {
                             let msg = match serde_json::from_str(&json) {
                                 Ok(msg) => msg,
                                 Err(e) => {
-                                    logger::log_debug!(
+                                    logger::log_rust_debug!(
                                         "serde_json::from_str failed: {:?}",
                                         e
                                     );
@@ -212,12 +212,12 @@ impl Connection {
                                 }
                             }
                         } else {
-                            logger::log_debug!("stdio got EOF");
+                            logger::log_rust_debug!("stdio got EOF");
                             break;
                         }
                     }
                     Err(e) => {
-                        logger::log_debug!("stdio got error {:?}", e);
+                        logger::log_rust_debug!("stdio got error {:?}", e);
                         break;
                     }
                 }
@@ -231,7 +231,7 @@ impl Connection {
             // when calling request() etc. None or is_working() = false both have
             // the same semantics, but None means it happened while handling
             // something.
-            logger::log_debug!("recv thread killing server");
+            logger::log_rust_debug!("recv thread killing server");
             child_recv_thread.lock().unwrap().kill();
         });
 
@@ -245,12 +245,15 @@ impl Connection {
                         if len > 0 {
                             stderr_tx.send(buf[0..len].to_vec());
                         } else {
-                            logger::log_debug!("stderr_inner got EOF");
+                            logger::log_rust_debug!("stderr_inner got EOF");
                             break;
                         }
                     }
                     Err(e) => {
-                        logger::log_debug!("stderr_inner got error {:?}", e);
+                        logger::log_rust_debug!(
+                            "stderr_inner got error {:?}",
+                            e
+                        );
                         break;
                     }
                 }
@@ -294,7 +297,7 @@ impl Connection {
                         }
                         Err(e) => {
                             logger::log_stderr!("{:?}", buf);
-                            logger::log_debug!(
+                            logger::log_rust_debug!(
                                 "from_utf8 failed for stderr {:?} reason: {:?}",
                                 buf,
                                 e
@@ -305,12 +308,12 @@ impl Connection {
                 }
 
                 if disconnected {
-                    logger::log_debug!("stderr_rx disconnected");
+                    logger::log_rust_debug!("stderr_rx disconnected");
                     break;
                 }
             }
 
-            logger::log_debug!("stderr thread killing server");
+            logger::log_rust_debug!("stderr thread killing server");
             child_stderr_thread.lock().unwrap().kill();
         });
 
@@ -419,7 +422,7 @@ impl Connection {
 
     pub fn is_working(&self) -> bool {
         let result = self.server_process.lock().unwrap().try_wait();
-        logger::log_debug!("try_wait result {:?}", result);
+        logger::log_rust_debug!("try_wait result {:?}", result);
         if let Ok(None) = result {
             true
         } else {
