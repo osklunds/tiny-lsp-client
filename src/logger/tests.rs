@@ -3,7 +3,7 @@ use super::*;
 use regex::Regex;
 
 #[test]
-fn timestamp_test() {
+fn timestamp() {
     let timestamp = get_timestamp();
 
     println!("Timestamp: {}", timestamp);
@@ -14,4 +14,17 @@ fn timestamp_test() {
     )
     .unwrap();
     assert!(regex.is_match(&timestamp));
+}
+
+#[test]
+fn millisecond_padding() {
+    // Test that padding seems to work correctly
+    let regex = Regex::new(r"\.00[1-9]$").unwrap();
+    loop {
+        let timestamp = get_timestamp();
+        if regex.is_match(&timestamp) {
+            println!("Timestamp: {}", timestamp);
+            break;
+        }
+    }
 }
