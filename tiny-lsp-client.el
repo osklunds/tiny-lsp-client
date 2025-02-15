@@ -182,6 +182,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (tlc--log "tlc--before-change-hook called %s %s" beg end)
   (if tlc--change
       ;; I know this is overly simplified, but when this case happens, I fix it
+      ;; one idea could be send full document since these cases should hopefully
+      ;; be rare
       (error "tlc--change is not-nil in before-change")
     ;; if revert in progress, it can happen that didChange is sent before didOpen,
     ;; when discarding changes in magit
