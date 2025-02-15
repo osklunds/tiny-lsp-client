@@ -19,6 +19,10 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - phase 2: erlang
 - phase 3: completions
 - phase 4: make public
+  - architecture
+  - error strategy
+  - logging
+  - test strategy
 - whenever
   - clean up connection.rs and lib.rs
   - Improve connection.rs debug print to be consistent and contain more info
