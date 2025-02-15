@@ -10,7 +10,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - phase 1: basics + find definition
   - timing
   - garbage collect + --release
-  - handle errors and alternative results
   - server info list with buffers
   - Don't use Chrono, call C for timestamp
   - test organization (one lisp file, call from rust instead of sh)
