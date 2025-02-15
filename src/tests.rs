@@ -2,19 +2,20 @@ use std::path::Component;
 use std::process::Command;
 
 #[test]
-fn hej() {
+fn lisp_bindings() {
     build(false);
     build(true);
 
-    run_lisp_file();
+    run_lisp_file("test/lisp-bindings-test.el");
 }
 
-fn run_lisp_file() {
+fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S) {
+    let eval_arg = format!("(load-file \"{}\")", lisp_file_name.as_ref());
     let mut args = vec![
         "-Q",
         "--batch",
         "--eval",
-        "(load-file \"test/tiny-lsp-client-lisp-bindings-test.el\")",
+        &eval_arg
     ];
 
     let mut child = Command::new("emacs").args(args).spawn().unwrap();
