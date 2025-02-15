@@ -253,9 +253,11 @@ impl Connection {
                     Err(e) => {
                         if e.kind() == ErrorKind::Interrupted {
                             // Continue to loop
-                            logger::log_rust_debug!(
-                                "stderr_inner got Interrupted"
-                            );
+                            // This happens too often to log. Do a short sleep
+                            // to avoid busy looping. Not too long sleep because
+                            // then can miss to print things in case other
+                            // parts close down quicker
+                            thread::sleep(Duration::from_micros(100));
                         } else {
                             logger::log_rust_debug!(
                                 "stderr_inner got error {:?}",
