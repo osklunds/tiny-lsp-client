@@ -220,7 +220,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
         (tlc--wait-for-response request-id)
       (tlc--ask-start-server)
       ;; if not error, then xref says incorrect type
-      (error "todo"))))
+      (error ""))))
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
