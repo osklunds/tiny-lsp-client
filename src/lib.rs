@@ -229,12 +229,10 @@ unsafe extern "C" fn tlc__rust_send_notification(
     data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_notification");
-    let root_path = check_path(extract_string(env, *args.offset(0)));
-    let mut connections = connections().lock().unwrap();
 
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        let request_type = extract_string(env, *args.offset(1));
-        let request_args = *args.offset(2);
+    handle_call(env, nargs, args, |env, args, connection| {
+        let request_type = extract_string(env, args[1]);
+        let request_args = args[2];
 
         let notification_params = if request_type == "textDocument/didOpen" {
             build_text_document_did_open(env, request_args, connection)
@@ -245,13 +243,10 @@ unsafe extern "C" fn tlc__rust_send_notification(
         } else {
             panic!("Incorrect request type")
         };
-        match connection.send_notification(request_type, notification_params) {
-            Some(()) => intern(env, "ok"),
-            None => intern(env, "failed"),
-        }
-    } else {
-        intern(env, "no-server")
-    }
+        connection
+            .send_notification(request_type, notification_params)
+            .map(|_| intern(env, "ok"))
+    })
 }
 
 unsafe fn build_text_document_did_open(
@@ -347,23 +342,18 @@ unsafe extern "C" fn tlc__rust_recv_response(
     data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_recv_response");
-    let root_path = check_path(extract_string(env, *args.offset(0)));
-    let mut connections = connections().lock().unwrap();
 
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+    handle_call(env, nargs, args, |env, args, connection| {
         if let Some(recv_result) = connection.try_recv_response() {
-            if let Some(response) = recv_result {
-                handle_response(env, response)
-            } else {
-                intern(env, "no-response")
-            }
+            let result = match recv_result {
+                Some(response) => handle_response(env, response),
+                None => intern(env, "no-response"),
+            };
+            Some(result)
         } else {
-            intern(env, "failed")
+            None
         }
-    } else {
-        // todo: add with_connection that checks this for all
-        intern(env, "no-server")
-    }
+    })
 }
 
 unsafe fn handle_call<
