@@ -97,15 +97,17 @@
 
 (std-message "Sending definition")
 
-(assert-equal 'no-server (tlc--rust-send-request
-                          "/some/root_path/that/does/not/exist"
-                          "textDocument/definition"
-                          '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+(assert-equal 'no-server
+              (tlc--rust-send-request
+               "/some/root_path/that/does/not/exist"
+               "textDocument/definition"
+               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal 1 (tlc--rust-send-request
-                 root-path
-                 "textDocument/definition"
-                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+(assert-equal 1
+              (tlc--rust-send-request
+               root-path
+               "textDocument/definition"
+               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
 (defun recv-response ()
   (let ((response (tlc--rust-recv-response root-path)))
@@ -118,7 +120,7 @@
 
 (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
 
-(assert-equal '(ok 1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
+(assert-equal '(ok-response 1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -127,15 +129,17 @@
 
 (std-message "Sending didChange")
 
-(assert-equal 'no-server (tlc--rust-send-notification
-                          "/some/root/path/not/found"
-                          "textDocument/didChange"
-                          (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
+(assert-equal 'no-server
+              (tlc--rust-send-notification
+               "/some/root/path/not/found"
+               "textDocument/didChange"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
 
-(assert-equal 'ok (tlc--rust-send-notification
-                   root-path
-                   "textDocument/didChange"
-                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
+(assert-equal 'ok
+              (tlc--rust-send-notification
+               root-path
+               "textDocument/didChange"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; definition after didChange
@@ -143,12 +147,13 @@
 
 (std-message "Sending definition after didChange")
 
-(assert-equal 2 (tlc--rust-send-request
-                 root-path
-                 "textDocument/definition"
-                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+(assert-equal 2
+              (tlc--rust-send-request
+               root-path
+               "textDocument/definition"
+               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal '(ok 2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3)))
+(assert-equal '(ok-response 2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -158,10 +163,11 @@
 
 (std-message "Sending didChange to revert")
 
-(assert-equal 'ok (tlc--rust-send-notification
-                   root-path
-                   "textDocument/didChange"
-                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 "")))))
+(assert-equal 'ok
+              (tlc--rust-send-notification
+               root-path
+               "textDocument/didChange"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 "")))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didClose
@@ -169,10 +175,11 @@
 
 (std-message "Sending didClose")
 
-(assert-equal 'ok (tlc--rust-send-notification
-                   root-path
-                   "textDocument/didClose"
-                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+(assert-equal 'ok
+              (tlc--rust-send-notification
+               root-path
+               "textDocument/didClose"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; didOpen + definition again
@@ -184,17 +191,19 @@
 
 (std-message "Sending didOpen+definition")
 
-(assert-equal 'ok (tlc--rust-send-notification
-                   root-path
-                   "textDocument/didOpen"
-                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+(assert-equal 'ok
+              (tlc--rust-send-notification
+               root-path
+               "textDocument/didOpen"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
-(assert-equal 3 (tlc--rust-send-request
-                 root-path
-                 "textDocument/definition"
-                 '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+(assert-equal 3
+              (tlc--rust-send-request
+               root-path
+               "textDocument/definition"
+               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
-(assert-equal '(ok 3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
+(assert-equal '(ok-response 3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
@@ -206,15 +215,17 @@
 ;; to avoid race condition
 (sleep-for 1)
 
-(assert-equal 'no-server (tlc--rust-send-notification
-                          root-path
-                          "textDocument/didOpen"
-                          (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+(assert-equal 'no-server
+              (tlc--rust-send-notification
+               root-path
+               "textDocument/didOpen"
+               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
 
-(assert-equal 'no-server (tlc--rust-send-request
-                          root-path
-                          "textDocument/definition"
-                          '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+(assert-equal 'no-server
+              (tlc--rust-send-request
+               root-path
+               "textDocument/definition"
+               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
 
 (assert-equal 'no-server (recv-response))
 

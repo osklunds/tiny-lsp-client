@@ -393,7 +393,7 @@ unsafe fn handle_response(
             }
             let lisp_location_list = call(env, "list", lisp_location_list_vec);
             let id = make_integer(env, response.id as i64);
-            call(env, "list", vec![intern(env, "ok"), id, lisp_location_list])
+            call(env, "list", vec![intern(env, "ok-response"), id, lisp_location_list])
         } else {
             logger::log_debug!("Non-supported response received: {:?}", result);
             intern(env, "error-response")

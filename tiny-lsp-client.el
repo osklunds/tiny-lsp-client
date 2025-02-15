@@ -272,8 +272,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
-      ;; todo: change ok to ok-response
-      (`(ok ,id ,params)
+      (`(ok-response ,id ,params)
        (cond
         ;; alternative but valid case - response to old request
         ((< id request-id) (tlc--wait-for-response request-id))
