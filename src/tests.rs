@@ -4,25 +4,29 @@ use std::process::Command;
 #[test]
 fn lisp_bindings() {
     build(true);
-
-    run_lisp_file("test/lisp-bindings-test.el");
+    run_lisp_file("test/lisp-bindings-test.el", true);
 }
 
 #[test]
 fn mode_test() {
     build(false);
-
-    run_lisp_file("test/mode-test.el");
+    run_lisp_file("test/mode-test.el", true);
 }
 
-fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S) {
+// Since interactive and manual, need to ignore from normal runs
+#[ignore]
+#[test]
+fn interactive_test() {
+    build(false);
+    run_lisp_file("test/interactive-test.el", false);
+}
+
+fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S, batch: bool) {
     let eval_arg = format!("(load-file \"{}\")", lisp_file_name.as_ref());
-    let mut args = vec![
-        "-Q",
-        "--batch",
-        "--eval",
-        &eval_arg
-    ];
+    let mut args = vec!["-Q", "--eval", &eval_arg];
+    if batch {
+        args.push("--batch");
+    }
 
     let mut child = Command::new("emacs").args(args).spawn().unwrap();
     let status = child.wait().unwrap();
