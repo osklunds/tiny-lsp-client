@@ -26,6 +26,11 @@
 (defun std-message (format-string &rest args)
   (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
 
+(defun kill-server ()
+  (interactive)
+  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
+    (shell-command (format "kill %s" i))))
+
 ;; -----------------------------------------------------------------------------
 ;; Test
 ;;------------------------------------------------------------------------------
@@ -88,7 +93,7 @@
 ;;;; definition
 ;;;;----------------------------------------------------------------------------
 
-(sleep-for 2)
+(sleep-for 10)
 
 (std-message "Sending definition")
 
@@ -191,6 +196,27 @@
 
 (assert-equal '(ok 3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
               (recv-response))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Stopping the LSP server
+;;;;----------------------------------------------------------------------------
+
+(kill-server)
+
+;; to avoid race condition
+(sleep-for 1)
+
+(assert-equal 'no-server (tlc--rust-send-notification
+                          root-path
+                          "textDocument/didOpen"
+                          (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+
+(assert-equal 'no-server (tlc--rust-send-request
+                          root-path
+                          "textDocument/definition"
+                          '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+
+(assert-equal 'no-server (recv-response))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; End
