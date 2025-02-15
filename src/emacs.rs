@@ -2,6 +2,7 @@ include!(concat!(env!("OUT_DIR"), "/emacs_module_h_bindings.rs"));
 
 use std::ffi::CString;
 use std::ptr;
+use std::str;
 
 macro_rules! c_string {
     ($x:expr) => {
@@ -26,7 +27,7 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
 
     assert!(result_get_string);
     len -= 1; // remove null-terminator
-    std::str::from_utf8(&buf[0..len as usize])
+    str::from_utf8(&buf[0..len as usize])
         .unwrap()
         .to_string()
 }

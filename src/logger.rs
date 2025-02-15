@@ -12,8 +12,10 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use std::ptr;
+use std::str;
 // todo: remove this dependency
 use chrono::Local;
+use std::ffi::CString;
 
 // todo: consider some rust-level automated tests for this module. At least
 // mode-test covers it partially. There are some subtle aspects, such as
@@ -168,6 +170,17 @@ fn rotate_to_old_file(log_file_name: &str) {
 fn get_timestamp() -> String {
     unsafe {
         let timer: time_t = time(ptr::null_mut());
+        let tm_info: *mut tm = localtime(&timer as *const time_t);
+
+        let mut buffer = [0; 26];
+        let format = CString::new("%Y-%m-%d %H:%M:%S").unwrap();
+        strftime(buffer.as_mut_ptr() as *mut i8, 26, format.as_ptr(), tm_info);
+
+        // todo: instead of trim_matches, maybe iter and index is faster
+        let utf8 = str::from_utf8(&buffer[0..26]).unwrap();
+        let trimmed = utf8.trim_matches('\0');
+
+        println!("oskar: {:?}", trimmed);
     }
 
     // strftime();
