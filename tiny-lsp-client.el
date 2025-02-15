@@ -153,7 +153,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             (buffer-modified-p)
             revert-buffer-in-progress-p
             )
-  ;; todo: Why not revert? Related to vdiff
+  ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
+  ;; it lead to that those changes were overwritten.
   (when (and (buffer-modified-p) (not revert-buffer-in-progress-p))
     ;; todo: document this
     (message "tiny-lsp-client can only open saved buffers, so saving for you.")
