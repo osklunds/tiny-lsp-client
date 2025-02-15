@@ -28,7 +28,11 @@ fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S, batch: bool) {
         args.push("--batch");
     }
 
-    let mut child = Command::new("emacs").args(args).spawn().unwrap();
+    let mut child = Command::new("emacs")
+        .args(args)
+        .env("RUST_BACKTRACE", "full")
+        .spawn()
+        .unwrap();
     let status = child.wait().unwrap();
     assert!(status.success());
 }

@@ -10,11 +10,12 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - phase 1: basics + find definition
   - timing
   - server info list with buffers
-  - Don't use Chrono, call C for timestamp
   - in general, compare against lsp-mode's didChange
     - After rename, there are diffs and STDERR
   - enable and fix warnings
   - crash if vdiff on deleted file. The file of course doesn't reside on disk. But why is didOpen sent?
+    - also if C-x C-f on new file.
+    - add test for the above
 - phase 2: erlang
 - phase 3: completions
 - phase 4: make public

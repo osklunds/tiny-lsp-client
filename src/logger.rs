@@ -1,13 +1,17 @@
+#[cfg(test)]
+mod tests;
+
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
+use std::ptr;
+use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
-// todo: remove this dependency
-use chrono::Local;
+use std::ffi::CString;
 
 // todo: consider some rust-level automated tests for this module. At least
 // mode-test covers it partially. There are some subtle aspects, such as
@@ -110,7 +114,7 @@ pub fn log_rust_debug_enabled() -> bool {
 }
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    let timestamp = get_timestamp();
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
@@ -157,4 +161,34 @@ fn rotate_to_old_file(log_file_name: &str) {
         fs::write(format!("{}.old", log_file_name), existing_content).unwrap();
     }
     fs::write(log_file_name, "").unwrap();
+}
+
+// Nothing against Chrono at all, but for this project I wanted to avoid non
+// rust-lang dependencies except serde. But it seems e.g. rust-bindgen has non
+// rust-lang dependencies anyway... Oh well :)
+fn get_timestamp() -> String {
+    let mut buffer = [0; 26];
+    let mut ms;
+    unsafe {
+        let mut tv: libc::timeval = libc::timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        };
+
+        libc::gettimeofday(&mut tv as *mut libc::timeval, ptr::null_mut());
+        let tm_info: *mut libc::tm =
+            libc::localtime(&tv.tv_sec as *const libc::time_t);
+        let format = CString::new("%Y-%m-%d %H:%M:%S").unwrap();
+        libc::strftime(
+            buffer.as_mut_ptr() as *mut i8,
+            26,
+            format.as_ptr(),
+            tm_info,
+        );
+        ms = tv.tv_usec as f32 / 1000.0;
+    }
+
+    let len = buffer.iter().position(|&e| e == 0).unwrap();
+    let utf8 = str::from_utf8(&buffer[0..len]).unwrap();
+    format!("{}.{:03.0}", utf8, ms)
 }
