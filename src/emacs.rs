@@ -1,4 +1,4 @@
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+include!(concat!(env!("OUT_DIR"), "/emacs_module_h_bindings.rs"));
 
 use std::ffi::CString;
 use std::ptr;
