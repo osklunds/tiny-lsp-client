@@ -9,6 +9,11 @@ use std::sync::Mutex;
 // todo: remove this dependency
 use chrono::Local;
 
+// todo: consider some rust-level automated tests for this module. At least
+// mode-test covers it partially. There are some subtle aspects, such as
+// no write to file until user has been able to change path, that would
+// be good to test
+
 macro_rules! log_io {
     ($($arg:tt)*) => {
         crate::logger::log_io_fun(format!($($arg)*));
