@@ -57,8 +57,8 @@ impl Connection {
         let (stdin_tx, stdin_rx) = mpsc::channel();
         let child_send_thread = Arc::clone(&child);
 
-        let seq_num_timestamps = Arc::new(Mutex::new(Vec::new()));
-        let seq_num_timestamps_send = Arc::clone(&seq_num_timestamps);
+        let seq_num_timestamps_recv = Arc::new(Mutex::new(Vec::new()));
+        let seq_num_timestamps_send = Arc::clone(&seq_num_timestamps_recv);
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
@@ -92,11 +92,11 @@ impl Connection {
                         let id = request.id;
                         let ts = Instant::now();
                         // todo: don't unwrap, if fail, return
-                        let mut seq_num_timestamps = seq_num_timestamps_send.lock().unwrap();
+                        let mut seq_num_timestamps =
+                            seq_num_timestamps_send.lock().unwrap();
                         seq_num_timestamps.push((id, ts));
                         seq_num_timestamps.truncate(10);
                     }
-
                 } else {
                     break;
                 }
@@ -184,6 +184,46 @@ impl Connection {
                                 }
                             };
 
+                            let msg = match serde_json::from_str(&json) {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    logger::log_rust_debug!(
+                                        "serde_json::from_str failed: {:?}",
+                                        e
+                                    );
+                                    break;
+                                }
+                            };
+
+                            let mut duration = None;
+
+                            // Only care about response so far, i.e. drop notifications
+                            // about e.g. diagnostics
+                            if let Message::Response(response) = msg {
+                                let id = response.id;
+
+                                // todo: don't unwrap
+                                let mut seq_num_timestamps =
+                                    seq_num_timestamps_recv.lock().unwrap();
+                                let lookup_result =
+                                    seq_num_timestamps.iter().enumerate().find(
+                                        |(_i, (curr_id, _ts))| *curr_id == id,
+                                    );
+                                if let Some((index, (_id, ts))) = lookup_result
+                                {
+                                    duration = Some(Some(ts.elapsed()));
+                                    seq_num_timestamps.swap_remove(index);
+                                } else {
+                                    duration = Some(None);
+                                }
+                                drop(seq_num_timestamps);
+
+                                if let Ok(()) = stdout_tx.send(response) {
+                                } else {
+                                    break;
+                                }
+                            }
+
                             if logger::LOG_IO.load(Ordering::Relaxed) {
                                 // Decode as serde_json::Value too, to be able
                                 // to print fields not deserialized into msg.
@@ -204,26 +244,6 @@ impl Connection {
                                     serde_json::to_string_pretty(&full_json)
                                         .unwrap()
                                 );
-                            }
-
-                            let msg = match serde_json::from_str(&json) {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    logger::log_rust_debug!(
-                                        "serde_json::from_str failed: {:?}",
-                                        e
-                                    );
-                                    break;
-                                }
-                            };
-
-                            // Only care about response so far, i.e. drop notifications
-                            // about e.g. diagnostics
-                            if let Message::Response(response) = msg {
-                                if let Ok(()) = stdout_tx.send(response) {
-                                } else {
-                                    break;
-                                }
                             }
                         } else {
                             logger::log_rust_debug!("stdio got EOF");
