@@ -380,6 +380,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
         ('no-server (message "No server at root path '%s' could be found" root-path))
         (_ (error "bad result"))))))
 
+(defun tlc-restart-server ()
+  (interactive)
+  (tlc-stop-server)
+  (tlc--start-server))
+
 ;; -----------------------------------------------------------------------------
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
