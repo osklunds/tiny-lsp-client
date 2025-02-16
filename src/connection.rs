@@ -20,7 +20,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct Connection {
     server_process: Arc<Mutex<Child>>,
@@ -57,6 +57,9 @@ impl Connection {
         let (stdin_tx, stdin_rx) = mpsc::channel();
         let child_send_thread = Arc::clone(&child);
 
+        let seq_num_timestamps = Arc::new(Mutex::new(Vec::new()));
+        let seq_num_timestamps_send = Arc::clone(&seq_num_timestamps);
+
         // Receiver of messages from application
         // Sending over stdin to lsp server
         spawn_named_thread("send", move || {
@@ -84,6 +87,16 @@ impl Connection {
                         "Sent: {}",
                         serde_json::to_string_pretty(&msg).unwrap()
                     );
+
+                    if let Message::Request(request) = msg {
+                        let id = request.id;
+                        let ts = Instant::now();
+                        // todo: don't unwrap, if fail, return
+                        let mut seq_num_timestamps = seq_num_timestamps_send.lock().unwrap();
+                        seq_num_timestamps.push((id, ts));
+                        seq_num_timestamps.truncate(10);
+                    }
+
                 } else {
                     break;
                 }
