@@ -350,7 +350,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   ;; todo: is this the correct way to get custom?
   (find-file (tlc--rust-get-log-option 'tlc-log-file)))
 
-(defun tlc-get-server-info ()
+(defun tlc-info ()
   (interactive)
   (let ((infos (tlc--rust-all-server-info)))
     (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
@@ -363,6 +363,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           )
         )
       )
+    infos
     )
   )
 

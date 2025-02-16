@@ -332,6 +332,45 @@ fn second_funct() {
 (assert-equal 4 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
+;; Info and stop
+;; -----------------------------------------------------------------------------
+
+(setq root-path (tlc--root))
+(assert-equal t (stringp root-path))
+
+(pcase (tlc-info)
+  (`((,r ,command ,process-id ,alive))
+   (assert-equal root-path r)
+   (assert-equal "rust-analyzer" command)
+   (assert-equal t (integerp process-id))
+   (assert-equal t alive)
+   )
+  (x
+   (error "unexpected return: %s" x)))
+
+(tlc-stop-server)
+
+;; avoid race
+(sleep-for 1)
+
+(pcase (tlc-info)
+  (`((,r ,command ,process-id ,alive))
+   (assert-equal root-path r)
+   (assert-equal "rust-analyzer" command)
+   (assert-equal t (integerp process-id))
+   (assert-equal nil alive)
+   )
+  (x
+   (error "unexpected return: %s" x)))
+
+;; To see that spamming doesn't cause issues
+(tlc-stop-server)
+(tlc-stop-server)
+(tlc-stop-server)
+
+(std-message "After tlc-stop-server and tlc-info")
+
+;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
 
