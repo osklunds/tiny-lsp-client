@@ -46,6 +46,13 @@ macro_rules! log_emacs_debug {
 }
 pub(crate) use log_emacs_debug;
 
+macro_rules! is_log_enabled {
+    ($log_name:ident) => {
+        crate::logger::$log_name.load(Ordering::Relaxed)
+    }
+}
+pub(crate) use is_log_enabled;
+
 pub static LOG_IO: AtomicBool = AtomicBool::new(true);
 pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
@@ -86,31 +93,31 @@ pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
 }
 
 pub fn log_io_fun<S: AsRef<str>>(msg: S) {
-    if LOG_IO.load(Ordering::Relaxed) {
+    if is_log_enabled!(LOG_IO) {
         log("IO", msg);
     }
 }
 
 pub fn log_stderr_fun<S: AsRef<str>>(msg: S) {
-    if LOG_STDERR.load(Ordering::Relaxed) {
+    if is_log_enabled!(LOG_STDERR) {
         log("STDERR", msg);
     }
 }
 
 pub fn log_rust_debug_fun<S: AsRef<str>>(msg: S) {
-    if LOG_RUST_DEBUG.load(Ordering::Relaxed) {
+    if is_log_enabled!(LOG_RUST_DEBUG) {
         log("RUST_DEBUG", msg);
     }
 }
 
 pub fn log_emacs_debug_fun<S: AsRef<str>>(msg: S) {
-    if LOG_RUST_DEBUG.load(Ordering::Relaxed) {
+    if is_log_enabled!(LOG_RUST_DEBUG) {
         log("EMACS_DEBUG", msg);
     }
 }
 
 pub fn log_rust_debug_enabled() -> bool {
-    LOG_RUST_DEBUG.load(Ordering::Relaxed)
+    is_log_enabled!(LOG_RUST_DEBUG)
 }
 
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
@@ -149,7 +156,7 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
         rotate_to_old_file(&log_file_info.log_file_name);
     }
 
-    if LOG_TO_STDIO.load(Ordering::Relaxed) {
+    if is_log_enabled!(LOG_TO_STDIO) {
         print!("{}", truncated);
     }
 }

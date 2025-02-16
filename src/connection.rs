@@ -89,7 +89,7 @@ impl Connection {
                     );
 
                     // Only touch the mutex if IO is logged anyway
-                    if logger::LOG_IO.load(Ordering::Relaxed) {
+                    if logger::is_log_enabled!(LOG_IO) {
                         if let Message::Request(request) = msg {
                             let id = request.id;
                             let ts = Instant::now();
@@ -215,7 +215,7 @@ impl Connection {
                                 let id = response.id;
 
                                 // Only touch the mutex if IO is logged anyway
-                                if logger::LOG_IO.load(Ordering::Relaxed) {
+                                if logger::is_log_enabled!(LOG_IO) {
                                     let mut seq_num_timestamps =
                                         match seq_num_timestamps_recv.lock() {
                                             Ok(locked) => locked,
@@ -251,7 +251,7 @@ impl Connection {
                                 }
                             }
 
-                            if logger::LOG_IO.load(Ordering::Relaxed) {
+                            if logger::is_log_enabled!(LOG_IO) {
                                 // Decode as serde_json::Value too, to be able
                                 // to print fields not deserialized into msg.
                                 let full_json: serde_json::Value =

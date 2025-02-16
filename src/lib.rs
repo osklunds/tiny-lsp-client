@@ -425,13 +425,13 @@ unsafe extern "C" fn tlc__rust_get_log_option(
         }
     } else {
         let value = if symbol == "tlc-log-io" {
-            logger::LOG_IO.load(Ordering::Relaxed)
+            logger::is_log_enabled!(LOG_IO)
         } else if symbol == "tlc-log-stderr" {
-            logger::LOG_STDERR.load(Ordering::Relaxed)
+            logger::is_log_enabled!(LOG_STDERR)
         } else if symbol == "tlc-log-rust-debug" {
-            logger::LOG_RUST_DEBUG.load(Ordering::Relaxed)
+            logger::is_log_enabled!(LOG_RUST_DEBUG)
         } else if symbol == "tlc-log-to-stdio" {
-            logger::LOG_TO_STDIO.load(Ordering::Relaxed)
+            logger::is_log_enabled!(LOG_TO_STDIO)
         } else {
             panic!("Incorrect log symbol")
         };
