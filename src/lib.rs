@@ -390,13 +390,20 @@ unsafe fn handle_response(
     if let Some(result) = response.result {
         if let Result::TextDocumentDefinitionResult(definition_result) = result
         {
-            let DefinitionResult::LocationLinkList(location_link_list) =
-                definition_result;
+            let location_list = match definition_result {
+                DefinitionResult::LocationList(location_list) => location_list,
+                DefinitionResult::LocationLinkList(location_link_list) => {
+                    location_link_list
+                        .into_iter()
+                        .map(|location_link| location_link.to_location())
+                        .collect()
+                }
+            };
             let mut lisp_location_list_vec = Vec::new();
 
-            for location_link in location_link_list {
-                let uri = &location_link.target_uri;
-                let range = &location_link.target_selection_range;
+            for location in location_list {
+                let uri = &location.uri;
+                let range = &location.range;
 
                 let lisp_location = call(
                     env,

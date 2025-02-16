@@ -68,7 +68,14 @@ pub enum Result {
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum DefinitionResult {
+    LocationList(Vec<Location>),
     LocationLinkList(Vec<LocationLink>),
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct Location {
+    pub uri: String,
+    pub range: Range,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -79,6 +86,15 @@ pub struct LocationLink {
     pub target_range: Range,
     #[serde(rename = "targetSelectionRange")]
     pub target_selection_range: Range,
+}
+
+impl LocationLink {
+    pub fn to_location(self) -> Location {
+        Location {
+            uri: self.target_uri,
+            range: self.target_selection_range
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]

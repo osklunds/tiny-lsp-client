@@ -10,7 +10,10 @@
 ;; todo: specify types
 
 (defcustom tlc-server-cmds
-  '((rust-mode . "rust-analyzer"))
+  '(
+    (rust-mode . "rust-analyzer")
+    (erlang-mode . "erlang_ls")
+    )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client)
 
@@ -427,6 +430,12 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
         (unless (string-match-p "fatal:" root)
           root))))
+
+(defun tlc-dev-find-root-default-function ()
+  "Special root finder used for developing tiny-lsp-client itself. Finds the nested projects inside the test directory as separate projects."
+  (if (string-match-p "erlang_ls" (buffer-file-name))
+      (file-name-directory (buffer-file-name))
+    (tlc-find-root-default-function)))
 
 (defun tlc--ask-start-server ()
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")

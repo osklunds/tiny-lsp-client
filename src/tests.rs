@@ -21,6 +21,12 @@ fn interactive_test() {
     run_lisp_file("test/interactive-test.el", false);
 }
 
+#[test]
+fn erlang_ls_test() {
+    build(false);
+    run_lisp_file("test/erlang-ls-test.el", true);
+}
+
 fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S, batch: bool) {
     let eval_arg = format!("(load-file \"{}\")", lisp_file_name.as_ref());
     let mut args = vec!["-Q", "--eval", &eval_arg];

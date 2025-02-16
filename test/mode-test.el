@@ -8,34 +8,6 @@
 (load "test/common.el")
 
 ;; -----------------------------------------------------------------------------
-;; Helpers
-;;------------------------------------------------------------------------------
-
-(defun non-interactive-xref-find-definitions ()
-  (let ((xref-prompt-for-identifier nil))
-    (call-interactively 'xref-find-definitions)))
-
-(setq log-file-name (file-truename
-                     (file-name-concat
-                      user-emacs-directory
-                      "tiny-lsp-client-test.log")))
-
-;; Since this should always be 0, it's hard to know if it's working
-;; properly
-(defun number-of-STDERR ()
-  (count-in-log-file "STDERR"))
-
-(defun number-of-did-open ()
-  (count-in-log-file "\"method\": \"textDocument/didOpen\","))
-
-(defun number-of-did-close ()
-  (count-in-log-file "\"method\": \"textDocument/didClose\","))
-
-(defun count-in-log-file (pattern)
-  (string-to-number (shell-command-to-string
-   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
-
-;; -----------------------------------------------------------------------------
 ;; Preparation
 ;;------------------------------------------------------------------------------
 
@@ -48,8 +20,8 @@
 ;; Loading tlc-mode
 ;;------------------------------------------------------------------------------
 
-(add-to-list 'load-path default-directory)
-
+;; Manually add tlc-rust to get debug version
+(require 'tlc-rust "target/debug/libtiny_lsp_client.so")
 (require 'tiny-lsp-client)
 
 (customize-set-variable 'tlc-log-file log-file-name)
@@ -171,9 +143,6 @@
 ;; -----------------------------------------------------------------------------
 ;; Editing
 ;;------------------------------------------------------------------------------
-
-(defun current-buffer-string ()
-  (buffer-substring-no-properties (point-min) (point-max)))
 
 (assert-equal 
  "
