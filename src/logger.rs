@@ -1,17 +1,16 @@
 #[cfg(test)]
 mod tests;
 
+use std::ffi::CString;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::Path;
 use std::ptr;
 use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
-use std::ffi::CString;
 
 // todo: consider some rust-level automated tests for this module. At least
 // mode-test covers it partially. There are some subtle aspects, such as
@@ -49,7 +48,7 @@ pub(crate) use log_emacs_debug;
 macro_rules! is_log_enabled {
     ($log_name:ident) => {
         crate::logger::$log_name.load(Ordering::Relaxed)
-    }
+    };
 }
 pub(crate) use is_log_enabled;
 
@@ -128,7 +127,7 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     };
 
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
-    let mut log_file_info = locked_log_file_info.as_mut().unwrap();
+    let log_file_info = locked_log_file_info.as_mut().unwrap();
 
     // No file because nothing has been logged yet or because nothing
     // has been logged since last time it was changed
@@ -137,7 +136,7 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
 
         rotate_to_old_file(new_log_file_name);
 
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(new_log_file_name)
@@ -145,8 +144,8 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
         log_file_info.file = Some(file);
     };
 
-    let mut log_file = log_file_info.file.as_mut().unwrap();
-    write!(log_file, "{}", truncated);
+    let log_file = log_file_info.file.as_mut().unwrap();
+    write!(log_file, "{}", truncated).unwrap();
 
     if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
         rotate_to_old_file(&log_file_info.log_file_name);
@@ -171,7 +170,7 @@ fn rotate_to_old_file(log_file_name: &str) {
 // rust-lang dependencies anyway... Oh well :)
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
-    let mut ms;
+    let ms;
     unsafe {
         let mut tv: libc::timeval = libc::timeval {
             tv_sec: 0,

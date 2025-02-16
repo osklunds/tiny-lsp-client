@@ -8,6 +8,9 @@ use std::path::PathBuf;
 fn main() {
     let bindings = bindgen::Builder::default()
         .header("/usr/include/emacs-module.h")
+        .allowlist_type("emacs_env")
+        .allowlist_type("emacs_value")
+        .allowlist_type("emacs_runtime")
         .blocklist_function("emacs_module_init")
         .generate()
         .unwrap();

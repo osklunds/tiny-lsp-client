@@ -4,17 +4,14 @@ mod tests;
 use crate::logger;
 use crate::message::*;
 
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::{json, Number, Value};
-use std::io;
+use serde_json::json;
+use std::io::BufRead;
 use std::io::ErrorKind;
 use std::io::Read;
 use std::io::Write;
-use std::io::{BufRead, BufReader};
 use std::ops::Drop;
 use std::process;
-use std::process::{Child, ChildStdout, Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -48,7 +45,7 @@ impl Connection {
             }
         };
         let mut stdin = child.stdin.take().unwrap();
-        let mut stdout = child.stdout.take().unwrap();
+        let stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
 
         let child = Mutex::new(child);
@@ -125,7 +122,7 @@ impl Connection {
 
             logger::log_rust_debug!("send thread killing server");
             if let Ok(mut locked) = child_send_thread.lock() {
-                locked.kill();
+                let _ = locked.kill();
             }
         });
 
@@ -324,7 +321,7 @@ impl Connection {
             // something.
             logger::log_rust_debug!("recv thread killing server");
             if let Ok(mut locked) = child_recv_thread.lock() {
-                locked.kill();
+                let _ = locked.kill();
             }
         });
 
@@ -336,7 +333,14 @@ impl Connection {
                 match stderr.read(&mut buf) {
                     Ok(len) => {
                         if len > 0 {
-                            stderr_tx.send(buf[0..len].to_vec());
+                            if let Err(e) = stderr_tx.send(buf[0..len].to_vec())
+                            {
+                                logger::log_rust_debug!(
+                                    "stderr_inner got error when sending to stderr {:?}",
+                                    e
+                                );
+                                break;
+                            }
                         } else {
                             logger::log_rust_debug!("stderr_inner got EOF");
                             break;
@@ -369,7 +373,7 @@ impl Connection {
                 // in doing non-blocking yet.
                 let mut result = match stderr_rx.recv() {
                     Ok(r) => Ok(r),
-                    RecvError => Err(TryRecvError::Disconnected),
+                    _ => Err(TryRecvError::Disconnected),
                 };
                 let mut disconnected = false;
 
@@ -418,7 +422,7 @@ impl Connection {
 
             logger::log_rust_debug!("stderr thread killing server");
             if let Ok(mut locked) = child_stderr_thread.lock() {
-                locked.kill();
+                let _ = locked.kill();
             }
         });
 
@@ -537,7 +541,7 @@ impl Connection {
     }
 
     pub fn stop_server(&self) {
-        self.server_process.lock().unwrap().kill();
+        let _ = self.server_process.lock().unwrap().kill();
     }
 }
 
@@ -547,13 +551,13 @@ impl Drop for Connection {
     }
 }
 
-fn spawn_named_thread<F, T, N: AsRef<str>>(
-    name: N,
-    f: F,
-) -> std::io::Result<JoinHandle<T>>
+fn spawn_named_thread<F, T, N: AsRef<str>>(name: N, f: F) -> JoinHandle<T>
 where
     F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
-    Builder::new().name(name.as_ref().to_string()).spawn(f)
+    Builder::new()
+        .name(name.as_ref().to_string())
+        .spawn(f)
+        .unwrap()
 }

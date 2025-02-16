@@ -1,8 +1,7 @@
 // Heavily inspired by https://github.com/zbelial/lspce
 // and https://ryanfaulhaber.com/posts/first-emacs-module-rust/
 
-#![allow(warnings)]
-
+#[allow(warnings)]
 #[rustfmt::skip]
 mod dummy;
 mod connection;
@@ -29,6 +28,8 @@ use std::sync::{Arc, Mutex};
 #[allow(non_upper_case_globals)]
 pub static plugin_is_GPL_compatible: libc::c_int = 0;
 
+// todo: see if this can be avoided
+#[allow(static_mut_refs)]
 // todo: stolen from lspce. Understand how, and maybe make safer
 fn connections() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
     static mut CONNECTIONS: MaybeUninit<
@@ -137,11 +138,12 @@ pub unsafe extern "C" fn emacs_module_init(
     0
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_all_server_info(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
@@ -164,11 +166,12 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     call(env, "list", server_info_list)
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_start_server(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_start_server");
     let root_path = check_path(extract_string(env, *args.offset(0)));
@@ -198,11 +201,12 @@ unsafe extern "C" fn tlc__rust_start_server(
     }
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_send_request(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_request");
 
@@ -221,10 +225,11 @@ unsafe extern "C" fn tlc__rust_send_request(
     })
 }
 
+#[allow(non_snake_case)]
 unsafe fn build_text_document_definition(
     env: *mut emacs_env,
     request_args: emacs_value,
-    connection: &mut Connection,
+    _connection: &mut Connection,
 ) -> RequestParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -242,11 +247,12 @@ unsafe fn build_text_document_definition(
     })
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_send_notification(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_notification");
 
@@ -344,7 +350,7 @@ unsafe fn build_text_document_did_change(
 unsafe fn build_text_document_did_close(
     env: *mut emacs_env,
     request_args: emacs_value,
-    connection: &mut Connection,
+    _connection: &mut Connection,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -355,15 +361,16 @@ unsafe fn build_text_document_did_close(
     })
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_recv_response(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_recv_response");
 
-    handle_call(env, nargs, args, |env, args, connection| {
+    handle_call(env, nargs, args, |env, _args, connection| {
         if let Some(recv_result) = connection.try_recv_response() {
             let result = match recv_result {
                 Some(response) => handle_response(env, response),
@@ -423,11 +430,12 @@ unsafe fn handle_response(
     }
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_get_log_option(
     env: *mut emacs_env,
-    nargs: isize,
+    _nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
@@ -457,11 +465,12 @@ unsafe extern "C" fn tlc__rust_get_log_option(
     }
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_set_log_option(
     env: *mut emacs_env,
-    nargs: isize,
+    _nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
@@ -490,11 +499,12 @@ unsafe extern "C" fn tlc__rust_set_log_option(
     intern(env, "nil")
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_log_emacs_debug(
     env: *mut emacs_env,
-    nargs: isize,
+    _nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     let msg = *args.offset(0);
     let msg = extract_string(env, msg);
@@ -503,14 +513,15 @@ unsafe extern "C" fn tlc__rust_log_emacs_debug(
     intern(env, "nil")
 }
 
+#[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_stop_server(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
-    data: *mut raw::c_void,
+    _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_stop_server");
-    handle_call(env, nargs, args, |env, args, connection| {
+    handle_call(env, nargs, args, |env, _args, connection| {
         connection.stop_server();
         Some(intern(env, "ok"))
     })

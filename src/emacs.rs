@@ -1,3 +1,9 @@
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+// todo: more blocklist to fix this
+#![allow(dead_code)]
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::ffi::CString;
@@ -27,9 +33,7 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
 
     assert!(result_get_string);
     len -= 1; // remove null-terminator
-    str::from_utf8(&buf[0..len as usize])
-        .unwrap()
-        .to_string()
+    str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
 }
 
 pub unsafe fn make_string<S: AsRef<str>>(
