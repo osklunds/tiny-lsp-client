@@ -124,7 +124,9 @@ impl Connection {
             }
 
             logger::log_rust_debug!("send thread killing server");
-            child_send_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_send_thread.lock() {
+                locked.kill();
+            }
         });
 
         let (stdout_tx, stdout_rx) = mpsc::channel();
@@ -321,7 +323,9 @@ impl Connection {
             // the same semantics, but None means it happened while handling
             // something.
             logger::log_rust_debug!("recv thread killing server");
-            child_recv_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_recv_thread.lock() {
+                locked.kill();
+            }
         });
 
         let child_stderr_thread = Arc::clone(&child);
@@ -413,7 +417,9 @@ impl Connection {
             }
 
             logger::log_rust_debug!("stderr thread killing server");
-            child_stderr_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_stderr_thread.lock() {
+                locked.kill();
+            }
         });
 
         Some(Connection {
@@ -516,6 +522,7 @@ impl Connection {
     }
 
     pub fn get_server_process_id(&self) -> u32 {
+        // todo: avoid unwrap
         self.server_process.lock().unwrap().id()
     }
 
