@@ -20,7 +20,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct Connection {
     server_process: Arc<Mutex<Child>>,
@@ -57,6 +57,9 @@ impl Connection {
         let (stdin_tx, stdin_rx) = mpsc::channel();
         let child_send_thread = Arc::clone(&child);
 
+        let seq_num_timestamps_recv = Arc::new(Mutex::new(Vec::new()));
+        let seq_num_timestamps_send = Arc::clone(&seq_num_timestamps_recv);
+
         // Receiver of messages from application
         // Sending over stdin to lsp server
         spawn_named_thread("send", move || {
@@ -80,17 +83,50 @@ impl Connection {
                             break;
                         }
                     }
-                    logger::log_io!(
-                        "Sent: {}",
-                        serde_json::to_string_pretty(&msg).unwrap()
-                    );
+
+                    // Don't create pretty json if logging is not enabled
+                    // todo: maybe handle don't-create-args in a more generic way
+                    if logger::is_log_enabled!(LOG_IO) {
+                        logger::log_io!(
+                            "Sent: {}",
+                            serde_json::to_string_pretty(&msg).unwrap()
+                        );
+                    }
+
+                    // Only touch the mutex if IO is logged
+                    if logger::is_log_enabled!(LOG_IO) {
+                        if let Message::Request(request) = msg {
+                            let id = request.id;
+                            let ts = Instant::now();
+                            let mut seq_num_timestamps =
+                                match seq_num_timestamps_send.lock() {
+                                    Ok(locked) => locked,
+                                    Err(_) => {
+                                        logger::log_rust_debug!(
+                                            "seq_num_timestamps lock failed in send thread"
+                                        );
+                                        break;
+                                    }
+                                };
+                            seq_num_timestamps.push((id, ts));
+                            seq_num_timestamps.truncate(10);
+
+                            logger::log_rust_debug!(
+                                "{} timestamps in send {:?}",
+                                seq_num_timestamps.len(),
+                                seq_num_timestamps
+                            );
+                        }
+                    }
                 } else {
                     break;
                 }
             }
 
             logger::log_rust_debug!("send thread killing server");
-            child_send_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_send_thread.lock() {
+                locked.kill();
+            }
         });
 
         let (stdout_tx, stdout_rx) = mpsc::channel();
@@ -171,7 +207,68 @@ impl Connection {
                                 }
                             };
 
-                            if logger::LOG_IO.load(Ordering::Relaxed) {
+                            let msg: Message = match serde_json::from_str(&json)
+                            {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    logger::log_rust_debug!(
+                                        "serde_json::from_str failed: {:?}",
+                                        e
+                                    );
+                                    break;
+                                }
+                            };
+
+                            let mut duration = None;
+
+                            // Only care about response so far, i.e. drop
+                            // notifications about e.g. diagnostics
+                            if let Message::Response(response) = msg {
+                                let id = response.id;
+
+                                // Only touch the mutex if IO is logged
+                                if logger::is_log_enabled!(LOG_IO) {
+                                    let mut seq_num_timestamps =
+                                        match seq_num_timestamps_recv.lock() {
+                                            Ok(locked) => locked,
+                                            Err(_) => {
+                                                logger::log_rust_debug!(
+                                                    "seq_num_timestamps lock failed in recv thread"
+                                                );
+                                                break;
+                                            }
+                                        };
+                                    logger::log_rust_debug!(
+                                        "{} timestamps in recv {:?}",
+                                        seq_num_timestamps.len(),
+                                        seq_num_timestamps
+                                    );
+                                    let lookup_result = seq_num_timestamps
+                                        .iter()
+                                        .enumerate()
+                                        .find(|(_i, (curr_id, _ts))| {
+                                            *curr_id == id
+                                        });
+                                    if let Some((index, (_id, ts))) =
+                                        lookup_result
+                                    {
+                                        duration = Some(Some(
+                                            ts.elapsed().as_millis(),
+                                        ));
+                                        seq_num_timestamps.swap_remove(index);
+                                    } else {
+                                        duration = Some(None);
+                                    }
+                                    drop(seq_num_timestamps);
+                                }
+
+                                if let Ok(()) = stdout_tx.send(response) {
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if logger::is_log_enabled!(LOG_IO) {
                                 // Decode as serde_json::Value too, to be able
                                 // to print fields not deserialized into msg.
                                 let full_json: serde_json::Value =
@@ -186,31 +283,24 @@ impl Connection {
                                             break;
                                         }
                                     };
-                                logger::log_io!(
-                                    "Received: {}",
+                                let pretty_json =
                                     serde_json::to_string_pretty(&full_json)
-                                        .unwrap()
+                                        .unwrap();
+                                let duration_part = match duration {
+                                    // Response to request where time could be found
+                                    Some(Some(ms)) => format!("({} ms) ", ms),
+
+                                    // Response to request where time could not be found
+                                    Some(None) => format!("(? ms) "),
+
+                                    // Notification
+                                    None => format!(""),
+                                };
+                                logger::log_io!(
+                                    "Received: {}{}",
+                                    duration_part,
+                                    pretty_json
                                 );
-                            }
-
-                            let msg = match serde_json::from_str(&json) {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    logger::log_rust_debug!(
-                                        "serde_json::from_str failed: {:?}",
-                                        e
-                                    );
-                                    break;
-                                }
-                            };
-
-                            // Only care about response so far, i.e. drop notifications
-                            // about e.g. diagnostics
-                            if let Message::Response(response) = msg {
-                                if let Ok(()) = stdout_tx.send(response) {
-                                } else {
-                                    break;
-                                }
                             }
                         } else {
                             logger::log_rust_debug!("stdio got EOF");
@@ -233,7 +323,9 @@ impl Connection {
             // the same semantics, but None means it happened while handling
             // something.
             logger::log_rust_debug!("recv thread killing server");
-            child_recv_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_recv_thread.lock() {
+                locked.kill();
+            }
         });
 
         let child_stderr_thread = Arc::clone(&child);
@@ -325,7 +417,9 @@ impl Connection {
             }
 
             logger::log_rust_debug!("stderr thread killing server");
-            child_stderr_thread.lock().unwrap().kill();
+            if let Ok(mut locked) = child_stderr_thread.lock() {
+                locked.kill();
+            }
         });
 
         Some(Connection {
@@ -428,6 +522,7 @@ impl Connection {
     }
 
     pub fn get_server_process_id(&self) -> u32 {
+        // todo: avoid unwrap on server_process
         self.server_process.lock().unwrap().id()
     }
 
