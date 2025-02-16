@@ -20,6 +20,8 @@
 ;; Loading tlc-mode
 ;;------------------------------------------------------------------------------
 
+;; Manually add tlc-rust to get debug version
+(require 'tlc-rust "target/debug/libtiny_lsp_client.so")
 (require 'tiny-lsp-client)
 
 (customize-set-variable 'tlc-log-file log-file-name)
