@@ -88,6 +88,7 @@ impl Connection {
                         serde_json::to_string_pretty(&msg).unwrap()
                     );
 
+                    // Only touch the mutex if IO is logged anyway
                     if logger::LOG_IO.load(Ordering::Relaxed) {
                         if let Message::Request(request) = msg {
                             let id = request.id;
@@ -194,7 +195,8 @@ impl Connection {
                                 }
                             };
 
-                            let msg = match serde_json::from_str(&json) {
+                            let msg: Message = match serde_json::from_str(&json)
+                            {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     logger::log_rust_debug!(
@@ -212,29 +214,36 @@ impl Connection {
                             if let Message::Response(response) = msg {
                                 let id = response.id;
 
-                                let mut seq_num_timestamps =
-                                    match seq_num_timestamps_recv.lock() {
-                                        Ok(locked) => locked,
-                                        Err(_) => break,
-                                    };
-                                logger::log_rust_debug!(
-                                    "{} timestamps in recv {:?}",
-                                    seq_num_timestamps.len(),
-                                    seq_num_timestamps
-                                );
-                                let lookup_result =
-                                    seq_num_timestamps.iter().enumerate().find(
-                                        |(_i, (curr_id, _ts))| *curr_id == id,
+                                // Only touch the mutex if IO is logged anyway
+                                if logger::LOG_IO.load(Ordering::Relaxed) {
+                                    let mut seq_num_timestamps =
+                                        match seq_num_timestamps_recv.lock() {
+                                            Ok(locked) => locked,
+                                            Err(_) => break,
+                                        };
+                                    logger::log_rust_debug!(
+                                        "{} timestamps in recv {:?}",
+                                        seq_num_timestamps.len(),
+                                        seq_num_timestamps
                                     );
-                                if let Some((index, (_id, ts))) = lookup_result
-                                {
-                                    duration =
-                                        Some(Some(ts.elapsed().as_millis()));
-                                    seq_num_timestamps.swap_remove(index);
-                                } else {
-                                    duration = Some(None);
+                                    let lookup_result = seq_num_timestamps
+                                        .iter()
+                                        .enumerate()
+                                        .find(|(_i, (curr_id, _ts))| {
+                                            *curr_id == id
+                                        });
+                                    if let Some((index, (_id, ts))) =
+                                        lookup_result
+                                    {
+                                        duration = Some(Some(
+                                            ts.elapsed().as_millis(),
+                                        ));
+                                        seq_num_timestamps.swap_remove(index);
+                                    } else {
+                                        duration = Some(None);
+                                    }
+                                    drop(seq_num_timestamps);
                                 }
-                                drop(seq_num_timestamps);
 
                                 if let Ok(()) = stdout_tx.send(response) {
                                 } else {
