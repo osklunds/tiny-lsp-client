@@ -88,7 +88,7 @@ impl Connection {
                         serde_json::to_string_pretty(&msg).unwrap()
                     );
 
-                    // Only touch the mutex if IO is logged anyway
+                    // Only touch the mutex if IO is logged
                     if logger::is_log_enabled!(LOG_IO) {
                         if let Message::Request(request) = msg {
                             let id = request.id;
@@ -209,12 +209,12 @@ impl Connection {
 
                             let mut duration = None;
 
-                            // Only care about response so far, i.e. drop notifications
-                            // about e.g. diagnostics
+                            // Only care about response so far, i.e. drop
+                            // notifications about e.g. diagnostics
                             if let Message::Response(response) = msg {
                                 let id = response.id;
 
-                                // Only touch the mutex if IO is logged anyway
+                                // Only touch the mutex if IO is logged
                                 if logger::is_log_enabled!(LOG_IO) {
                                     let mut seq_num_timestamps =
                                         match seq_num_timestamps_recv.lock() {
