@@ -342,7 +342,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             response)))
 
 ;; -----------------------------------------------------------------------------
-;; Info
+;; The "control room"
 ;;------------------------------------------------------------------------------
 
 (defun tlc-open-log-file ()
@@ -353,9 +353,17 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defun tlc-get-server-info ()
   (interactive)
   (let ((infos (tlc--rust-all-server-info)))
-    (dolist (info infos)
-      (pcase-let ((`(,root-path ,command ,pid) info))
-        (message "Root path: %s\nServer command: %s\nProcess id: %s\n\n" root-path command pid)))))
+    (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
+      (dolist (info infos)
+        (pcase-let ((`(,root-path ,command ,pid) info))
+          (insert (format "Root path: %s\n" root-path))
+          (insert (format "Server command: %s\n" command))
+          (insert (format "Process id: %s\n\n" pid))
+          )
+        )
+      )
+    )
+  )
 
 ;; -----------------------------------------------------------------------------
 ;; Misc helpers
