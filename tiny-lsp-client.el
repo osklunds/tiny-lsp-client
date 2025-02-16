@@ -149,18 +149,26 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  (tlc--log "didOpen. Modified: %s. Revert in progress: %s"
-            (buffer-modified-p)
-            revert-buffer-in-progress-p
-            )
-  ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
-  ;; it lead to that those changes were overwritten.
-  (when (and (buffer-modified-p) (not revert-buffer-in-progress-p))
-    ;; todo: document this
-    (message "tiny-lsp-client can only open saved buffers, so saving for you.")
-    (save-buffer)
-    )
-  (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name))))
+  (let* ((file (tlc--buffer-file-name))
+         (revert revert-buffer-in-progress-p)
+         (modified (buffer-modified-p))
+         (exists (file-exists-p file)))
+    (tlc--log "didOpen. File: %s Revert in progress: %s. Modified: %s. Exists: %s."
+              file
+              revert
+              modified
+              exists
+              )
+    ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
+    ;; it lead to that those changes were overwritten.
+    (when (and (or modified (not exists))
+               (not revert))
+      ;; todo: document this
+      (tlc--log "Saving buffer due to didOpen")
+      (message "tiny-lsp-client can only open saved buffers, so saving for you.")
+      (save-buffer)
+      )
+    (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name)))))
 
 (defun tlc--send-notification (method params)
   (let ((return (tlc--rust-send-notification
