@@ -146,6 +146,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
                 make_string(env, root_path),
                 make_string(env, connection.get_command()),
                 make_integer(env, connection.get_server_process_id() as i64),
+                make_bool(env, connection.is_working()),
             ],
         );
         server_info_list.push(info);
@@ -394,9 +395,16 @@ unsafe fn handle_response(
             }
             let lisp_location_list = call(env, "list", lisp_location_list_vec);
             let id = make_integer(env, response.id as i64);
-            call(env, "list", vec![intern(env, "ok-response"), id, lisp_location_list])
+            call(
+                env,
+                "list",
+                vec![intern(env, "ok-response"), id, lisp_location_list],
+            )
         } else {
-            logger::log_rust_debug!("Non-supported response received: {:?}", result);
+            logger::log_rust_debug!(
+                "Non-supported response received: {:?}",
+                result
+            );
             intern(env, "error-response")
         }
     } else {
