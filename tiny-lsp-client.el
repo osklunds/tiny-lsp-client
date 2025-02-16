@@ -342,7 +342,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             response)))
 
 ;; -----------------------------------------------------------------------------
-;; Logging
+;; The "control room"
 ;;------------------------------------------------------------------------------
 
 (defun tlc-open-log-file ()
@@ -350,12 +350,54 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   ;; todo: is this the correct way to get custom?
   (find-file (tlc--rust-get-log-option 'tlc-log-file)))
 
+(defun tlc-info ()
+  (interactive)
+  (let ((infos (tlc--rust-all-server-info)))
+    (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
+      (dolist (info infos)
+        (pcase-let ((`(,root-path ,command ,pid ,alive) info))
+          (insert (format "Root path: %s\n" root-path))
+          (insert (format "Server command: %s\n" command))
+          (insert (format "Process id: %s\n" pid))
+          (insert (format "Alive: %s\n\n" alive))
+          )
+        )
+      )
+    infos
+    )
+  )
+
+(defun tlc--all-root-paths ()
+  (mapcar (lambda (info)
+            (nth 0 info)
+            )
+          (tlc--rust-all-server-info)))
+
+(defun tlc-stop-server (&optional root-path)
+  (interactive
+   (list
+    (completing-read "Choose root path of server to stop: "
+                     (tlc--all-root-paths))))
+  (let* ((root-path (or root-path (tlc--root))))
+    (unless root-path
+      (user-error "No root path found"))
+    (let* ((result (tlc--rust-stop-server root-path)))
+      (tlc--log "Stop server result: %s for root-path: %s" result root-path)
+      (pcase result
+        ('ok nil)
+        ('no-server (message "No server at root path '%s' could be found" root-path))
+        (_ (error "bad result"))))))
+
+(defun tlc-restart-server ()
+  (interactive)
+  (tlc-stop-server)
+  ;; Avoid race where tlc--start-server thinks the server is still alive
+  (sleep-for 0.1)
+  (tlc--start-server))
+
 ;; -----------------------------------------------------------------------------
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
-
-(defun std-message (format-string &rest args)
-  (print (format (concat "[emacs]  " format-string) args) 'external-debugging-output))
 
 (defun tlc--buffer-file-name ()
   ;; In after-revert-hook, if there was a change, buffer-file-name is nil,

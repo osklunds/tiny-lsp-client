@@ -340,4 +340,62 @@ fn second_funct() {
 (assert-equal 5 (number-of-did-open))
 (assert-equal 5 (number-of-did-close))
 
+(find-file "src/dummy.rs")
+
+(assert-equal 6 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
+
+;; -----------------------------------------------------------------------------
+;; Info and stop
+;; -----------------------------------------------------------------------------
+
+(setq root-path (tlc--root))
+(assert-equal t (stringp root-path))
+
+(defun assert-tlc-info (exp-alive)
+  (pcase (tlc-info)
+    (`((,r ,command ,process-id ,alive))
+     (assert-equal root-path r)
+     (assert-equal "rust-analyzer" command)
+     (assert-equal t (integerp process-id))
+     (assert-equal exp-alive alive)
+     process-id
+     )
+    (x
+     (error "unexpected return: %s" x))))
+
+(setq pid1 (assert-tlc-info t))
+
+(tlc-stop-server)
+
+;; avoid race
+(sleep-for 1)
+
+(setq pid2 (assert-tlc-info nil))
+
+(assert-equal pid1 pid2)
+
+;; To see that spamming doesn't cause issues
+(tlc-stop-server)
+(tlc-stop-server)
+(tlc-stop-server)
+
+(assert-equal 6 (number-of-did-open) "didOpen before restart")
+(assert-equal 5 (number-of-did-close))
+
+(tlc-restart-server)
+
+;; avoid race
+(sleep-for 1)
+
+(assert-equal 7 (number-of-did-open) "didOpen after restart")
+(assert-equal 5 (number-of-did-close))
+
+(setq pid3 (assert-tlc-info t))
+
+(std-message "New: %s Old: %s" pid3 pid2)
+(assert-equal nil (equal pid3 pid2))
+
+(std-message "After stop restart info")
+
 (assert-equal 0 (number-of-STDERR))
