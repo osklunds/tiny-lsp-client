@@ -346,6 +346,29 @@ fn second_funct() {
 (assert-equal 5 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
+;; Open non-existing file
+;; -----------------------------------------------------------------------------
+
+(setq non-existing-file "doesnt_exist_right.rs")
+(assert-equal nil (file-exists-p non-existing-file))
+
+(find-file non-existing-file)
+
+(assert-equal t (file-exists-p non-existing-file))
+
+(assert-equal 7 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
+
+(kill-buffer)
+
+(assert-equal 7 (number-of-did-open))
+(assert-equal 6 (number-of-did-close))
+
+(assert-equal "dummy.rs" (buffer-name))
+
+(delete-file non-existing-file)
+
+;; -----------------------------------------------------------------------------
 ;; Info and stop
 ;; -----------------------------------------------------------------------------
 
@@ -380,16 +403,16 @@ fn second_funct() {
 (tlc-stop-server)
 (tlc-stop-server)
 
-(assert-equal 6 (number-of-did-open) "didOpen before restart")
-(assert-equal 5 (number-of-did-close))
+(assert-equal 7 (number-of-did-open) "didOpen before restart")
+(assert-equal 6 (number-of-did-close))
 
 (tlc-restart-server)
 
 ;; avoid race
 (sleep-for 1)
 
-(assert-equal 7 (number-of-did-open) "didOpen after restart")
-(assert-equal 5 (number-of-did-close))
+(assert-equal 8 (number-of-did-open) "didOpen after restart")
+(assert-equal 6 (number-of-did-close))
 
 (setq pid3 (assert-tlc-info t))
 
