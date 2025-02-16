@@ -156,3 +156,19 @@ other_function_hej(Arg) ->
 (non-interactive-xref-find-definitions)
 (assert-equal 10 (line-number-at-pos))
 (assert-equal 4 (current-column))
+
+;; -----------------------------------------------------------------------------
+;; Revert buffer
+;; -----------------------------------------------------------------------------
+
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close)) 
+
+(revert-buffer nil 'no-confirm 'preserve-modes)
+(assert-equal t tlc-mode)
+(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+(assert-equal 2 (number-of-did-open))
+(assert-equal 1 (number-of-did-close)) 
+
+(assert-equal 0 (number-of-STDERR))
