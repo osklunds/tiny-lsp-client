@@ -8,13 +8,7 @@ dir with test projects/repos
 for tests, have one .el file per test case. It loads the rust module, runs initialize, starts some LSP server, sends some requests and asserts responses. If fail, either due to crash or enexpected value, maybe then and only then error code is non-0? Can check error code in .sh script. Can have as arg to sh both .el file to run and whether to have gui. gui useful to manually debug, non-gui good for regression testing.
 
 - phase 1: basics + find definition
-  - in general, compare against lsp-mode's didChange
-    - After rename, there are diffs and STDERR
   - enable and fix warnings
-  - crash if vdiff on deleted file. The file of course doesn't reside on disk. But why is didOpen sent?
-    - also if C-x C-f on new file.
-    - add test for the above
-  - in general, check for crashes due to bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
 - phase 2: erlang
 - phase 3: completions
 - phase 4: make public
@@ -23,6 +17,11 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - logging
   - test strategy
   - licenses and attribution
+- bugs
+  - crash if vdiff on deleted file. The file of course doesn't reside on disk. But why is didOpen sent?
+  - Sometimes duplicate didOpen/didClose
+  - Sometimes STDERR due to bad didChange. Especially on lsp-rename. In general compare against lsp-mode's didChange
 - whenever
   - clean up connection.rs and lib.rs
   - Improve connection.rs debug print to be consistent and contain more info
+  - in general, check for crashes due to bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
