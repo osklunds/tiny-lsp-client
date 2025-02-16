@@ -26,10 +26,3 @@
 (add-hook 'rust-mode-hook 'tlc-mode)
 
 (find-file "src/dummy.rs")
-
-(defun kill-server ()
-  (interactive)
-  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
-    (shell-command (format "kill %s" i))))
-
-

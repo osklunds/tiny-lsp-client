@@ -19,6 +19,11 @@
   (std-message "%s" (garbage-collect))
   (std-message "garbage-collect after (%s)" mark))
 
+(defun kill-server ()
+  (interactive)
+  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
+    (shell-command (format "kill %s" i))))
+
 ;; -----------------------------------------------------------------------------
 ;; Load the module
 ;; -----------------------------------------------------------------------------
