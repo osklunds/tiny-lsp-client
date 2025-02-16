@@ -332,6 +332,20 @@ fn second_funct() {
 (assert-equal 4 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
+;; Kill buffer
+;;------------------------------------------------------------------------------
+
+(kill-buffer)
+
+(assert-equal 5 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
+
+(find-file "src/dummy.rs")
+
+(assert-equal 6 (number-of-did-open))
+(assert-equal 5 (number-of-did-close))
+
+;; -----------------------------------------------------------------------------
 ;; Info and stop
 ;; -----------------------------------------------------------------------------
 
@@ -368,15 +382,27 @@ fn second_funct() {
 (tlc-stop-server)
 (tlc-stop-server)
 
-(std-message "After tlc-stop-server and tlc-info")
-
-;; -----------------------------------------------------------------------------
-;; Kill buffer
-;;------------------------------------------------------------------------------
-
-(kill-buffer)
-
-(assert-equal 5 (number-of-did-open))
+(assert-equal 6 (number-of-did-open) "didOpen before restart")
 (assert-equal 5 (number-of-did-close))
+
+(tlc-restart-server)
+
+(assert-equal 7 (number-of-did-open) "didOpen after restart")
+(assert-equal 5 (number-of-did-close))
+
+;; avoid race
+(sleep-for 1)
+
+(pcase (tlc-info)
+  (`((,r ,command ,process-id ,alive))
+   (assert-equal root-path r)
+   (assert-equal "rust-analyzer" command)
+   (assert-equal t (integerp process-id))
+   (assert-equal t alive)
+   )
+  (x
+   (error "unexpected return: %s" x)))
+
+(std-message "After stop restart info")
 
 (assert-equal 0 (number-of-STDERR))
