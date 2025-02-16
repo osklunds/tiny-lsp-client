@@ -144,9 +144,6 @@
 ;; Editing
 ;;------------------------------------------------------------------------------
 
-(defun current-buffer-string ()
-  (buffer-substring-no-properties (point-min) (point-max)))
-
 (assert-equal 
  "
 // Don't change this file. It is used in tests

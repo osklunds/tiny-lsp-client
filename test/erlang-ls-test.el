@@ -31,6 +31,10 @@
 
 (delete-file log-file-name)
 
+;; -----------------------------------------------------------------------------
+;; Opening a file
+;;------------------------------------------------------------------------------
+
 (assert-equal 0 (number-of-did-open))
 (assert-equal 0 (number-of-did-close))
 
@@ -66,3 +70,22 @@
 
 (assert-equal 1 (number-of-did-open))
 (assert-equal 0 (number-of-did-close))
+
+;; -----------------------------------------------------------------------------
+;; Editing
+;;------------------------------------------------------------------------------
+
+(assert-equal 
+ "-module(my_module).
+
+-export([my_function/1]).
+
+other_function(Arg) ->
+    io:format(\"~p~n\", [Arg]).
+
+
+
+my_function(Arg) ->
+    other_function({arg, Arg}).
+"
+ (current-buffer-string))

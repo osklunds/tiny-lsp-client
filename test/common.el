@@ -38,3 +38,6 @@
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
    (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+
+(defun current-buffer-string ()
+  (buffer-substring-no-properties (point-min) (point-max)))
