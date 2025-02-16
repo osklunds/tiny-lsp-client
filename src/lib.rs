@@ -123,6 +123,15 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-log-emacs-debug",
     );
 
+    export_function(
+        env,
+        1,
+        1,
+        tlc__rust_stop_server,
+        "doc todo",
+        "tlc--rust-stop-server",
+    );
+
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
     0
@@ -492,6 +501,19 @@ unsafe extern "C" fn tlc__rust_log_emacs_debug(
     logger::log_emacs_debug!("{}", msg);
 
     intern(env, "nil")
+}
+
+unsafe extern "C" fn tlc__rust_stop_server(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    data: *mut raw::c_void,
+) -> emacs_value {
+    log_args(env, nargs, args, "tlc__rust_stop_server");
+    handle_call(env, nargs, args, |env, args, connection| {
+        connection.stop_server();
+        Some(intern(env, "ok"))
+    })
 }
 
 fn check_path<S: AsRef<str>>(file_path: S) -> S {
