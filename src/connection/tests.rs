@@ -284,8 +284,6 @@ fn receive_until_definition_response_with_one_location_1(
                 if !result.is_empty() {
                     return (response, next_id);
                 }
-            } else {
-                panic!("Not location_link as response");
             }
         }
     }
