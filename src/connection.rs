@@ -99,6 +99,12 @@ impl Connection {
                                 };
                             seq_num_timestamps.push((id, ts));
                             seq_num_timestamps.truncate(10);
+
+                            logger::log_rust_debug!(
+                                "{} timestamps in send {:?}",
+                                seq_num_timestamps.len(),
+                                seq_num_timestamps
+                            );
                         }
                     }
                 } else {
@@ -211,6 +217,11 @@ impl Connection {
                                         Ok(locked) => locked,
                                         Err(_) => break,
                                     };
+                                logger::log_rust_debug!(
+                                    "{} timestamps in recv {:?}",
+                                    seq_num_timestamps.len(),
+                                    seq_num_timestamps
+                                );
                                 let lookup_result =
                                     seq_num_timestamps.iter().enumerate().find(
                                         |(_i, (curr_id, _ts))| *curr_id == id,
