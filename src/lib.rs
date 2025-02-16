@@ -511,7 +511,7 @@ unsafe fn log_args<S: AsRef<str>>(
     // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
-    if logger::log_rust_debug_enabled() {
+    if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
         let format_string = make_string(

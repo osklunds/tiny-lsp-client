@@ -116,10 +116,6 @@ pub fn log_emacs_debug_fun<S: AsRef<str>>(msg: S) {
     }
 }
 
-pub fn log_rust_debug_enabled() -> bool {
-    is_log_enabled!(LOG_RUST_DEBUG)
-}
-
 fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let timestamp = get_timestamp();
     let formatted =
