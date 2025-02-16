@@ -211,7 +211,8 @@ impl Connection {
                                     );
                                 if let Some((index, (_id, ts))) = lookup_result
                                 {
-                                    duration = Some(Some(ts.elapsed()));
+                                    duration =
+                                        Some(Some(ts.elapsed().as_millis()));
                                     seq_num_timestamps.swap_remove(index);
                                 } else {
                                     duration = Some(None);
@@ -239,10 +240,23 @@ impl Connection {
                                             break;
                                         }
                                     };
-                                logger::log_io!(
-                                    "Received: {}",
+                                let pretty_json =
                                     serde_json::to_string_pretty(&full_json)
-                                        .unwrap()
+                                        .unwrap();
+                                let duration_part = match duration {
+                                    // Response to request where time could be found
+                                    Some(Some(ms)) => format!("({} ms) ", ms),
+
+                                    // Response to request where time could not be found
+                                    Some(None) => format!("(? ms) "),
+
+                                    // Notification
+                                    None => format!("")
+                                };
+                                logger::log_io!(
+                                    "Received: {}{}",
+                                    duration_part,
+                                    pretty_json
                                 );
                             }
                         } else {
