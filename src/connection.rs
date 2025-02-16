@@ -83,10 +83,15 @@ impl Connection {
                             break;
                         }
                     }
-                    logger::log_io!(
-                        "Sent: {}",
-                        serde_json::to_string_pretty(&msg).unwrap()
-                    );
+
+                    // Don't create pretty json if logging is not enabled
+                    // todo: maybe handle don't-create-args in a more generic way
+                    if logger::is_log_enabled!(LOG_IO) {
+                        logger::log_io!(
+                            "Sent: {}",
+                            serde_json::to_string_pretty(&msg).unwrap()
+                        );
+                    }
 
                     // Only touch the mutex if IO is logged
                     if logger::is_log_enabled!(LOG_IO) {
