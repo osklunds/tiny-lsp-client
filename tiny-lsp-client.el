@@ -369,13 +369,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defun tlc-stop-server (&optional root-path)
   ;; todo read root paths
   (interactive)
-  (let* ((root-path (or root-path (tlc--root)))
-         (result (tlc--rust-stop-server root-path)))
-    (tlc--log "Stop server result: %s for root-path: %s" result root-path)
-    (pcase result
-      ('ok nil)
-      ('no-server (message "No server at root path '%s' could be found"))
-      (_ (error "bad result")))))
+  (let* ((root-path (or root-path (tlc--root))))
+    (unless root-path
+      (user-error "No root path found"))
+    (let* ((result (tlc--rust-stop-server root-path)))
+      (tlc--log "Stop server result: %s for root-path: %s" result root-path)
+      (pcase result
+        ('ok nil)
+        ('no-server (message "No server at root path '%s' could be found"))
+        (_ (error "bad result"))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Misc helpers
