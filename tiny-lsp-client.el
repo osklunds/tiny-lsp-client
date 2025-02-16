@@ -342,13 +342,20 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             response)))
 
 ;; -----------------------------------------------------------------------------
-;; Logging
+;; Info
 ;;------------------------------------------------------------------------------
 
 (defun tlc-open-log-file ()
   (interactive)
   ;; todo: is this the correct way to get custom?
   (find-file (tlc--rust-get-log-option 'tlc-log-file)))
+
+(defun tlc-get-server-info ()
+  (interactive)
+  (let ((infos (tlc--rust-all-server-info)))
+    (dolist (info infos)
+      (pcase-let ((`(,root-path ,command ,pid) info))
+        (message "Root path: %s\nServer command: %s\nProcess id: %s\n\n" root-path command pid)))))
 
 ;; -----------------------------------------------------------------------------
 ;; Misc helpers
