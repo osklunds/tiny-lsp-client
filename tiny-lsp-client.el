@@ -367,9 +367,17 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     )
   )
 
+(defun tlc--all-root-paths ()
+  (mapcar (lambda (info)
+            (nth 0 info)
+            )
+          (tlc--rust-all-server-info)))
+
 (defun tlc-stop-server (&optional root-path)
-  ;; todo read root paths
-  (interactive)
+  (interactive
+   (list
+    (completing-read "Choose root path of server to stop: "
+                     (tlc--all-root-paths))))
   (let* ((root-path (or root-path (tlc--root))))
     (unless root-path
       (user-error "No root path found"))
