@@ -522,7 +522,7 @@ impl Connection {
     }
 
     pub fn get_server_process_id(&self) -> u32 {
-        // todo: avoid unwrap
+        // todo: avoid unwrap on server_process
         self.server_process.lock().unwrap().id()
     }
 
