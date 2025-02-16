@@ -41,3 +41,26 @@
 (assert-equal t tlc-mode)
 (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
+;; -----------------------------------------------------------------------------
+;; Xref find definition
+;;------------------------------------------------------------------------------
+
+(re-search-forward "my_function")
+(assert-equal 3 (line-number-at-pos))
+(assert-equal 20 (current-column))
+
+(defun xref-find-definition-until-success ()
+  (ignore-errors
+    (non-interactive-xref-find-definitions))
+  (if (equal 8 (line-number-at-pos))
+      'ok
+    (sleep-for 0.1)
+    (xref-find-definition-until-success)))
+
+(xref-find-definition-until-success)
+
+(assert-equal 10 (line-number-at-pos))
+(assert-equal 0 (current-column))
+
+(assert-equal 1 (number-of-did-open))
+(assert-equal 0 (number-of-did-close))
