@@ -101,7 +101,12 @@ impl Connection {
                             let mut seq_num_timestamps =
                                 match seq_num_timestamps_send.lock() {
                                     Ok(locked) => locked,
-                                    Err(_) => break,
+                                    Err(_) => {
+                                        logger::log_rust_debug!(
+                                            "seq_num_timestamps lock failed in send thread"
+                                        );
+                                        break;
+                                    }
                                 };
                             seq_num_timestamps.push((id, ts));
                             seq_num_timestamps.truncate(10);
@@ -224,7 +229,12 @@ impl Connection {
                                     let mut seq_num_timestamps =
                                         match seq_num_timestamps_recv.lock() {
                                             Ok(locked) => locked,
-                                            Err(_) => break,
+                                            Err(_) => {
+                                                logger::log_rust_debug!(
+                                                    "seq_num_timestamps lock failed in recv thread"
+                                                );
+                                                break;
+                                            }
                                         };
                                     logger::log_rust_debug!(
                                         "{} timestamps in recv {:?}",
