@@ -6,7 +6,6 @@
                       user-emacs-directory
                       "tiny-lsp-client-test.log")))
 
-
 (defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
     (when msg
