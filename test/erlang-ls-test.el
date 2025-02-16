@@ -52,7 +52,7 @@
 (defun xref-find-definition-until-success ()
   (ignore-errors
     (non-interactive-xref-find-definitions))
-  (if (equal 8 (line-number-at-pos))
+  (if (equal 10 (line-number-at-pos))
       'ok
     (sleep-for 0.1)
     (xref-find-definition-until-success)))
