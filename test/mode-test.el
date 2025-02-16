@@ -387,11 +387,11 @@ fn second_funct() {
 
 (tlc-restart-server)
 
-(assert-equal 7 (number-of-did-open) "didOpen after restart")
-(assert-equal 5 (number-of-did-close))
-
 ;; avoid race
 (sleep-for 1)
+
+(assert-equal 7 (number-of-did-open) "didOpen after restart")
+(assert-equal 5 (number-of-did-close))
 
 (pcase (tlc-info)
   (`((,r ,command ,process-id ,alive))
