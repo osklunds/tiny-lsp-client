@@ -10,8 +10,10 @@
   (unless (equal exp act)
     (when msg
       (std-message msg))
-    (std-message "Exp %s" exp)
-    (std-message "Act %s" act)
+    (std-message "Expected '%S'" exp)
+    (std-message "Actual '%S'" act)
+      ;; Sleep to have time for uncluttered printout
+    (sleep-for 0.5)
     (cl-assert (equal exp act) 'show)))
 
 (defun std-message (format-string &rest format-args)

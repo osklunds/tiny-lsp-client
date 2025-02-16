@@ -89,3 +89,70 @@ my_function(Arg) ->
     other_function({arg, Arg}).
 "
  (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "other_function")
+(insert "_")
+(insert "h")
+(insert "e")
+(insert "j")
+
+(re-search-forward "other_function")
+(insert "_hej")
+
+(assert-equal 
+ "-module(my_module).
+
+-export([my_function/1]).
+
+other_function_hej(Arg) ->
+    io:format(\"~p~n\", [Arg]).
+
+
+
+my_function(Arg) ->
+    other_function_hej({arg, Arg}).
+"
+ (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "other")
+(re-search-forward "other")
+(assert-equal 11 (line-number-at-pos))
+(assert-equal 9 (current-column))
+
+(non-interactive-xref-find-definitions)
+(assert-equal 5 (line-number-at-pos))
+(assert-equal 0 (current-column))
+
+(beginning-of-buffer)
+(re-search-forward "my_fun")
+(backward-delete-char 1)
+(backward-delete-char 2)
+(re-search-forward "my_fun")
+(beginning-of-line)
+(replace-string "my_function" "    my_ction")
+
+(assert-equal 
+ "-module(my_module).
+
+-export([my_ction/1]).
+
+other_function_hej(Arg) ->
+    io:format(\"~p~n\", [Arg]).
+
+
+
+    my_ction(Arg) ->
+    other_function_hej({arg, Arg}).
+"
+ (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "my_c")
+(assert-equal 3 (line-number-at-pos))
+(assert-equal 13 (current-column))
+
+(non-interactive-xref-find-definitions)
+(assert-equal 10 (line-number-at-pos))
+(assert-equal 4 (current-column))
