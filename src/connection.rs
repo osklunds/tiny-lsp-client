@@ -88,16 +88,18 @@ impl Connection {
                         serde_json::to_string_pretty(&msg).unwrap()
                     );
 
-                    if let Message::Request(request) = msg {
-                        let id = request.id;
-                        let ts = Instant::now();
-                        let mut seq_num_timestamps =
-                            match seq_num_timestamps_send.lock() {
-                                Ok(locked) => locked,
-                                Err(_) => break,
-                            };
-                        seq_num_timestamps.push((id, ts));
-                        seq_num_timestamps.truncate(10);
+                    if logger::LOG_IO.load(Ordering::Relaxed) {
+                        if let Message::Request(request) = msg {
+                            let id = request.id;
+                            let ts = Instant::now();
+                            let mut seq_num_timestamps =
+                                match seq_num_timestamps_send.lock() {
+                                    Ok(locked) => locked,
+                                    Err(_) => break,
+                                };
+                            seq_num_timestamps.push((id, ts));
+                            seq_num_timestamps.truncate(10);
+                        }
                     }
                 } else {
                     break;
