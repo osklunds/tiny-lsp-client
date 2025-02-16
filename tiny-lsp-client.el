@@ -10,7 +10,10 @@
 ;; todo: specify types
 
 (defcustom tlc-server-cmds
-  '((rust-mode . "rust-analyzer"))
+  '(
+    (rust-mode . "rust-analyzer")
+    (erlang-mode . "erlang_ls")
+    )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client)
 
