@@ -389,12 +389,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;; Misc helpers
 ;;------------------------------------------------------------------------------
 
-(defun std-message (format-string &rest format-args)
-  (let* ((new-format-string (concat "[emacs]  " format-string))
-         (new-format-args (cons new-format-string format-args)))
-    (print (apply 'format new-format-args)
-           'external-debugging-output)))
-
 (defun tlc--buffer-file-name ()
   ;; In after-revert-hook, if there was a change, buffer-file-name is nil,
   ;; so use this instead
