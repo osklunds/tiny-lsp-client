@@ -383,6 +383,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defun tlc-restart-server ()
   (interactive)
   (tlc-stop-server)
+  ;; Avoid race where tlc--start-server thinks the server is still alive
+  (sleep-for 0.1)
   (tlc--start-server))
 
 ;; -----------------------------------------------------------------------------
