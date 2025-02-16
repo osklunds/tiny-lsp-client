@@ -376,7 +376,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       (tlc--log "Stop server result: %s for root-path: %s" result root-path)
       (pcase result
         ('ok nil)
-        ('no-server (message "No server at root path '%s' could be found"))
+        ('no-server (message "No server at root path '%s' could be found" root-path))
         (_ (error "bad result"))))))
 
 ;; -----------------------------------------------------------------------------
