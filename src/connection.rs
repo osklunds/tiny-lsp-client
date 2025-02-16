@@ -91,9 +91,11 @@ impl Connection {
                     if let Message::Request(request) = msg {
                         let id = request.id;
                         let ts = Instant::now();
-                        // todo: don't unwrap, if fail, return
                         let mut seq_num_timestamps =
-                            seq_num_timestamps_send.lock().unwrap();
+                            match seq_num_timestamps_send.lock() {
+                                Ok(locked) => locked,
+                                Err(_) => break,
+                            };
                         seq_num_timestamps.push((id, ts));
                         seq_num_timestamps.truncate(10);
                     }
@@ -202,9 +204,11 @@ impl Connection {
                             if let Message::Response(response) = msg {
                                 let id = response.id;
 
-                                // todo: don't unwrap
                                 let mut seq_num_timestamps =
-                                    seq_num_timestamps_recv.lock().unwrap();
+                                    match seq_num_timestamps_recv.lock() {
+                                        Ok(locked) => locked,
+                                        Err(_) => break,
+                                    };
                                 let lookup_result =
                                     seq_num_timestamps.iter().enumerate().find(
                                         |(_i, (curr_id, _ts))| *curr_id == id,
@@ -251,7 +255,7 @@ impl Connection {
                                     Some(None) => format!("(? ms) "),
 
                                     // Notification
-                                    None => format!("")
+                                    None => format!(""),
                                 };
                                 logger::log_io!(
                                     "Received: {}{}",
