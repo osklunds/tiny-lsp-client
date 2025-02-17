@@ -416,6 +416,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (cl-assert name)
     name))
 
+;; actually save to the cache
 (defvar-local tlc--cached-root nil)
 
 (defun tlc--root ()
