@@ -31,7 +31,7 @@ pub static plugin_is_GPL_compatible: libc::c_int = 0;
 // todo: see if this can be avoided
 #[allow(static_mut_refs)]
 // todo: stolen from lspce. Understand how, and maybe make safer
-fn connections_inner() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
+fn connections() -> MutexGuard<'static, HashMap<String, Connection>> {
     static mut CONNECTIONS: MaybeUninit<
         Arc<Mutex<HashMap<String, Connection>>>,
     > = MaybeUninit::uninit();
@@ -43,12 +43,9 @@ fn connections_inner() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
             .write(Arc::new(Mutex::new(HashMap::new())))
     });
 
-    unsafe { &*CONNECTIONS.as_mut_ptr() }
-}
-
-// todo: consider performance of always calling retain
-fn connections() -> MutexGuard<'static, HashMap<String, Connection>> {
-    let mut connections = connections_inner().lock().unwrap();
+    // todo: maybe mutex and arc not needed due to below?
+    let mut connections = unsafe { &*CONNECTIONS.as_mut_ptr() }.lock().unwrap();
+    // todo: consider performance of always calling retain
     connections.retain(|_root_path, connection| connection.is_working());
     connections
 }
