@@ -163,7 +163,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
                 make_string(env, root_path),
                 make_string(env, connection.get_command()),
                 make_integer(env, connection.get_server_process_id() as i64),
-                make_bool(env, connection.is_working()),
+                make_bool(env, true),
             ],
         );
         server_info_list.push(info);
@@ -185,13 +185,8 @@ unsafe extern "C" fn tlc__rust_start_server(
 
     let mut connections = connections();
 
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        if connection.is_working() {
-            return intern(env, "already-started");
-        } else {
-            logger::log_rust_debug!("Need to restart existing");
-            connections.remove(&root_path);
-        }
+    if let Some(ref connection) = &mut connections.get_mut(&root_path) {
+        return intern(env, "already-started");
     } else {
         logger::log_rust_debug!("Need to start new");
     }
@@ -596,16 +591,10 @@ unsafe fn handle_call<
     let mut connections = connections();
 
     if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        if connection.is_working() {
-            if let Some(result) = f(env, args_vec, connection) {
-                result
-            } else {
-                // This means it failed during handling this call
-                connections.remove(&root_path);
-                intern(env, "no-server")
-            }
+        if let Some(result) = f(env, args_vec, connection) {
+            result
         } else {
-            // This means the server wasn't working before this call
+            // This means it failed during handling this call
             connections.remove(&root_path);
             intern(env, "no-server")
         }
