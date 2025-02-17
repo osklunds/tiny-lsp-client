@@ -185,7 +185,7 @@ unsafe extern "C" fn tlc__rust_start_server(
 
     let mut connections = connections();
 
-    if let Some(ref connection) = &mut connections.get_mut(&root_path) {
+    if connections.contains_key(&root_path) {
         return intern(env, "already-started");
     } else {
         logger::log_rust_debug!("Need to start new");
