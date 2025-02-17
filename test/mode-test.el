@@ -42,12 +42,18 @@
 (defvar num-before-hook-calls 0)
 (defvar num-after-hook-calls 0)
 
+(defvar hook-last-caller 'after)
+
 (defun before-hook ()
   (cl-incf num-before-hook-calls)
+  (assert-equal 'after hook-last-caller)
+  (setq hook-last-caller 'before)
   (std-message "before-hook called"))
 
 (defun after-hook ()
   (cl-incf num-after-hook-calls)
+  (assert-equal 'before hook-last-caller)
+  (setq hook-last-caller 'after)
   (std-message "after-hook called"))
 
 (add-hook 'tlc-before-start-server-hook 'before-hook)
