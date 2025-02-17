@@ -39,6 +39,26 @@
 ;; Opening a file
 ;;------------------------------------------------------------------------------
 
+(defvar num-before-hook-calls 0)
+(defvar num-after-hook-calls 0)
+
+(defvar hook-last-caller 'after)
+
+(defun before-hook ()
+  (cl-incf num-before-hook-calls)
+  (assert-equal 'after hook-last-caller)
+  (setq hook-last-caller 'before)
+  (std-message "before-hook called"))
+
+(defun after-hook ()
+  (cl-incf num-after-hook-calls)
+  (assert-equal 'before hook-last-caller)
+  (setq hook-last-caller 'after)
+  (std-message "after-hook called"))
+
+(add-hook 'tlc-before-start-server-hook 'before-hook)
+(add-hook 'tlc-after-start-server-hook 'after-hook)
+
 (assert-equal 0 (number-of-did-open))
 (assert-equal 0 (number-of-did-close))
 
@@ -50,6 +70,9 @@
 
 (assert-equal 1 (number-of-did-open))
 (assert-equal 0 (number-of-did-close))
+
+(assert-equal 1 num-before-hook-calls)
+(assert-equal 1 num-after-hook-calls)
 
 ;; -----------------------------------------------------------------------------
 ;; Xref find definition
@@ -85,6 +108,8 @@
 
 (assert-equal 1 (number-of-did-open))
 (assert-equal 1 (number-of-did-close))
+
+(std-message "disable tlc")
 
 ;; -----------------------------------------------------------------------------
 ;; Enable tlc-mode again
@@ -364,6 +389,9 @@ fn second_funct() {
 
 (assert-equal nil (tlc-info))
 
+(assert-equal 1 num-before-hook-calls)
+(assert-equal 1 num-after-hook-calls)
+
 ;; To see that spamming doesn't cause issues
 (tlc-stop-server)
 (tlc-stop-server)
@@ -373,12 +401,14 @@ fn second_funct() {
 (assert-equal 6 (number-of-did-close))
 
 (tlc-restart-server)
-
 ;; avoid race
 (sleep-for 1)
 
 (assert-equal 8 (number-of-did-open) "didOpen after restart")
 (assert-equal 6 (number-of-did-close))
+
+(assert-equal 2 num-before-hook-calls)
+(assert-equal 2 num-after-hook-calls)
 
 (setq new-pid (assert-tlc-info))
 
