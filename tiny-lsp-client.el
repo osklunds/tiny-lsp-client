@@ -73,6 +73,16 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
 
+(defcustom tlc-before-start-server-hook nil
+  "List of functions to be called before an LSP server is started for a root path. When an existing LSP server is connected to, this hook is not run."
+  :type 'hook
+  :group 'tiny-lsp-client)
+
+(defcustom tlc-after-start-server-hook nil
+  "List of functions to be called after an LSP server is started for a root path. When an existing LSP server is connected to, this hook is not run."
+  :type 'hook
+  :group 'tiny-lsp-client)
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -122,15 +132,23 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (root-path (tlc--root)))
     (if (cl-member root-path (tlc--all-root-paths) :test 'string-equal)
         (message "Connected to already started server in '%s'" root-path)
+      (run-hooks 'tlc-before-start-server-hook)
       (let* ((result (tlc--rust-start-server root-path server-cmd)))
         (tlc--log "Start server result: %s" result)
         (pcase result
+          ;; normal case
           ('started (message "Started '%s' in '%s'" server-cmd root-path))
+
+          ;; alternative but valid case
           ('start-failed (error
                           "Failed to start '%s' in '%s'. Check log for details."
                           server-cmd root-path))
+
+          ;; bug case
           (_ (error "bad result tlc--start-server %s" result))
-          )))
+          )
+        (run-hooks 'tlc-after-start-server-hook)
+        ))
     (tlc--notify-text-document-did-open)
     ))
 
