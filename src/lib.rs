@@ -163,7 +163,6 @@ unsafe extern "C" fn tlc__rust_all_server_info(
                 make_string(env, root_path),
                 make_string(env, connection.get_command()),
                 make_integer(env, connection.get_server_process_id() as i64),
-                make_bool(env, true),
             ],
         );
         server_info_list.push(info);

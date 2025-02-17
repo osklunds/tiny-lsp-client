@@ -58,11 +58,10 @@
 (assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
 
 (pcase (tlc--rust-all-server-info)
-  (`((,r ,command ,process-id ,alive))
+  (`((,r ,command ,process-id))
    (assert-equal root-path r)
    (assert-equal "rust-analyzer" command)
    (assert-equal t (integerp process-id))
-   (assert-equal t alive)
    )
   (x
    (error "unexpected return: %s" x)))
