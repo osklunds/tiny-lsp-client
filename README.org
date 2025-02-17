@@ -25,3 +25,5 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - Improve connection.rs debug print to be consistent and contain more info
   - in general, check for crashes due to bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
   - compile module if it doesn't exist
+  - add doc strings to lisp functions
+  - fix custom
