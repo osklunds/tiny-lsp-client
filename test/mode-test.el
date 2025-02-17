@@ -86,6 +86,8 @@
 (assert-equal 1 (number-of-did-open))
 (assert-equal 1 (number-of-did-close))
 
+(std-message "disable tlc")
+
 ;; -----------------------------------------------------------------------------
 ;; Enable tlc-mode again
 ;;------------------------------------------------------------------------------
