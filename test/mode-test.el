@@ -344,28 +344,25 @@ fn second_funct() {
 (setq root-path (tlc--root))
 (assert-equal t (stringp root-path))
 
-(defun assert-tlc-info (exp-alive)
+(defun assert-tlc-info ()
   (pcase (tlc-info)
-    (`((,r ,command ,process-id ,alive))
+    (`((,r ,command ,process-id))
      (assert-equal root-path r)
      (assert-equal "rust-analyzer" command)
      (assert-equal t (integerp process-id))
-     (assert-equal exp-alive alive)
      process-id
      )
     (x
      (error "unexpected return: %s" x))))
 
-(setq pid1 (assert-tlc-info t))
+(setq old-pid (assert-tlc-info))
 
 (tlc-stop-server)
 
 ;; avoid race
 (sleep-for 1)
 
-(setq pid2 (assert-tlc-info nil))
-
-(assert-equal pid1 pid2)
+(assert-equal nil (tlc-info))
 
 ;; To see that spamming doesn't cause issues
 (tlc-stop-server)
@@ -383,10 +380,10 @@ fn second_funct() {
 (assert-equal 8 (number-of-did-open) "didOpen after restart")
 (assert-equal 6 (number-of-did-close))
 
-(setq pid3 (assert-tlc-info t))
+(setq new-pid (assert-tlc-info))
 
-(std-message "New: %s Old: %s" pid3 pid2)
-(assert-equal nil (equal pid3 pid2))
+(std-message "New: %s Old: %s" new-pid old-pid)
+(assert-equal nil (equal new-pid old-pid))
 
 (std-message "After stop restart info")
 

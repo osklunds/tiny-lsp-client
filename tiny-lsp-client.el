@@ -366,11 +366,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (let ((infos (tlc--rust-all-server-info)))
     (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
       (dolist (info infos)
-        (pcase-let ((`(,root-path ,command ,pid ,alive) info))
+        (pcase-let ((`(,root-path ,command ,pid) info))
           (insert (format "Root path: %s\n" root-path))
           (insert (format "Server command: %s\n" command))
           (insert (format "Process id: %s\n" pid))
-          (insert (format "Alive: %s\n\n" alive))
           )
         )
       )
@@ -417,6 +416,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (cl-assert name)
     name))
 
+;; actually save to the cache
 (defvar-local tlc--cached-root nil)
 
 (defun tlc--root ()
