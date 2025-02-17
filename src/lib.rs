@@ -22,7 +22,7 @@ use std::os::raw;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Once;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -31,7 +31,7 @@ pub static plugin_is_GPL_compatible: libc::c_int = 0;
 // todo: see if this can be avoided
 #[allow(static_mut_refs)]
 // todo: stolen from lspce. Understand how, and maybe make safer
-fn connections() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
+fn connections_inner() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
     static mut CONNECTIONS: MaybeUninit<
         Arc<Mutex<HashMap<String, Connection>>>,
     > = MaybeUninit::uninit();
@@ -44,6 +44,13 @@ fn connections() -> &'static Arc<Mutex<HashMap<String, Connection>>> {
     });
 
     unsafe { &*CONNECTIONS.as_mut_ptr() }
+}
+
+// todo: consider performance of always calling retain
+fn connections() -> MutexGuard<'static, HashMap<String, Connection>> {
+    let mut connections = connections_inner().lock().unwrap();
+    connections.retain(|_root_path, connection| connection.is_working());
+    connections
 }
 
 #[no_mangle]
@@ -147,9 +154,8 @@ unsafe extern "C" fn tlc__rust_all_server_info(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
-    let connections = connections().lock().unwrap();
 
-    for (root_path, connection) in connections.iter() {
+    for (root_path, connection) in connections().iter() {
         let info = call(
             env,
             "list",
@@ -177,7 +183,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
-    let mut connections = connections().lock().unwrap();
+    let mut connections = connections();
 
     if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
         if connection.is_working() {
@@ -587,7 +593,7 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
 
     let root_path = check_path(extract_string(env, args_vec[0]));
-    let mut connections = connections().lock().unwrap();
+    let mut connections = connections();
 
     if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
         if connection.is_working() {
