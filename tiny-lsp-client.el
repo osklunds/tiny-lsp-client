@@ -391,6 +391,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           (insert (format "Root path: %s\n" root-path))
           (insert (format "Server command: %s\n" command))
           (insert (format "Process id: %s\n" pid))
+          (insert "\n")
           )
         )
       )
