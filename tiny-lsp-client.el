@@ -132,7 +132,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (root-path (tlc--root)))
     (if (cl-member root-path (tlc--all-root-paths) :test 'string-equal)
         (message "Connected to already started server in '%s'" root-path)
-      (run-hooks 'tlc-before-start-server-hook)
+      (let ((default-directory root-path))
+        (run-hooks 'tlc-before-start-server-hook))
       (let* ((result (tlc--rust-start-server root-path server-cmd)))
         (tlc--log "Start server result: %s" result)
         (pcase result
@@ -147,7 +148,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           ;; bug case
           (_ (error "bad result tlc--start-server %s" result))
           )
-        (run-hooks 'tlc-after-start-server-hook)
+        (let ((default-directory root-path))
+          (run-hooks 'tlc-after-start-server-hook))
         ))
     (tlc--notify-text-document-did-open)
     ))
