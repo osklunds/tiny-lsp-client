@@ -414,7 +414,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             )
           (tlc--rust-all-server-info)))
 
-(defun tlc-stop-server (&optional root-path)
+(defun tlc-stop-server (&optional root-path nowarn-not-found)
   ;; todo: have (tlc--root) as default
   (interactive
    (list
@@ -427,12 +427,13 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
       (tlc--log "Stop server result: %s for root-path: %s" result root-path)
       (pcase result
         ('ok nil)
-        ('no-server (message "No server at root path '%s' could be found" root-path))
+        ('no-server (unless nowarn-not-found
+                      (message "No server at root path '%s' could be found" root-path)))
         (_ (error "bad result tlc-stop-server %s" result))))))
 
 (defun tlc-restart-server ()
   (interactive)
-  (tlc-stop-server)
+  (tlc-stop-server nil 'nowarn-not-found)
   ;; Avoid race where tlc--start-server thinks the server is still alive
   (sleep-for 0.1)
   (tlc--start-server))
