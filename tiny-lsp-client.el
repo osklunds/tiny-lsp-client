@@ -96,7 +96,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    ((not buffer-file-name)
     (message "tiny-lsp-client can only be used in file buffers.")
     (setq tlc-mode nil))
-   ((not (tlc--root))
+   ((not (tlc--initial-get-root))
     (message "tiny-lsp-client can only be used in buffers where root can be found.")
     (setq tlc-mode nil))
    (t
@@ -447,10 +447,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;; actually save to the cache
 (defvar-local tlc--cached-root nil)
 
-(defun tlc--root ()
+(defun tlc--initial-get-root ()
   (if tlc--cached-root
       tlc--cached-root
     (funcall tlc-find-root-function)))
+
+(defun tlc--root ()
+  (let ((root (tlc--initial-get-root)))
+    (cl-assert root)
+    root))
 
 (defun tlc-find-root-default-function ()
   (if (fboundp 'projectile-project-root)
