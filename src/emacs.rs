@@ -10,12 +10,6 @@ use std::ffi::CString;
 use std::ptr;
 use std::str;
 
-macro_rules! c_string {
-    ($x:expr) => {
-        CString::new($x).unwrap().as_ptr()
-    };
-}
-
 pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let copy_string_contents = (*env).copy_string_contents.unwrap();
 
@@ -84,12 +78,13 @@ pub unsafe fn export_function(
 ) {
     let make_function = (*env).make_function.unwrap();
 
+    let docstring = CString::new(docstring).unwrap();
     let emacs_fun = make_function(
         env,
         min_arity,
         max_arity,
         Some(fun),
-        c_string!(docstring),
+        docstring.as_ptr(),
         ptr::null_mut(),
     );
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);
@@ -110,7 +105,8 @@ pub unsafe fn call<F: AsRef<str>>(
 }
 
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
-    (*env).intern.unwrap()(env, c_string!(symbol))
+    let symbol = CString::new(symbol).unwrap();
+    (*env).intern.unwrap()(env, symbol.as_ptr())
 }
 
 pub unsafe fn nth(
