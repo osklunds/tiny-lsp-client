@@ -20,6 +20,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - crash if vdiff on deleted file. The file of course doesn't reside on disk. But why is didOpen sent?
   - Sometimes duplicate didOpen/didClose
   - Sometimes STDERR due to bad didChange. Especially on lsp-rename. In general compare against lsp-mode's didChange
+  - keyboard-quit seems to send SIGINT (or similar) to child processes, meaning LSP servers, but only when running emacs with -nw
 - improvements
   - clean up connection.rs and lib.rs
   - Improve connection.rs debug print to be consistent and contain more info
