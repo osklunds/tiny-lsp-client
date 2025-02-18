@@ -132,8 +132,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
          (root-path (tlc--root)))
     (if (cl-member root-path (tlc--all-root-paths) :test 'string-equal)
         (message "Connected to already started server in '%s'" root-path)
-      (let ((default-directory root-path))
-        (run-hooks 'tlc-before-start-server-hook))
+      (tlc--run-hooks 'tlc-before-start-server-hook)
       (let* ((result (tlc--rust-start-server root-path server-cmd)))
         (tlc--log "Start server result: %s" result)
         (pcase result
@@ -148,11 +147,16 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           ;; bug case
           (_ (error "bad result tlc--start-server %s" result))
           )
-        (let ((default-directory root-path))
-          (run-hooks 'tlc-after-start-server-hook))
-        ))
+        (tlc--run-hooks 'tlc-after-start-server-hook))
+      )
     (tlc--notify-text-document-did-open)
     ))
+
+(defun tlc--run-hooks (hooks)
+  ;; Use root path as default-directory to make it predictable and useful for
+  ;; the hooks
+  (let ((default-directory (tlc--root)))
+    (run-hooks hooks)))
 
 (defun tlc--kill-buffer-hook ()
   (tlc--log "tlc--kill-buffer-hook called. tlc-mode: %s" tlc-mode)
