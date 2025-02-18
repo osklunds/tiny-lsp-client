@@ -30,3 +30,4 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - fix custom
   - split lisp tests into smaller files. e.g. one for edit. one for revert. etc
   - In Connection, consider to log root path too
+  - test unicode
