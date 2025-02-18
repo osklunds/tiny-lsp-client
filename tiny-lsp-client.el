@@ -415,6 +415,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           (tlc--rust-all-server-info)))
 
 (defun tlc-stop-server (&optional root-path)
+  ;; todo: have (tlc--root) as default
   (interactive
    (list
     (completing-read "Choose root path of server to stop: "
