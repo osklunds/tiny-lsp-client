@@ -128,21 +128,20 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                          r
                        (user-error
                         "No server command found for major mode: %s"
-                        major-mode)))
-         (root-path (tlc--root)))
-    (if (cl-member root-path (tlc--all-root-paths) :test 'string-equal)
-        (message "Connected to already started server in '%s'" root-path)
+                        major-mode))))
+    (if (cl-member (tlc--root) (tlc--all-root-paths) :test 'string-equal)
+        (message "Connected to already started server in '%s'" (tlc--root))
       (tlc--run-hooks 'tlc-before-start-server-hook)
-      (let* ((result (tlc--rust-start-server root-path server-cmd)))
+      (let* ((result (tlc--rust-start-server (tlc--root) server-cmd)))
         (tlc--log "Start server result: %s" result)
         (pcase result
           ;; normal case
-          ('started (message "Started '%s' in '%s'" server-cmd root-path))
+          ('started (message "Started '%s' in '%s'" server-cmd (tlc--root)))
 
           ;; alternative but valid case
           ('start-failed (error
                           "Failed to start '%s' in '%s'. Check log for details."
-                          server-cmd root-path))
+                          server-cmd (tlc--root)))
 
           ;; bug case
           (_ (error "bad result tlc--start-server %s" result))
@@ -418,7 +417,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                      (tlc--all-root-paths))))
   (let* ((root-path (or root-path (tlc--root))))
     (unless root-path
-      (user-error "No root path found"))
+      (user-error "No root path specified"))
     (let* ((result (tlc--rust-stop-server root-path)))
       (tlc--log "Stop server result: %s for root-path: %s" result root-path)
       (pcase result
@@ -460,9 +459,13 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 (defvar-local tlc--cached-root nil)
 
 (defun tlc--initial-get-root ()
+  "The initial fetch of the root for this buffer. Cache the root since if it
+changes for a buffer, the server needs to be restarted anyway."
   (setq tlc--cached-root (funcall tlc-find-root-function)))
 
 (defun tlc--root ()
+  "Wrapper for getting the root path of the buffer. Also checks that it's
+non-nil."
   (let ((root tlc--cached-root))
     (cl-assert root)
     root))
@@ -475,7 +478,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           root))))
 
 (defun tlc-dev-find-root-default-function ()
-  "Special root finder used for developing tiny-lsp-client itself. Finds the nested projects inside the test directory as separate projects."
+  "Special root finder used for developing tiny-lsp-client itself. Finds the
+nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
       (file-name-directory (buffer-file-name))
     (tlc-find-root-default-function)))
