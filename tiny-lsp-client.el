@@ -415,11 +415,15 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
           (tlc--rust-all-server-info)))
 
 (defun tlc-stop-server (&optional root-path nowarn-not-found)
-  ;; todo: have (tlc--root) as default
   (interactive
    (list
     (completing-read "Choose root path of server to stop: "
-                     (tlc--all-root-paths))))
+                     (tlc--all-root-paths)
+                     nil
+                     'require-match
+                     nil
+                     'tlc-stop-server
+                     (tlc--root))))
   (let* ((root-path (or root-path (tlc--root))))
     (unless root-path
       (user-error "No root path specified"))
