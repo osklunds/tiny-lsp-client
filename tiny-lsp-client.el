@@ -92,6 +92,10 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   "tiny-lsp-client: a minor mode for LSP."
   :lighter " tlc-mode"
   :group 'tiny-lsp-client
+
+  ;; Clear cached root so that toggling mode (e.g. through reverting buffer)
+  ;; can be used as a way to change it.
+  (setq tlc--cached-root nil)
   (cond
    ((not buffer-file-name)
     (message "tiny-lsp-client can only be used in file buffers.")
@@ -99,9 +103,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
    ((not (tlc--initial-get-root))
     (message "tiny-lsp-client can only be used in buffers where root can be found.")
     (setq tlc-mode nil))
-   ;; Clear cached root so that toggling mode (e.g. through reverting buffer)
-   ;; can be used as a way to change it.
-   (setq tlc--cached-root nil)
    (t
     (cond
      (tlc-mode
