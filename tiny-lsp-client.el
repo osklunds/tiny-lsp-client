@@ -423,7 +423,7 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                      'require-match
                      nil
                      'tlc-stop-server
-                     (tlc--root))))
+                     (tlc--root-unchecked))))
   (let* ((root-path (or root-path (tlc--root))))
     (unless root-path
       (user-error "No root path specified"))
@@ -479,6 +479,11 @@ non-nil."
   (let ((root tlc--cached-root))
     (cl-assert root)
     root))
+
+(defun tlc--root-unchecked ()
+  "Like `tlc--root' but don't check that root is non-nil. Useful for situations
+a nil root is OK."
+  tlc--cached-root)
 
 (defun tlc-find-root-default-function ()
   (if (fboundp 'projectile-project-root)
