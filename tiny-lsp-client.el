@@ -444,16 +444,26 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
     (cl-assert name)
     name))
 
-;; actually save to the cache
+(defun tlc--ask-start-server ()
+  (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
+      (tlc--start-server)
+    (error "No LSP server running")))
+
+(defun tlc--log (format-string &rest objects)
+  (when tlc-log-emacs-debug
+    (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
+
+;; -----------------------------------------------------------------------------
+;; Root
+;; -----------------------------------------------------------------------------
+
 (defvar-local tlc--cached-root nil)
 
 (defun tlc--initial-get-root ()
-  (if tlc--cached-root
-      tlc--cached-root
-    (funcall tlc-find-root-function)))
+  (setq tlc--cached-root (funcall tlc-find-root-function)))
 
 (defun tlc--root ()
-  (let ((root (tlc--initial-get-root)))
+  (let ((root tlc--cached-root))
     (cl-assert root)
     root))
 
@@ -469,15 +479,6 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if (string-match-p "erlang_ls" (buffer-file-name))
       (file-name-directory (buffer-file-name))
     (tlc-find-root-default-function)))
-
-(defun tlc--ask-start-server ()
-  (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
-      (tlc--start-server)
-    (error "No LSP server running")))
-
-(defun tlc--log (format-string &rest objects)
-  (when tlc-log-emacs-debug
-    (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
 
 
 (provide 'tiny-lsp-client)

@@ -39,23 +39,20 @@
 ;; Opening a file
 ;;------------------------------------------------------------------------------
 
-(setq root-path (tlc--root))
-(assert-equal t (stringp root-path))
-
 (defvar num-before-hook-calls 0)
 (defvar num-after-hook-calls 0)
 
 (defvar hook-last-caller 'after)
 
 (defun before-hook ()
-  (assert-equal root-path default-directory)
+  (assert-equal (tlc--root) default-directory)
   (cl-incf num-before-hook-calls)
   (assert-equal 'after hook-last-caller)
   (setq hook-last-caller 'before)
   (std-message "before-hook called"))
 
 (defun after-hook ()
-  (assert-equal root-path default-directory)
+  (assert-equal (tlc--root) default-directory)
   (cl-incf num-after-hook-calls)
   (assert-equal 'before hook-last-caller)
   (setq hook-last-caller 'after)
@@ -370,6 +367,9 @@ fn second_funct() {
 ;; -----------------------------------------------------------------------------
 ;; Info and stop
 ;; -----------------------------------------------------------------------------
+
+(setq root-path (tlc--root))
+(assert-equal t (stringp root-path))
 
 (defun assert-tlc-info ()
   (pcase (tlc-info)
