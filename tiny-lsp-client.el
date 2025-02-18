@@ -414,6 +414,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
             )
           (tlc--rust-all-server-info)))
 
+;; todo: make sure the passed root-path begings with / to make the rust code not
+;; crash
 (defun tlc-stop-server (&optional root-path nowarn-not-found)
   (interactive
    (list
