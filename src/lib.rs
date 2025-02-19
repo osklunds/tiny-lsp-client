@@ -15,36 +15,40 @@ use crate::connection::Connection;
 use crate::emacs::*;
 use crate::message::*;
 
+use std::cell::UnsafeCell;
 use std::collections::HashMap;
 use std::fs;
-use std::mem::MaybeUninit;
 use std::os::raw;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::Once;
-use std::sync::{Arc, Mutex, MutexGuard};
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
 pub static plugin_is_GPL_compatible: libc::c_int = 0;
 
-// todo: see if this can be avoided
-#[allow(static_mut_refs)]
-// todo: stolen from lspce. Understand how, and maybe make safer
-fn connections() -> MutexGuard<'static, HashMap<String, Connection>> {
-    static mut CONNECTIONS: MaybeUninit<
-        Arc<Mutex<HashMap<String, Connection>>>,
-    > = MaybeUninit::uninit();
-    static ONCE: Once = Once::new();
+static CONNECTIONS: MyCell<Option<HashMap<String, Connection>>> =
+    MyCell::new(None);
 
-    ONCE.call_once(|| unsafe {
-        CONNECTIONS
-            .as_mut_ptr()
-            .write(Arc::new(Mutex::new(HashMap::new())))
-    });
+struct MyCell<T> {
+    unsafe_cell: UnsafeCell<T>,
+}
 
-    // todo: maybe mutex and arc not needed due to below?
-    let mut connections = unsafe { &*CONNECTIONS.as_mut_ptr() }.lock().unwrap();
+unsafe impl<T> Sync for MyCell<T> {}
+
+impl<T> MyCell<T> {
+    pub const fn new(value: T) -> MyCell<T> {
+        MyCell {
+            unsafe_cell: UnsafeCell::new(value),
+        }
+    }
+
+    pub unsafe fn get_mut(&self) -> &mut T {
+        &mut *self.unsafe_cell.get()
+    }
+}
+
+unsafe fn connections() -> &'static mut HashMap<String, Connection> {
+    let connections = CONNECTIONS.get_mut().get_or_insert(HashMap::new());
     // todo: consider performance of always calling retain
     connections.retain(|_root_path, connection| connection.is_working());
     connections
@@ -179,7 +183,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
-    let mut connections = connections();
+    let connections = connections();
 
     if connections.contains_key(&root_path) {
         return intern(env, "already-started");
@@ -584,7 +588,7 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
 
     let root_path = check_path(extract_string(env, args_vec[0]));
-    let mut connections = connections();
+    let connections = connections();
 
     if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
         if let Some(result) = f(env, args_vec, connection) {
