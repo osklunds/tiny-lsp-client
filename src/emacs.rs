@@ -73,18 +73,18 @@ pub unsafe fn export_function(
         args: *mut emacs_value,
         data: *mut ::std::os::raw::c_void,
     ) -> emacs_value,
-    docstring: &str,
     symbol: &str,
 ) {
     let make_function = (*env).make_function.unwrap();
 
-    let docstring = CString::new(docstring).unwrap();
     let emacs_fun = make_function(
         env,
         min_arity,
         max_arity,
         Some(fun),
-        docstring.as_ptr(),
+        // No docstring, but it's just internal functions and all have
+        // relatively self-explanatory names
+        ptr::null_mut(),
         ptr::null_mut(),
     );
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);

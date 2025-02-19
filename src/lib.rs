@@ -37,7 +37,6 @@ pub unsafe extern "C" fn emacs_module_init(
         0,
         0,
         tlc__rust_all_server_info,
-        "doc todo",
         "tlc--rust-all-server-info",
     );
 
@@ -46,7 +45,6 @@ pub unsafe extern "C" fn emacs_module_init(
         2,
         2,
         tlc__rust_start_server,
-        "doc todo",
         "tlc--rust-start-server",
     );
 
@@ -55,7 +53,6 @@ pub unsafe extern "C" fn emacs_module_init(
         3,
         3,
         tlc__rust_send_request,
-        "doc todo",
         "tlc--rust-send-request",
     );
 
@@ -64,7 +61,6 @@ pub unsafe extern "C" fn emacs_module_init(
         1,
         1,
         tlc__rust_recv_response,
-        "doc todo",
         "tlc--rust-recv-response",
     );
 
@@ -73,7 +69,6 @@ pub unsafe extern "C" fn emacs_module_init(
         3,
         3,
         tlc__rust_send_notification,
-        "doc todo",
         "tlc--rust-send-notification",
     );
 
@@ -82,7 +77,6 @@ pub unsafe extern "C" fn emacs_module_init(
         1,
         1,
         tlc__rust_get_log_option,
-        "doc todo",
         "tlc--rust-get-log-option",
     );
 
@@ -91,7 +85,6 @@ pub unsafe extern "C" fn emacs_module_init(
         2,
         2,
         tlc__rust_set_log_option,
-        "doc todo",
         "tlc--rust-set-log-option",
     );
 
@@ -100,7 +93,6 @@ pub unsafe extern "C" fn emacs_module_init(
         1,
         1,
         tlc__rust_log_emacs_debug,
-        "doc todo",
         "tlc--rust-log-emacs-debug",
     );
 
@@ -109,7 +101,6 @@ pub unsafe extern "C" fn emacs_module_init(
         1,
         1,
         tlc__rust_stop_server,
-        "doc todo",
         "tlc--rust-stop-server",
     );
 

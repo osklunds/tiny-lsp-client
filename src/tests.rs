@@ -17,7 +17,7 @@ fn mode_test() {
 #[ignore]
 #[test]
 fn interactive_test() {
-    build(false);
+    build(true); // release, since tiny-lsp-client loads the release binary
     run_lisp_file("test/interactive-test.el", false);
 }
 
