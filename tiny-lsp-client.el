@@ -1,5 +1,5 @@
 
-(require 'tlc-rust "target/release/libtiny_lsp_client.so")
+(require 'tlc-rust "libtiny_lsp_client.so")
 (require 'subr-x)
 (require 'xref)
 
