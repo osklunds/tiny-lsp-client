@@ -5,6 +5,7 @@
 #[rustfmt::skip]
 mod dummy;
 mod connection;
+mod connections;
 mod emacs;
 mod logger;
 mod message;
@@ -12,11 +13,10 @@ mod message;
 mod tests;
 
 use crate::connection::Connection;
+use crate::connections::connections;
 use crate::emacs::*;
 use crate::message::*;
 
-use std::cell::UnsafeCell;
-use std::collections::HashMap;
 use std::fs;
 use std::os::raw;
 use std::path::Path;
@@ -25,34 +25,6 @@ use std::sync::atomic::Ordering;
 #[no_mangle]
 #[allow(non_upper_case_globals)]
 pub static plugin_is_GPL_compatible: libc::c_int = 0;
-
-static CONNECTIONS: MyCell<Option<HashMap<String, Connection>>> =
-    MyCell::new(None);
-
-struct MyCell<T> {
-    unsafe_cell: UnsafeCell<T>,
-}
-
-unsafe impl<T> Sync for MyCell<T> {}
-
-impl<T> MyCell<T> {
-    pub const fn new(value: T) -> MyCell<T> {
-        MyCell {
-            unsafe_cell: UnsafeCell::new(value),
-        }
-    }
-
-    pub unsafe fn get_mut(&self) -> &mut T {
-        &mut *self.unsafe_cell.get()
-    }
-}
-
-unsafe fn connections() -> &'static mut HashMap<String, Connection> {
-    let connections = CONNECTIONS.get_mut().get_or_insert(HashMap::new());
-    // todo: consider performance of always calling retain
-    connections.retain(|_root_path, connection| connection.is_working());
-    connections
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn emacs_module_init(
@@ -155,8 +127,9 @@ unsafe extern "C" fn tlc__rust_all_server_info(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
+    let connections = connections();
 
-    for (root_path, connection) in connections().iter() {
+    for (root_path, connection) in connections.iter() {
         let info = call(
             env,
             "list",
