@@ -19,7 +19,7 @@ use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
 
-pub struct Connection {
+pub struct Server {
     server_process: Arc<Mutex<Child>>,
     command: String,
     root_path: String,
@@ -30,8 +30,8 @@ pub struct Connection {
     threads: Vec<JoinHandle<()>>,
 }
 
-impl Connection {
-    pub fn new(command: &str, root_path: &str) -> Option<Connection> {
+impl Server {
+    pub fn new(command: &str, root_path: &str) -> Option<Server> {
         let mut child = match Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -148,7 +148,7 @@ impl Connection {
                     Ok(len) => {
                         if len > 0 {
                             logger::log_rust_debug!(
-                                "Connection recv loop initial line: '{:?}'",
+                                "Server recv loop initial line: '{:?}'",
                                 buf
                             );
                             buf.pop();
@@ -433,7 +433,7 @@ impl Connection {
             close_thread_actions(child_stderr_thread, "stderr");
         });
 
-        Some(Connection {
+        Some(Server {
             server_process: child,
             command: command.to_string(),
             root_path: root_path.to_string(),
@@ -564,7 +564,7 @@ impl Connection {
     }
 }
 
-impl Drop for Connection {
+impl Drop for Server {
     fn drop(&mut self) {
         self.stop_server();
     }

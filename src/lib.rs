@@ -4,15 +4,15 @@
 #[allow(warnings)]
 #[rustfmt::skip]
 mod dummy;
-mod connection;
-mod connections;
+mod server;
+mod servers;
 mod emacs;
 mod logger;
 mod message;
 #[cfg(test)]
 mod tests;
 
-use crate::connection::Connection;
+use crate::server::Server;
 use crate::emacs::*;
 use crate::message::*;
 
@@ -112,17 +112,17 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
 
-    connections::with_connections(|connections| {
-        for (root_path, connection) in connections.iter() {
+    servers::with_servers(|servers| {
+        for (root_path, server) in servers.iter() {
             let info = call(
                 env,
                 "list",
                 vec![
                     make_string(env, root_path),
-                    make_string(env, connection.get_command()),
+                    make_string(env, server.get_command()),
                     make_integer(
                         env,
-                        connection.get_server_process_id() as i64,
+                        server.get_server_process_id() as i64,
                     ),
                 ],
             );
@@ -143,16 +143,16 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
-    connections::with_connections(|connections| {
-        if connections.contains_key(&root_path) {
+    servers::with_servers(|servers| {
+        if servers.contains_key(&root_path) {
             return intern(env, "already-started");
         } else {
             logger::log_rust_debug!("Need to start new");
         }
-        match Connection::new(&server_cmd, &root_path) {
-            Some(mut connection) => match connection.initialize() {
+        match Server::new(&server_cmd, &root_path) {
+            Some(mut server) => match server.initialize() {
                 Some(()) => {
-                    connections.insert(root_path.to_string(), connection);
+                    servers.insert(root_path.to_string(), server);
                     intern(env, "started")
                 }
                 None => intern(env, "start-failed"),
@@ -171,16 +171,16 @@ unsafe extern "C" fn tlc__rust_send_request(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_request");
 
-    handle_call(env, nargs, args, |env, args, connection| {
+    handle_call(env, nargs, args, |env, args, server| {
         let request_type = extract_string(env, args[1]);
         let request_args = args[2];
 
         let request_params = if request_type == "textDocument/definition" {
-            build_text_document_definition(env, request_args, connection)
+            build_text_document_definition(env, request_args, server)
         } else {
             panic!("Incorrect request type")
         };
-        connection
+        server
             .send_request(request_type, request_params)
             .map(|id| make_integer(env, id as i64))
     })
@@ -190,7 +190,7 @@ unsafe extern "C" fn tlc__rust_send_request(
 unsafe fn build_text_document_definition(
     env: *mut emacs_env,
     request_args: emacs_value,
-    _connection: &mut Connection,
+    _server: &mut Server,
 ) -> RequestParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -217,20 +217,20 @@ unsafe extern "C" fn tlc__rust_send_notification(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_send_notification");
 
-    handle_call(env, nargs, args, |env, args, connection| {
+    handle_call(env, nargs, args, |env, args, server| {
         let request_type = extract_string(env, args[1]);
         let request_args = args[2];
 
         let notification_params = if request_type == "textDocument/didOpen" {
-            build_text_document_did_open(env, request_args, connection)
+            build_text_document_did_open(env, request_args, server)
         } else if request_type == "textDocument/didChange" {
-            build_text_document_did_change(env, request_args, connection)
+            build_text_document_did_change(env, request_args, server)
         } else if request_type == "textDocument/didClose" {
-            build_text_document_did_close(env, request_args, connection)
+            build_text_document_did_close(env, request_args, server)
         } else {
             panic!("Incorrect request type")
         };
-        connection
+        server
             .send_notification(request_type, notification_params)
             .map(|_| intern(env, "ok"))
     })
@@ -239,7 +239,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
 unsafe fn build_text_document_did_open(
     env: *mut emacs_env,
     request_args: emacs_value,
-    connection: &mut Connection,
+    server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -251,7 +251,7 @@ unsafe fn build_text_document_did_open(
         text_document: TextDocumentItem {
             uri,
             language_id: LANGUAGE_ID.to_string(),
-            version: connection.inc_and_get_version_number(),
+            version: server.inc_and_get_version_number(),
             text: file_content,
         },
     })
@@ -260,7 +260,7 @@ unsafe fn build_text_document_did_open(
 unsafe fn build_text_document_did_change(
     env: *mut emacs_env,
     request_args: emacs_value,
-    connection: &mut Connection,
+    server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -301,7 +301,7 @@ unsafe fn build_text_document_did_change(
         DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier {
                 uri,
-                version: connection.inc_and_get_version_number(),
+                version: server.inc_and_get_version_number(),
             },
             content_changes: json_content_changes,
         },
@@ -311,7 +311,7 @@ unsafe fn build_text_document_did_change(
 unsafe fn build_text_document_did_close(
     env: *mut emacs_env,
     request_args: emacs_value,
-    _connection: &mut Connection,
+    _server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
@@ -331,8 +331,8 @@ unsafe extern "C" fn tlc__rust_recv_response(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_recv_response");
 
-    handle_call(env, nargs, args, |env, _args, connection| {
-        if let Some(recv_result) = connection.try_recv_response() {
+    handle_call(env, nargs, args, |env, _args, server| {
+        if let Some(recv_result) = server.try_recv_response() {
             let result = match recv_result {
                 Some(response) => handle_response(env, response),
                 None => intern(env, "no-response"),
@@ -489,8 +489,8 @@ unsafe extern "C" fn tlc__rust_stop_server(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_stop_server");
-    handle_call(env, nargs, args, |env, _args, connection| {
-        connection.stop_server();
+    handle_call(env, nargs, args, |env, _args, server| {
+        server.stop_server();
         Some(intern(env, "ok"))
     })
 }
@@ -537,7 +537,7 @@ unsafe fn handle_call<
     F: FnOnce(
         *mut emacs_env,
         Vec<emacs_value>,
-        &mut Connection,
+        &mut Server,
     ) -> Option<emacs_value>,
 >(
     env: *mut emacs_env,
@@ -548,13 +548,13 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
 
     let root_path = check_path(extract_string(env, args_vec[0]));
-    connections::with_connections(|connections| {
-        if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-            if let Some(result) = f(env, args_vec, connection) {
+    servers::with_servers(|servers| {
+        if let Some(ref mut server) = &mut servers.get_mut(&root_path) {
+            if let Some(result) = f(env, args_vec, server) {
                 result
             } else {
                 // This means it failed during handling this call
-                connections.remove(&root_path);
+                servers.remove(&root_path);
                 intern(env, "no-server")
             }
         } else {

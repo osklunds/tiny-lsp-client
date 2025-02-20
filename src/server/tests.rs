@@ -5,31 +5,31 @@ use std::fs;
 fn initialize() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
-    let mut connection = Connection::new(
+    let mut server = Server::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
     )
     .unwrap();
 
-    connection.initialize();
+    server.initialize();
 }
 
 #[test]
 fn did_open_change_close_and_definition() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
-    let mut connection = Connection::new(
+    let mut server = Server::new(
         "rust-analyzer",
         "/home/oskar/own_repos/tiny-lsp-client",
     )
     .unwrap();
-    connection.initialize();
+    server.initialize();
 
     let uri =
         "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string();
 
     // textDocument/didOpen
-    connection.send_notification(
+    server.send_notification(
         "textDocument/didOpen".to_string(),
         NotificationParams::DidOpenTextDocumentParams(
             DidOpenTextDocumentParams {
@@ -47,7 +47,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition
-    assert_eq!(Some(None), connection.try_recv_response());
+    assert_eq!(Some(None), server.try_recv_response());
     let request_params = DefinitionParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         position: Position {
@@ -59,7 +59,7 @@ fn did_open_change_close_and_definition() {
     // and sends different responses until it's ready
     let (response, base_id) =
         request_definition_until_response_with_one_location(
-            &mut connection,
+            &mut server,
             1,
             request_params,
         );
@@ -78,7 +78,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/didChange
-    connection.send_notification(
+    server.send_notification(
         "textDocument/didChange".to_string(),
         NotificationParams::DidChangeTextDocumentParams(
             DidChangeTextDocumentParams {
@@ -104,7 +104,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition after textDocument/didChange
-    let id = connection
+    let id = server
         .send_request(
             "textDocument/definition".to_string(),
             RequestParams::DefinitionParams(DefinitionParams {
@@ -117,7 +117,7 @@ fn did_open_change_close_and_definition() {
         )
         .unwrap();
     assert_eq!(base_id, id);
-    let response = connection.recv_response().unwrap();
+    let response = server.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -133,7 +133,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition after textDocument/didChange again
-    let id = connection
+    let id = server
         .send_request(
             "textDocument/definition".to_string(),
             RequestParams::DefinitionParams(DefinitionParams {
@@ -146,7 +146,7 @@ fn did_open_change_close_and_definition() {
         )
         .unwrap();
     assert_eq!(base_id + 1, id);
-    let response = connection.recv_response().unwrap();
+    let response = server.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -163,7 +163,7 @@ fn did_open_change_close_and_definition() {
 
     // textDocument/didChange to revert the previous change, so that
     // rust-analyzer's view matches the file system
-    connection.send_notification(
+    server.send_notification(
         "textDocument/didChange".to_string(),
         NotificationParams::DidChangeTextDocumentParams(
             DidChangeTextDocumentParams {
@@ -189,7 +189,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/didClose
-    connection.send_notification(
+    server.send_notification(
         "textDocument/didClose".to_string(),
         NotificationParams::DidCloseTextDocumentParams(
             DidCloseTextDocumentParams {
@@ -203,7 +203,7 @@ fn did_open_change_close_and_definition() {
     // wait for a response.
 
     // textDocument/didOpen
-    connection.send_notification(
+    server.send_notification(
         "textDocument/didOpen".to_string(),
         NotificationParams::DidOpenTextDocumentParams(
             DidOpenTextDocumentParams {
@@ -221,7 +221,7 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition
-    let id = connection
+    let id = server
         .send_request(
             "textDocument/definition".to_string(),
             RequestParams::DefinitionParams(DefinitionParams {
@@ -234,7 +234,7 @@ fn did_open_change_close_and_definition() {
         )
         .unwrap();
     assert_eq!(base_id + 2, id);
-    let response = connection.recv_response().unwrap();
+    let response = server.recv_response().unwrap();
     assert_definition_response(
         Range {
             start: Position {
@@ -251,12 +251,12 @@ fn did_open_change_close_and_definition() {
 }
 
 fn request_definition_until_response_with_one_location(
-    connection: &mut Connection,
+    server: &mut Server,
     current_id: u32,
     request_params: DefinitionParams,
 ) -> (Response, u32) {
     receive_until_definition_response_with_one_location_1(
-        connection,
+        server,
         current_id,
         request_params,
         1000,
@@ -264,12 +264,12 @@ fn request_definition_until_response_with_one_location(
 }
 
 fn receive_until_definition_response_with_one_location_1(
-    connection: &mut Connection,
+    server: &mut Server,
     current_id: u32,
     request_params: DefinitionParams,
     retries: usize,
 ) -> (Response, u32) {
-    let id = connection
+    let id = server
         .send_request(
             "textDocument/definition".to_string(),
             RequestParams::DefinitionParams(request_params.clone()),
@@ -277,7 +277,7 @@ fn receive_until_definition_response_with_one_location_1(
         .unwrap();
     assert_eq!(current_id, id);
     let next_id = current_id + 1;
-    let response = connection.recv_response().unwrap();
+    let response = server.recv_response().unwrap();
     if let Some(result) = &response.result {
         if let Result::TextDocumentDefinitionResult(result) = result {
             if let DefinitionResult::LocationLinkList(result) = result {
@@ -290,7 +290,7 @@ fn receive_until_definition_response_with_one_location_1(
     if retries > 0 {
         thread::sleep(Duration::from_millis(100));
         receive_until_definition_response_with_one_location_1(
-            connection,
+            server,
             next_id,
             request_params,
             retries - 1,
