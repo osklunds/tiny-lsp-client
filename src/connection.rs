@@ -556,7 +556,10 @@ impl Connection {
         let _ = self.server_process.lock().unwrap().kill();
         let _ = self.sender.send(None);
         for thread in std::mem::take(&mut self.threads) {
+            let thread_name = thread.thread().name().map(|s| s.to_string());
+            logger::log_rust_debug!("Waiting for '{:?}'", thread_name);
             thread.join().unwrap();
+            logger::log_rust_debug!("Done waiting for '{:?}'", thread_name);
         }
     }
 }
