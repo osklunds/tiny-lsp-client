@@ -23,10 +23,11 @@ pub struct Connection {
     server_process: Arc<Mutex<Child>>,
     command: String,
     root_path: String,
-    sender: Sender<Message>,
+    sender: Sender<Option<Message>>,
     receiver: Receiver<Response>,
     next_request_id: u32,
     next_version_number: isize,
+    threads: Vec<JoinHandle<()>>,
 }
 
 impl Connection {
@@ -64,63 +65,68 @@ impl Connection {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        spawn_named_thread("send", move || {
+        let send_thread = spawn_named_thread("send", move || {
             loop {
-                if let Ok(msg) = stdin_rx.recv() {
-                    let json = serde_json::to_string(&msg).unwrap();
-                    let full = format!(
-                        "Content-Length: {}\r\n\r\n{}",
-                        json.len(),
-                        &json
-                    );
+                if let Ok(maybe_msg) = stdin_rx.recv() {
+                    if let Some(msg) = maybe_msg {
+                        let json = serde_json::to_string(&msg).unwrap();
+                        let full = format!(
+                            "Content-Length: {}\r\n\r\n{}",
+                            json.len(),
+                            &json
+                        );
 
-                    match stdin.write_all(full.as_bytes()) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            logger::log_rust_debug!(
+                        match stdin.write_all(full.as_bytes()) {
+                            Ok(()) => (),
+                            Err(e) => {
+                                logger::log_rust_debug!(
                                 "Error writing to stdin. Reason: '{:?}'. Data: '{}'.",
                                 e,
                                 full,
                             );
-                            break;
+                                break;
+                            }
                         }
-                    }
 
-                    // Don't create pretty json if logging is not enabled
-                    // todo: maybe handle don't-create-args in a more generic way
-                    if logger::is_log_enabled!(LOG_IO) {
-                        logger::log_io!(
-                            "Sent: {}",
-                            serde_json::to_string_pretty(&msg).unwrap()
-                        );
-                    }
-
-                    // Only touch the mutex if IO is logged
-                    if logger::is_log_enabled!(LOG_IO) {
-                        if let Message::Request(request) = msg {
-                            let id = request.id;
-                            let ts = Instant::now();
-                            let mut seq_num_timestamps =
-                                match seq_num_timestamps_send.lock() {
-                                    Ok(locked) => locked,
-                                    Err(_) => {
-                                        logger::log_rust_debug!(
-                                            "seq_num_timestamps lock failed in send thread"
-                                        );
-                                        break;
-                                    }
-                                };
-                            seq_num_timestamps.push((id, ts));
-                            seq_num_timestamps.truncate(10);
-
-                            logger::log_rust_debug!(
-                                "send thread has '{}' timestamps: '{:?}'",
-                                seq_num_timestamps.len(),
-                                seq_num_timestamps
+                        // Don't create pretty json if logging is not enabled
+                        // todo: maybe handle don't-create-args in a more generic way
+                        if logger::is_log_enabled!(LOG_IO) {
+                            logger::log_io!(
+                                "Sent: {}",
+                                serde_json::to_string_pretty(&msg).unwrap()
                             );
                         }
+
+                        // Only touch the mutex if IO is logged
+                        if logger::is_log_enabled!(LOG_IO) {
+                            if let Message::Request(request) = msg {
+                                let id = request.id;
+                                let ts = Instant::now();
+                                let mut seq_num_timestamps =
+                                    match seq_num_timestamps_send.lock() {
+                                        Ok(locked) => locked,
+                                        Err(_) => {
+                                            logger::log_rust_debug!(
+                                            "seq_num_timestamps lock failed in send thread"
+                                        );
+                                            break;
+                                        }
+                                    };
+                                seq_num_timestamps.push((id, ts));
+                                seq_num_timestamps.truncate(10);
+
+                                logger::log_rust_debug!(
+                                    "send thread has '{}' timestamps: '{:?}'",
+                                    seq_num_timestamps.len(),
+                                    seq_num_timestamps
+                                );
+                            }
+                        }
+                    } else {
+                        break;
                     }
                 } else {
+                    logger::log_rust_debug!("send thread got None from channel. Closing early intentionally.");
                     break;
                 }
             }
@@ -133,7 +139,7 @@ impl Connection {
 
         // Sender of messages to application
         // Receiving from stdout from lsp server
-        spawn_named_thread("recv", move || {
+        let recv_thread = spawn_named_thread("recv", move || {
             let mut reader = std::io::BufReader::new(stdout);
 
             loop {
@@ -334,7 +340,7 @@ impl Connection {
         // todo: consider saving join handle and use inside stop()
         // if needed, can send Option on send channel to make it notice
         let child_stderr_thread = Arc::clone(&child);
-        spawn_named_thread("stderr", move || {
+        let stderr_thread = spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
             spawn_named_thread("stderr_inner", move || {
                 loop {
@@ -431,6 +437,7 @@ impl Connection {
             receiver: stdout_rx,
             next_request_id: 0,
             next_version_number: 0,
+            threads: vec![send_thread, recv_thread, stderr_thread],
         })
     }
 
@@ -474,7 +481,7 @@ impl Connection {
         let id = self.next_request_id;
         self.next_request_id += 1;
         let request = Request { id, method, params };
-        match self.sender.send(Message::Request(request)) {
+        match self.sender.send(Some(Message::Request(request))) {
             Ok(()) => Some(id),
             Err(_) => None,
         }
@@ -486,7 +493,7 @@ impl Connection {
         params: NotificationParams,
     ) -> Option<()> {
         let notification = Notification { method, params };
-        match self.sender.send(Message::Notification(notification)) {
+        match self.sender.send(Some(Message::Notification(notification))) {
             Ok(()) => Some(()),
             Err(_) => None,
         }
@@ -529,7 +536,11 @@ impl Connection {
 
     pub fn is_working(&self) -> bool {
         let result = self.server_process.lock().unwrap().try_wait();
-        logger::log_rust_debug!("is_working() try_wait(). Root path: '{}'. Result '{:?}'", self.root_path, result);
+        logger::log_rust_debug!(
+            "is_working() try_wait(). Root path: '{}'. Result '{:?}'",
+            self.root_path,
+            result
+        );
         if let Ok(None) = result {
             true
         } else {
@@ -537,8 +548,12 @@ impl Connection {
         }
     }
 
-    pub fn stop_server(&self) {
+    pub fn stop_server(&mut self) {
         let _ = self.server_process.lock().unwrap().kill();
+        let _ = self.sender.send(None);
+        for thread in std::mem::take(&mut self.threads) {
+            thread.join().unwrap();
+        }
     }
 }
 
