@@ -13,7 +13,7 @@ use std::ops::Drop;
 use std::process;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
@@ -40,7 +40,12 @@ impl Connection {
         {
             Ok(child) => child,
             Err(e) => {
-                logger::log_rust_debug!("start child failed: {:?}", e);
+                logger::log_rust_debug!(
+                    "Start child failed. Reason: '{:?}'. Command: '{}'. Root path: '{}'",
+                    e,
+                    command,
+                    root_path
+                );
                 return None;
             }
         };
@@ -73,9 +78,9 @@ impl Connection {
                         Ok(()) => (),
                         Err(e) => {
                             logger::log_rust_debug!(
-                                "Error writing {} to stdin {:?}",
+                                "Error writing to stdin. Reason: '{:?}'. Data: '{}'.",
+                                e,
                                 full,
-                                e
                             );
                             break;
                         }
@@ -109,7 +114,7 @@ impl Connection {
                             seq_num_timestamps.truncate(10);
 
                             logger::log_rust_debug!(
-                                "{} timestamps in send {:?}",
+                                "send thread has '{}' timestamps: '{:?}'",
                                 seq_num_timestamps.len(),
                                 seq_num_timestamps
                             );
@@ -120,10 +125,7 @@ impl Connection {
                 }
             }
 
-            logger::log_rust_debug!("send thread killing server");
-            if let Ok(mut locked) = child_send_thread.lock() {
-                let _ = locked.kill();
-            }
+            close_thread_actions(child_send_thread, "send");
         });
 
         let (stdout_tx, stdout_rx) = mpsc::channel();
@@ -140,7 +142,7 @@ impl Connection {
                     Ok(len) => {
                         if len > 0 {
                             logger::log_rust_debug!(
-                                "Connection recv loop initial line: {:?}",
+                                "Connection recv loop initial line: '{:?}'",
                                 buf
                             );
                             buf.pop();
@@ -149,8 +151,9 @@ impl Connection {
                             let num_parts = parts.len();
                             if num_parts != 2 {
                                 logger::log_rust_debug!(
-                                    "Incorrect number of parts after split: {}",
-                                    num_parts
+                                    "Incorrect number of parts after split: '{}'. Parts: '{:?}'",
+                                    num_parts,
+                                    parts
                                 );
                                 break;
                             }
@@ -160,7 +163,7 @@ impl Connection {
                                 // Actualy, there are other valid header names,
                                 // but handle them as they come.
                                 logger::log_rust_debug!(
-                                    "Incorrect header name: {}",
+                                    "Incorrect header name: '{}'",
                                     header_name
                                 );
                                 break;
@@ -171,7 +174,7 @@ impl Connection {
                                 Ok(s) => s,
                                 Err(e) => {
                                     logger::log_rust_debug!(
-                                        "Could not parse size: {:?}",
+                                        "Could not parse size: '{:?}'",
                                         e
                                     );
                                     break;
@@ -193,12 +196,23 @@ impl Connection {
                                 }
                             }
 
+                            let json_buf_clone =
+                                if logger::is_log_enabled!(LOG_RUST_DEBUG) {
+                                    Some(json_buf.clone())
+                                } else {
+                                    None
+                                };
                             let json = match String::from_utf8(json_buf) {
                                 Ok(json) => json,
                                 Err(e) => {
+                                    let json_buf_clone =
+                                        json_buf_clone.unwrap_or("".into());
+
                                     logger::log_rust_debug!(
-                                        "from_utf8 failed: {:?}",
-                                        e
+                                        "from_utf8 failed. Reason: '{:?}'. Data as utf8 lossy: '{}'. Raw bytes: '{:?}'",
+                                        e,
+                                        String::from_utf8_lossy(&json_buf_clone),
+                                        json_buf_clone
                                     );
                                     break;
                                 }
@@ -209,7 +223,7 @@ impl Connection {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     logger::log_rust_debug!(
-                                        "serde_json::from_str failed: {:?}",
+                                        "serde_json::from_str failed: '{:?}'",
                                         e
                                     );
                                     break;
@@ -236,7 +250,7 @@ impl Connection {
                                             }
                                         };
                                     logger::log_rust_debug!(
-                                        "{} timestamps in recv {:?}",
+                                        "recv thread has '{}' timestamps: '{:?}'",
                                         seq_num_timestamps.len(),
                                         seq_num_timestamps
                                     );
@@ -273,9 +287,9 @@ impl Connection {
                                         Ok(full_json) => full_json,
                                         Err(e) => {
                                             logger::log_rust_debug!(
-                                                "Parse to full json failed: {:?} reason: {:?}",
-                                                json,
-                                                e
+                                                "Parse to full json failed. Reason: '{:?}'. Data: '{}'.",
+                                                e,
+                                                json
                                             );
                                             break;
                                         }
@@ -300,70 +314,68 @@ impl Connection {
                                 );
                             }
                         } else {
-                            logger::log_rust_debug!("stdio got EOF");
+                            logger::log_rust_debug!("recv thread got EOF");
                             break;
                         }
                     }
                     Err(e) => {
-                        logger::log_rust_debug!("stdio got error {:?}", e);
+                        logger::log_rust_debug!(
+                            "recv thread got error '{:?}'",
+                            e
+                        );
                         break;
                     }
                 }
             }
 
-            // todo: the intention was that if recv thread sees channel closed,
-            // it means we should kill the server, and then send thead closes
-            // automatically and detect before next request is sent. But
-            // of course, the send thread is still blocked on send channel
-            // so still too late. So maybe revert Arc<Mutex> and check is_working
-            // when calling request() etc. None or is_working() = false both have
-            // the same semantics, but None means it happened while handling
-            // something.
-            logger::log_rust_debug!("recv thread killing server");
-            if let Ok(mut locked) = child_recv_thread.lock() {
-                let _ = locked.kill();
-            }
+            close_thread_actions(child_recv_thread, "recv");
         });
 
+        // todo: consider saving join handle and use inside stop()
+        // if needed, can send Option on send channel to make it notice
         let child_stderr_thread = Arc::clone(&child);
         spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
-            spawn_named_thread("stderr_inner", move || loop {
-                let mut buf = [0; 500];
-                match stderr.read(&mut buf) {
-                    Ok(len) => {
-                        if len > 0 {
-                            if let Err(e) = stderr_tx.send(buf[0..len].to_vec())
-                            {
-                                logger::log_rust_debug!(
-                                    "stderr_inner got error when sending to stderr {:?}",
+            spawn_named_thread("stderr_inner", move || {
+                loop {
+                    let mut buf = [0; 500];
+                    match stderr.read(&mut buf) {
+                        Ok(len) => {
+                            if len > 0 {
+                                if let Err(e) =
+                                    stderr_tx.send(buf[0..len].to_vec())
+                                {
+                                    logger::log_rust_debug!(
+                                    "stderr_inner got error when sending to stderr. Reason: '{:?}'",
                                     e
                                 );
+                                    break;
+                                }
+                            } else {
+                                logger::log_rust_debug!("stderr_inner got EOF");
                                 break;
                             }
-                        } else {
-                            logger::log_rust_debug!("stderr_inner got EOF");
-                            break;
                         }
-                    }
-                    Err(e) => {
-                        if e.kind() == ErrorKind::Interrupted {
-                            // Continue to loop
-                            // This happens too often to log. Feels almost like
-                            // a normal case. Do a short sleep to avoid busy
-                            // looping. Not too long sleep because then can miss
-                            // to print things in case other parts close down
-                            // quicker
-                            thread::sleep(Duration::from_micros(100));
-                        } else {
-                            logger::log_rust_debug!(
-                                "stderr_inner got error {:?}",
+                        Err(e) => {
+                            if e.kind() == ErrorKind::Interrupted {
+                                // Continue to loop
+                                // This happens too often to log. Feels almost like
+                                // a normal case. Do a short sleep to avoid busy
+                                // looping. Not too long sleep because then can miss
+                                // to print things in case other parts close down
+                                // quicker
+                                thread::sleep(Duration::from_micros(100));
+                            } else {
+                                logger::log_rust_debug!(
+                                "stderr_inner got error when reading. Reason: '{:?}'",
                                 e
                             );
-                            break;
+                                break;
+                            }
                         }
                     }
                 }
+                logger::log_rust_debug!("stderr_inner closing");
             });
 
             loop {
@@ -373,7 +385,7 @@ impl Connection {
                 // in doing non-blocking yet.
                 let mut result = match stderr_rx.recv() {
                     Ok(r) => Ok(r),
-                    _ => Err(TryRecvError::Disconnected),
+                    Err(RecvError) => Err(TryRecvError::Disconnected),
                 };
                 let mut disconnected = false;
 
@@ -398,20 +410,8 @@ impl Connection {
                 }
 
                 if buf.len() > 0 {
-                    match String::from_utf8(buf.clone()) {
-                        Ok(string) => {
-                            logger::log_stderr!("{}", string);
-                        }
-                        Err(e) => {
-                            logger::log_stderr!("{:?}", buf);
-                            logger::log_rust_debug!(
-                                "from_utf8 failed for stderr {:?} reason: {:?}",
-                                buf,
-                                e
-                            );
-                            break;
-                        }
-                    }
+                    let string = String::from_utf8_lossy(&buf);
+                    logger::log_stderr!("{}", string);
                 }
 
                 if disconnected {
@@ -420,10 +420,7 @@ impl Connection {
                 }
             }
 
-            logger::log_rust_debug!("stderr thread killing server");
-            if let Ok(mut locked) = child_stderr_thread.lock() {
-                let _ = locked.kill();
-            }
+            close_thread_actions(child_stderr_thread, "stderr");
         });
 
         Some(Connection {
@@ -532,7 +529,7 @@ impl Connection {
 
     pub fn is_working(&self) -> bool {
         let result = self.server_process.lock().unwrap().try_wait();
-        logger::log_rust_debug!("try_wait result {:?}", result);
+        logger::log_rust_debug!("is_working() try_wait(). Root path: '{}'. Result '{:?}'", self.root_path, result);
         if let Ok(None) = result {
             true
         } else {
@@ -560,4 +557,19 @@ where
         .name(name.as_ref().to_string())
         .spawn(f)
         .unwrap()
+}
+
+fn close_thread_actions(child: Arc<Mutex<Child>>, thread_name: &str) {
+    logger::log_rust_debug!("{} thread stopping server", thread_name);
+    if let Ok(mut locked) = child.lock() {
+        let result = locked.kill();
+        logger::log_rust_debug!(
+            "{} thread stop server result '{:?}'",
+            thread_name,
+            result
+        );
+    } else {
+        logger::log_rust_debug!("{} thread lock child failed", thread_name);
+    }
+    logger::log_rust_debug!("{} thread closing", thread_name);
 }
