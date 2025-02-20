@@ -454,7 +454,6 @@ impl Server {
             "capabilities": {
                 "textDocument": {
                     "definition": {
-                        "dynamicRegistration": true,
                         "linkSupport": true
                     }
                 }
