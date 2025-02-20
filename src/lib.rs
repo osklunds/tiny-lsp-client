@@ -13,7 +13,6 @@ mod message;
 mod tests;
 
 use crate::connection::Connection;
-use crate::connections::connections;
 use crate::emacs::*;
 use crate::message::*;
 
@@ -96,13 +95,7 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-log-emacs-debug",
     );
 
-    export_function(
-        env,
-        1,
-        1,
-        tlc__rust_stop_server,
-        "tlc--rust-stop-server",
-    );
+    export_function(env, 1, 1, tlc__rust_stop_server, "tlc--rust-stop-server");
 
     call(env, "provide", vec![intern(env, "tlc-rust")]);
 
@@ -118,22 +111,25 @@ unsafe extern "C" fn tlc__rust_all_server_info(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
     let mut server_info_list = Vec::new();
-    let connections = connections();
 
-    for (root_path, connection) in connections.iter() {
-        let info = call(
-            env,
-            "list",
-            vec![
-                make_string(env, root_path),
-                make_string(env, connection.get_command()),
-                make_integer(env, connection.get_server_process_id() as i64),
-            ],
-        );
-        server_info_list.push(info);
-    }
-
-    call(env, "list", server_info_list)
+    connections::with_connections(|connections| {
+        for (root_path, connection) in connections.iter() {
+            let info = call(
+                env,
+                "list",
+                vec![
+                    make_string(env, root_path),
+                    make_string(env, connection.get_command()),
+                    make_integer(
+                        env,
+                        connection.get_server_process_id() as i64,
+                    ),
+                ],
+            );
+            server_info_list.push(info);
+        }
+        call(env, "list", server_info_list)
+    })
 }
 
 #[allow(non_snake_case)]
@@ -147,23 +143,23 @@ unsafe extern "C" fn tlc__rust_start_server(
     let root_path = check_path(extract_string(env, *args.offset(0)));
     let server_cmd = extract_string(env, *args.offset(1));
 
-    let connections = connections();
-
-    if connections.contains_key(&root_path) {
-        return intern(env, "already-started");
-    } else {
-        logger::log_rust_debug!("Need to start new");
-    }
-    match Connection::new(&server_cmd, &root_path) {
-        Some(mut connection) => match connection.initialize() {
-            Some(()) => {
-                connections.insert(root_path.to_string(), connection);
-                intern(env, "started")
-            }
+    connections::with_connections(|connections| {
+        if connections.contains_key(&root_path) {
+            return intern(env, "already-started");
+        } else {
+            logger::log_rust_debug!("Need to start new");
+        }
+        match Connection::new(&server_cmd, &root_path) {
+            Some(mut connection) => match connection.initialize() {
+                Some(()) => {
+                    connections.insert(root_path.to_string(), connection);
+                    intern(env, "started")
+                }
+                None => intern(env, "start-failed"),
+            },
             None => intern(env, "start-failed"),
-        },
-        None => intern(env, "start-failed"),
-    }
+        }
+    })
 }
 
 #[allow(non_snake_case)]
@@ -552,20 +548,20 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
 
     let root_path = check_path(extract_string(env, args_vec[0]));
-    let connections = connections();
-
-    if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
-        if let Some(result) = f(env, args_vec, connection) {
-            result
+    connections::with_connections(|connections| {
+        if let Some(ref mut connection) = &mut connections.get_mut(&root_path) {
+            if let Some(result) = f(env, args_vec, connection) {
+                result
+            } else {
+                // This means it failed during handling this call
+                connections.remove(&root_path);
+                intern(env, "no-server")
+            }
         } else {
-            // This means it failed during handling this call
-            connections.remove(&root_path);
+            // This means the server wasn't existing before this call
             intern(env, "no-server")
         }
-    } else {
-        // This means the server wasn't existing before this call
-        intern(env, "no-server")
-    }
+    })
 }
 
 unsafe fn args_pointer_to_args_vec(
