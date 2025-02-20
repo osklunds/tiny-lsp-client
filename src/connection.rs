@@ -11,7 +11,7 @@ use std::io::Read;
 use std::io::Write;
 use std::ops::Drop;
 use std::process;
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -50,7 +50,7 @@ impl Connection {
                 return None;
             }
         };
-        let stdin = child.stdin.take().unwrap();
+        let mut stdin = child.stdin.take().unwrap();
         let stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
 
@@ -65,12 +65,75 @@ impl Connection {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        let send_thread = Self::spawn_send_thread(
-            stdin,
-            stdin_rx,
-            seq_num_timestamps_send,
-            child_send_thread,
-        );
+        let send_thread = spawn_named_thread("send", move || {
+            loop {
+                if let Ok(maybe_msg) = stdin_rx.recv() {
+                    if let Some(msg) = maybe_msg {
+                        let json = serde_json::to_string(&msg).unwrap();
+                        let full = format!(
+                            "Content-Length: {}\r\n\r\n{}",
+                            json.len(),
+                            &json
+                        );
+
+                        match stdin.write_all(full.as_bytes()) {
+                            Ok(()) => (),
+                            Err(e) => {
+                                logger::log_rust_debug!(
+                                "Error writing to stdin. Reason: '{:?}'. Data: '{}'.",
+                                e,
+                                full,
+                            );
+                                break;
+                            }
+                        }
+
+                        // Don't create pretty json if logging is not enabled
+                        // todo: maybe handle don't-create-args in a more generic way
+                        if logger::is_log_enabled!(LOG_IO) {
+                            logger::log_io!(
+                                "Sent: {}",
+                                serde_json::to_string_pretty(&msg).unwrap()
+                            );
+                        }
+
+                        // Only touch the mutex if IO is logged
+                        if logger::is_log_enabled!(LOG_IO) {
+                            if let Message::Request(request) = msg {
+                                let id = request.id;
+                                let ts = Instant::now();
+                                let mut seq_num_timestamps =
+                                    match seq_num_timestamps_send.lock() {
+                                        Ok(locked) => locked,
+                                        Err(_) => {
+                                            logger::log_rust_debug!(
+                                            "seq_num_timestamps lock failed in send thread"
+                                        );
+                                            break;
+                                        }
+                                    };
+                                seq_num_timestamps.push((id, ts));
+                                seq_num_timestamps.truncate(10);
+
+                                logger::log_rust_debug!(
+                                    "send thread has '{}' timestamps: '{:?}'",
+                                    seq_num_timestamps.len(),
+                                    seq_num_timestamps
+                                );
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    logger::log_rust_debug!("send thread got None from channel. Closing early intentionally.");
+                    break;
+                }
+            }
+
+            close_thread_actions(child_send_thread, "send");
+        });
+
         let (stdout_tx, stdout_rx) = mpsc::channel();
         let child_recv_thread = Arc::clone(&child);
 
@@ -379,82 +442,6 @@ impl Connection {
             next_request_id: 0,
             next_version_number: 0,
             threads: vec![send_thread, recv_thread, stderr_thread],
-        })
-    }
-
-    fn spawn_send_thread(
-        mut stdin: ChildStdin,
-        stdin_rx: Receiver<Option<Message>>,
-        seq_num_timestamps_send: Arc<Mutex<Vec<(u32, Instant)>>>,
-        child_send_thread: Arc<Mutex<Child>>
-    ) -> JoinHandle<()> {
-        spawn_named_thread("send", move || {
-            loop {
-                if let Ok(maybe_msg) = stdin_rx.recv() {
-                    if let Some(msg) = maybe_msg {
-                        let json = serde_json::to_string(&msg).unwrap();
-                        let full = format!(
-                            "Content-Length: {}\r\n\r\n{}",
-                            json.len(),
-                            &json
-                        );
-
-                        match stdin.write_all(full.as_bytes()) {
-                            Ok(()) => (),
-                            Err(e) => {
-                                logger::log_rust_debug!(
-                                "Error writing to stdin. Reason: '{:?}'. Data: '{}'.",
-                                e,
-                                full,
-                            );
-                                break;
-                            }
-                        }
-
-                        // Don't create pretty json if logging is not enabled
-                        // todo: maybe handle don't-create-args in a more generic way
-                        if logger::is_log_enabled!(LOG_IO) {
-                            logger::log_io!(
-                                "Sent: {}",
-                                serde_json::to_string_pretty(&msg).unwrap()
-                            );
-                        }
-
-                        // Only touch the mutex if IO is logged
-                        if logger::is_log_enabled!(LOG_IO) {
-                            if let Message::Request(request) = msg {
-                                let id = request.id;
-                                let ts = Instant::now();
-                                let mut seq_num_timestamps =
-                                    match seq_num_timestamps_send.lock() {
-                                        Ok(locked) => locked,
-                                        Err(_) => {
-                                            logger::log_rust_debug!(
-                                            "seq_num_timestamps lock failed in send thread"
-                                        );
-                                            break;
-                                        }
-                                    };
-                                seq_num_timestamps.push((id, ts));
-                                seq_num_timestamps.truncate(10);
-
-                                logger::log_rust_debug!(
-                                    "send thread has '{}' timestamps: '{:?}'",
-                                    seq_num_timestamps.len(),
-                                    seq_num_timestamps
-                                );
-                            }
-                        }
-                    } else {
-                        break;
-                    }
-                } else {
-                    logger::log_rust_debug!("send thread got None from channel. Closing early intentionally.");
-                    break;
-                }
-            }
-
-            close_thread_actions(child_send_thread, "send");
         })
     }
 
