@@ -32,3 +32,5 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - In Connection, consider to log root path too
   - test unicode
   - make (root, lang) key, so that one project with multiple languages can be supported.
+  - rename Connection to Server
+  - make erlang_ls etc test dependencies
