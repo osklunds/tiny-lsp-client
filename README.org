@@ -22,15 +22,12 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - Sometimes STDERR due to bad didChange. Especially on lsp-rename. In general compare against lsp-mode's didChange
   - keyboard-quit seems to send SIGINT (or similar) to child processes, meaning LSP servers, but only when running emacs with -nw
 - improvements
-  - clean up connection.rs and lib.rs
-  - Improve connection.rs debug print to be consistent and contain more info
   - in general, check for crashes due to bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
   - compile module if it doesn't exist
   - add doc strings to lisp functions
   - fix custom
   - split lisp tests into smaller files. e.g. one for edit. one for revert. etc
-  - In Connection, consider to log root path too
+  - In Server, consider to log root path too
   - test unicode
   - make (root, lang) key, so that one project with multiple languages can be supported.
-  - rename Connection to Server
   - make erlang_ls etc test dependencies
