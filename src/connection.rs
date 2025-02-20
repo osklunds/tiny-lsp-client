@@ -337,52 +337,55 @@ impl Connection {
             close_thread_actions(child_recv_thread, "recv");
         });
 
-        // todo: consider saving join handle and use inside stop()
-        // if needed, can send Option on send channel to make it notice
         let child_stderr_thread = Arc::clone(&child);
         let stderr_thread = spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
-            spawn_named_thread("stderr_inner", move || {
-                loop {
-                    let mut buf = [0; 500];
-                    match stderr.read(&mut buf) {
-                        Ok(len) => {
-                            if len > 0 {
-                                if let Err(e) =
-                                    stderr_tx.send(buf[0..len].to_vec())
-                                {
-                                    logger::log_rust_debug!(
+            let stderr_inner_thread = spawn_named_thread(
+                "stderr_inner",
+                move || {
+                    loop {
+                        let mut buf = [0; 500];
+                        match stderr.read(&mut buf) {
+                            Ok(len) => {
+                                if len > 0 {
+                                    if let Err(e) =
+                                        stderr_tx.send(buf[0..len].to_vec())
+                                    {
+                                        logger::log_rust_debug!(
                                     "stderr_inner got error when sending to stderr. Reason: '{:?}'",
                                     e
                                 );
+                                        break;
+                                    }
+                                } else {
+                                    logger::log_rust_debug!(
+                                        "stderr_inner got EOF"
+                                    );
                                     break;
                                 }
-                            } else {
-                                logger::log_rust_debug!("stderr_inner got EOF");
-                                break;
                             }
-                        }
-                        Err(e) => {
-                            if e.kind() == ErrorKind::Interrupted {
-                                // Continue to loop
-                                // This happens too often to log. Feels almost like
-                                // a normal case. Do a short sleep to avoid busy
-                                // looping. Not too long sleep because then can miss
-                                // to print things in case other parts close down
-                                // quicker
-                                thread::sleep(Duration::from_micros(100));
-                            } else {
-                                logger::log_rust_debug!(
+                            Err(e) => {
+                                if e.kind() == ErrorKind::Interrupted {
+                                    // Continue to loop
+                                    // This happens too often to log. Feels almost like
+                                    // a normal case. Do a short sleep to avoid busy
+                                    // looping. Not too long sleep because then can miss
+                                    // to print things in case other parts close down
+                                    // quicker
+                                    thread::sleep(Duration::from_micros(100));
+                                } else {
+                                    logger::log_rust_debug!(
                                 "stderr_inner got error when reading. Reason: '{:?}'",
                                 e
                             );
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }
-                }
-                logger::log_rust_debug!("stderr_inner closing");
-            });
+                    logger::log_rust_debug!("stderr_inner closing");
+                },
+            );
 
             loop {
                 let mut buf = Vec::new();
@@ -426,6 +429,7 @@ impl Connection {
                 }
             }
 
+            stderr_inner_thread.join().unwrap();
             close_thread_actions(child_stderr_thread, "stderr");
         });
 
