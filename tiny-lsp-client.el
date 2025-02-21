@@ -259,12 +259,16 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 ;; Heavily inspired by eglot
 ;; nil pos means current point
 (defun tlc--pos-to-lsp-pos (&optional pos)
-  (let* ((line (- (line-number-at-pos pos) 1))
-         (character (save-excursion
-                      (when pos
-                        (goto-char pos))
-                      (current-column))))
-    (list line character)))
+  (save-excursion
+    ;; Need to save restriction and widen to handle e.g. lsp-rename from
+    ;; lsp-mode, and I guess other cases where restriction is used.
+    (save-restriction
+      (widen)
+      (let* ((line (- (line-number-at-pos pos) 1))
+             (character (progn (when pos
+                                 (goto-char pos))
+                               (current-column))))
+        (list line character)))))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
   (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
