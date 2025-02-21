@@ -15,9 +15,9 @@
 ;; --release emacs would crash. But now it seems to work, even though no
 ;; non-test code change was needed as of this commit to make it work.
 (defun test-garbage-collect (mark)
-  (std-message "garbage-collect before (%s)" mark)
-  (std-message "%s" (garbage-collect))
-  (std-message "garbage-collect after (%s)" mark))
+  (test-case-message "garbage-collect before (%s)" mark)
+  (test-case-message "%s" (garbage-collect))
+  (test-case-message "garbage-collect after (%s)" mark))
 
 (defun kill-server ()
   (interactive)
@@ -28,13 +28,15 @@
 ;; Load the module
 ;; -----------------------------------------------------------------------------
 
-(std-message "Before load")
+(test-case-message "Before load")
 
 (require 'tlc-rust "target/release/libtiny_lsp_client.so")
 
-(std-message "After load")
+(test-case-message "After load")
 
 (test-garbage-collect "after load")
+
+(tlc--rust-set-log-option 'tlc-log-to-stdio nil)
 
 (tlc--rust-set-log-option 'tlc-log-file (file-truename
                                          (file-name-concat
@@ -51,7 +53,7 @@
 
 (setq root-path (file-truename default-directory))
 
-(std-message "Starting server")
+(test-case-message "Starting server")
 
 (assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
 
@@ -68,7 +70,7 @@
 
 (assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
 
-(std-message "Server started")
+(test-case-message "Server started")
 
 (test-garbage-collect "after server started")
 
@@ -79,7 +81,7 @@
 ;; todo: need to loop even if less clear, becase now is unstable
 (sleep-for 2)
 
-(std-message "Sending didOpen")
+(test-case-message "Sending didOpen")
 
 (assert-equal 'ok (tlc--rust-send-notification
                    root-path
@@ -92,7 +94,7 @@
 
 (sleep-for 10)
 
-(std-message "Sending definition")
+(test-case-message "Sending definition")
 
 (assert-equal 'no-server
               (tlc--rust-send-request
@@ -110,7 +112,7 @@
   (let ((response (tlc--rust-recv-response root-path)))
     (if (equal 'no-response response)
         (progn
-          (std-message "recv-response retry")
+          (test-case-message "recv-response retry")
           (sleep-for 1)
           (recv-response))
       response)))
@@ -126,7 +128,7 @@
 ;; didChange
 ;; -----------------------------------------------------------------------------
 
-(std-message "Sending didChange")
+(test-case-message "Sending didChange")
 
 (assert-equal 'no-server
               (tlc--rust-send-notification
@@ -144,7 +146,7 @@
 ;; definition after didChange
 ;; -----------------------------------------------------------------------------
 
-(std-message "Sending definition after didChange")
+(test-case-message "Sending definition after didChange")
 
 (assert-equal 2
               (tlc--rust-send-request
@@ -160,7 +162,7 @@
 ;; view matches the file system
 ;; -----------------------------------------------------------------------------
 
-(std-message "Sending didChange to revert")
+(test-case-message "Sending didChange to revert")
 
 (assert-equal 'ok
               (tlc--rust-send-notification
@@ -172,7 +174,7 @@
 ;; didClose
 ;; -----------------------------------------------------------------------------
 
-(std-message "Sending didClose")
+(test-case-message "Sending didClose")
 
 (assert-equal 'ok
               (tlc--rust-send-notification
@@ -188,7 +190,7 @@
 ;; faulty data sent in didClose above. Since it's a notification we can't
 ;; wait for a response.
 
-(std-message "Sending didOpen+definition")
+(test-case-message "Sending didOpen+definition")
 
 (assert-equal 'ok
               (tlc--rust-send-notification
@@ -209,7 +211,7 @@
 ;; Stopping the LSP server
 ;; -----------------------------------------------------------------------------
 
-(std-message "killing server")
+(test-case-message "killing server")
 
 (kill-server)
 
@@ -236,4 +238,4 @@
 
 (test-garbage-collect "in the end")
 
-(std-message "done")
+(test-case-message "done")

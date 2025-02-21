@@ -19,6 +19,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Loading tlc-mode
 ;;------------------------------------------------------------------------------
+(test-case-message "loading tlc-mode")
 
 ;; Manually add tlc-rust to get debug version
 (require 'tlc-rust "target/debug/libtiny_lsp_client.so")
@@ -29,7 +30,7 @@
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
 (customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio t)
+(customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'rust-mode-hook 'tlc-mode)
 
@@ -38,6 +39,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Opening a file
 ;;------------------------------------------------------------------------------
+(test-case-message "opening a file")
 
 (defvar num-before-hook-calls 0)
 (defvar num-after-hook-calls 0)
@@ -49,14 +51,14 @@
   (cl-incf num-before-hook-calls)
   (assert-equal 'after hook-last-caller)
   (setq hook-last-caller 'before)
-  (std-message "before-hook called"))
+  (test-case-message "before-hook called"))
 
 (defun after-hook ()
   (assert-equal (tlc--root) default-directory)
   (cl-incf num-after-hook-calls)
   (assert-equal 'before hook-last-caller)
   (setq hook-last-caller 'after)
-  (std-message "after-hook called"))
+  (test-case-message "after-hook called"))
 
 (add-hook 'tlc-before-start-server-hook 'before-hook)
 (add-hook 'tlc-after-start-server-hook 'after-hook)
@@ -79,6 +81,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Xref find definition
 ;;------------------------------------------------------------------------------
+(test-case-message "xref find definition")
 
 (re-search-forward "second_function")
 (assert-equal 5 (line-number-at-pos))
@@ -103,6 +106,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Disable tlc-mode
 ;;------------------------------------------------------------------------------
+(test-case-message "Disable tlc-mode")
 
 (tlc-mode -1)
 (assert-equal nil tlc-mode)
@@ -111,11 +115,12 @@
 (assert-equal 1 (number-of-did-open))
 (assert-equal 1 (number-of-did-close))
 
-(std-message "disable tlc")
+(test-case-message "disable tlc")
 
 ;; -----------------------------------------------------------------------------
 ;; Enable tlc-mode again
 ;;------------------------------------------------------------------------------
+(test-case-message "Enable tlc-mode again")
 
 (tlc-mode t)
 (assert-equal t tlc-mode)
@@ -127,6 +132,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Toggle tlc-mode by changing major mode
 ;;------------------------------------------------------------------------------
+(test-case-message "Toggle tlc-mode by changing major mode")
 
 (text-mode)
 (assert-equal 'text-mode major-mode)
@@ -147,6 +153,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Revert buffer
 ;;------------------------------------------------------------------------------
+(test-case-message "revert buffer")
 
 ;; Testing didOpen and didClose at revert. Note, I know no good way to
 ;; automatically test did. Need to inspect the log and see that no duplicate
@@ -170,6 +177,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Editing
 ;;------------------------------------------------------------------------------
+(test-case-message "Editing")
 
 (assert-equal 
  "
@@ -330,6 +338,7 @@ fn second_funct() {
 ;; -----------------------------------------------------------------------------
 ;; Edit with restriction
 ;; -----------------------------------------------------------------------------
+(test-case-message "Edit with restriction")
 
 (assert-equal 
  "
@@ -424,6 +433,7 @@ fn second_funct() {
 ;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
+(test-case-message "Kill buffer")
 
 (kill-buffer)
 
@@ -438,6 +448,7 @@ fn second_funct() {
 ;; -----------------------------------------------------------------------------
 ;; Open non-existing file
 ;; -----------------------------------------------------------------------------
+(test-case-message "Open non-existing file")
 
 (setq non-existing-file "doesnt_exist_right.rs")
 (assert-equal nil (file-exists-p non-existing-file))
@@ -461,6 +472,7 @@ fn second_funct() {
 ;; -----------------------------------------------------------------------------
 ;; Info and stop
 ;; -----------------------------------------------------------------------------
+(test-case-message "Info and stop")
 
 (setq root-path (tlc--root))
 (assert-equal t (stringp root-path))
@@ -508,9 +520,9 @@ fn second_funct() {
 
 (setq new-pid (assert-tlc-info))
 
-(std-message "New: %s Old: %s" new-pid old-pid)
+(test-case-message "New: %s Old: %s" new-pid old-pid)
 (assert-equal nil (equal new-pid old-pid))
 
-(std-message "After stop restart info")
+(test-case-message "After stop restart info")
 
 (assert-equal 0 (number-of-STDERR))

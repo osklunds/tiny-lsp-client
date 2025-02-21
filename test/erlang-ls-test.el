@@ -25,7 +25,7 @@
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
 (customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio t)
+(customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'erlang-mode-hook 'tlc-mode)
 

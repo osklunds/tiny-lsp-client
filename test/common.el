@@ -9,16 +9,17 @@
 (defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
     (when msg
-      (std-message msg))
+      (test-case-message msg))
     (message "Expected '%s'\nActual '%s'" exp act)
-      ;; Sleep to have time for uncluttered printout
+    ;; Sleep to have time for uncluttered printout
     (sleep-for 2)
     (cl-assert (equal exp act) 'show)))
 
-(defun std-message (format-string &rest format-args)
-  (let* ((new-format-string (concat "[emacs]  " format-string))
-         (new-format-args (cons new-format-string format-args)))
-    (print (apply 'format new-format-args)
+(defun test-case-message (format-string &rest format-args)
+  (let* ((new-format-string (concat "[test-case-message]  " format-string))
+         (args (cons new-format-string format-args)))
+    ;; (apply 'message args)))
+    (print (apply 'format args)
            'external-debugging-output)))
 
 (defun non-interactive-xref-find-definitions ()
