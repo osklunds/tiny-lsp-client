@@ -328,6 +328,100 @@ fn second_funct() {
 (assert-equal 4 (number-of-did-close))
 
 ;; -----------------------------------------------------------------------------
+;; Edit with restriction
+;; -----------------------------------------------------------------------------
+
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    first_function(); // call from third }
+fn first_function() {
+    second_funct();
+}
+
+
+
+
+fn second_funct() {
+
+}
+"
+ (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "first_function")
+
+(let* ((p (point))
+       (source-buffer (current-buffer)))
+  (with-temp-buffer
+    (insert "abc")
+    (let ((temp-buffer (current-buffer)))
+      (with-current-buffer source-buffer
+        (narrow-to-region (- p 14) p)
+        (replace-buffer-contents temp-buffer)))))
+
+(widen)
+
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    abc(); // call from third }
+fn first_function() {
+    second_funct();
+}
+
+
+
+
+fn second_funct() {
+
+}
+"
+ (current-buffer-string))
+
+(beginning-of-buffer)
+(re-search-forward "first_function")
+(replace-string "first_function" "abc" nil (point-min) (point))
+
+(previous-line)
+(end-of-line)
+(insert "\n\n")
+
+(assert-equal 
+ "
+// Don't change this file. It is used in tests
+fn third_function() {
+    abc(); // call from third }
+
+
+fn abc() {
+    second_funct();
+}
+
+
+
+
+fn second_funct() {
+
+}
+"
+ (current-buffer-string))
+
+;; Re-position
+(beginning-of-buffer)
+(re-search-forward "abc")
+(assert-equal 4 (line-number-at-pos))
+(assert-equal 7 (current-column) "before xref def")
+
+;; Find definition
+(non-interactive-xref-find-definitions)
+(assert-equal 7 (line-number-at-pos) "after xref def")
+(assert-equal 3 (current-column))
+
+
+;; -----------------------------------------------------------------------------
 ;; Kill buffer
 ;;------------------------------------------------------------------------------
 
