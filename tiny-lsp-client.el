@@ -73,6 +73,17 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
 
+(defcustom tlc-stop-server-on-stderr nil
+  "If there is any output on stderr from the LSP server, stop it. This is to
+make developing and debugging of tiny-lsp-client easier by making it obvious
+when stderr happens, so that it can be debugged immediately and the situation
+when it happened is known."
+  :group 'tiny-lsp-client
+  :type 'boolean
+  :initialize 'custom-initialize-set
+  :get 'tlc--rust-get-log-option
+  :set 'tlc--rust-set-log-option)
+
 (defcustom tlc-before-start-server-hook nil
   "List of functions to be called before an LSP server is started for a root path. When an existing LSP server is connected to, this hook is not run."
   :type 'hook

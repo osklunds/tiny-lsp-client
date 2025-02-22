@@ -12,12 +12,14 @@ use std::io::Write;
 use std::ops::Drop;
 use std::process;
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
+
+pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
@@ -421,6 +423,13 @@ impl Server {
                 if buf.len() > 0 {
                     let string = String::from_utf8_lossy(&buf);
                     logger::log_stderr!("{}", string);
+
+                    if STOP_SERVER_ON_STDERR.load(Ordering::Relaxed) {
+                        logger::log_rust_debug!(
+                            "Stopping server due to stderr received"
+                        );
+                        break;
+                    }
                 }
 
                 if disconnected {
@@ -429,8 +438,8 @@ impl Server {
                 }
             }
 
-            stderr_inner_thread.join().unwrap();
             close_thread_actions(child_stderr_thread, "stderr");
+            stderr_inner_thread.join().unwrap();
         });
 
         Some(Server {
@@ -537,7 +546,7 @@ impl Server {
         self.server_process.lock().unwrap().id()
     }
 
-    pub fn is_working(&self) -> bool {
+    pub fn is_working(&mut self) -> bool {
         let result = self.server_process.lock().unwrap().try_wait();
         logger::log_rust_debug!(
             "is_working() try_wait(). Root path: '{}'. Result '{:?}'",
@@ -547,12 +556,17 @@ impl Server {
         if let Ok(None) = result {
             true
         } else {
+            self.join_threads();
             false
         }
     }
 
     pub fn stop_server(&mut self) {
         let _ = self.server_process.lock().unwrap().kill();
+        self.join_threads();
+    }
+
+    fn join_threads(&mut self) {
         let _ = self.sender.send(None);
         for thread in std::mem::take(&mut self.threads) {
             let thread_name = thread.thread().name().map(|s| s.to_string());
