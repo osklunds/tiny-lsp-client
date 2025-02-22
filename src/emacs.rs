@@ -14,7 +14,7 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let copy_string_contents = (*env).copy_string_contents.unwrap();
 
     // First find the length
-    let mut len = 0;
+    let mut len: isize = 0;
     let result_find_length =
         copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len);
     assert!(result_find_length);
