@@ -30,5 +30,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - use full sync on didChange as fallback
   - consider caching didChange like eglot
   - option to stop server if stderr for debug reasons
-- hard-to-fix-and-test bugs (long term)
+- High-hanging fruit, long term
   - Sometimes duplicate didOpen/didClose
+  - At stop, sometimes get duplicate didOpen due to mode and server out of sync
