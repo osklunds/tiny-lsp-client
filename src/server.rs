@@ -138,10 +138,6 @@ impl Server {
                     Some(header) => header,
                     None => break,
                 };
-                logger::log_rust_debug!(
-                    "Server recv loop initial line: '{:?}'",
-                    content_header
-                );
                 let parts: Vec<&str> = content_header.split(": ").collect();
                 let num_parts = parts.len();
                 if num_parts != 2 {
@@ -432,6 +428,7 @@ impl Server {
                     if buf.ends_with("\r\n") {
                         buf.pop();
                         buf.pop();
+                        logger::log_rust_debug!("Read header: '{}'", buf);
                         return Some(buf);
                     }
                 } else {
