@@ -155,8 +155,8 @@ impl Server {
 
                 let header_name = parts[0];
                 if header_name != "Content-Length" {
-                    // Actualy, there are other valid header names,
-                    // but handle them as they come.
+                    // Actualy, there are other valid header names, but handle
+                    // them as they come.
                     logger::log_rust_debug!(
                         "Incorrect header name: '{}'",
                         header_name
@@ -176,6 +176,8 @@ impl Server {
                     }
                 };
 
+                // Actualy, there might come other headers, but handle them
+                // as they come.
                 let end_of_headers = match Self::read_header(&mut reader) {
                     Some(header) => header,
                     None => break,
