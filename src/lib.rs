@@ -16,7 +16,6 @@ use crate::server::Server;
 use crate::emacs::*;
 use crate::message::*;
 
-use std::fs;
 use std::os::raw;
 use std::path::Path;
 use std::sync::atomic::Ordering;
@@ -235,9 +234,9 @@ unsafe fn build_text_document_did_open(
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
     let file_path = check_path(extract_string(env, file_path));
-    // todo: remove unwrap. But it should be relatively low risk
-    let file_content = fs::read_to_string(&file_path).unwrap();
     let uri = file_path_to_uri(file_path);
+
+    let file_content = extract_string(env, nth(env, 1, request_args));
 
     NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
