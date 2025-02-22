@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
+use std::os::unix::process::CommandExt;
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
@@ -36,6 +37,14 @@ impl Server {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
+        // When emacs in run in a terminal (using -nw), C-g causes the LSP
+        // server child process to stop. It doesn't happen when running GUI
+        // emacs.  For lsp-mode, this also doesn't happen, even in termimal.
+        // Based on some research, it seems like C-g causes the terminal itself
+        // to send SIGINT to emacs and thus emacs' process group too. If the LSP
+        // command is wrapped in a bash script that traps SIGINT (maybe SIGTERM
+        // too) the LSP server is not stopped.
+            .process_group(0)
             .spawn()
         {
             Ok(child) => child,

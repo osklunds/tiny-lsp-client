@@ -18,7 +18,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - licenses and attribution
 - Bugs
   - Higher priority
-    - keyboard-quit seems to send SIGINT (or similar) to child processes, meaning LSP servers, but only when running emacs with -nw
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of sync
