@@ -186,7 +186,7 @@ impl Server {
                     );
                     break;
                 }
-                let mut json_buf = Vec::new();
+                let mut json_buf = Vec::with_capacity(size);
                 json_buf.resize(size, 0);
                 match reader.read_exact(&mut json_buf) {
                     Ok(()) => (),
