@@ -14,7 +14,7 @@ use std::process;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
@@ -105,15 +105,7 @@ impl Server {
                                 let id = request.id;
                                 let ts = Instant::now();
                                 let mut seq_num_timestamps =
-                                    match seq_num_timestamps_send.lock() {
-                                        Ok(locked) => locked,
-                                        Err(_) => {
-                                            logger::log_rust_debug!(
-                                            "seq_num_timestamps lock failed in send thread"
-                                        );
-                                            break;
-                                        }
-                                    };
+                                    lock(&seq_num_timestamps_send);
                                 seq_num_timestamps.push((id, ts));
                                 seq_num_timestamps.truncate(10);
 
@@ -248,15 +240,7 @@ impl Server {
                                 // Only touch the mutex if IO is logged
                                 if logger::is_log_enabled!(LOG_IO) {
                                     let mut seq_num_timestamps =
-                                        match seq_num_timestamps_recv.lock() {
-                                            Ok(locked) => locked,
-                                            Err(_) => {
-                                                logger::log_rust_debug!(
-                                                    "seq_num_timestamps lock failed in recv thread"
-                                                );
-                                                break;
-                                            }
-                                        };
+                                        lock(&seq_num_timestamps_recv);
                                     logger::log_rust_debug!(
                                         "recv thread has '{}' timestamps: '{:?}'",
                                         seq_num_timestamps.len(),
@@ -543,12 +527,11 @@ impl Server {
     }
 
     pub fn get_server_process_id(&self) -> u32 {
-        // todo: avoid unwrap on server_process
-        self.server_process.lock().unwrap().id()
+        lock(&self.server_process).id()
     }
 
     pub fn is_working(&mut self) -> bool {
-        let result = self.server_process.lock().unwrap().try_wait();
+        let result = lock(&self.server_process).try_wait();
         logger::log_rust_debug!(
             "is_working() try_wait(). Root path: '{}'. Result '{:?}'",
             self.root_path,
@@ -563,7 +546,7 @@ impl Server {
     }
 
     pub fn stop_server(&mut self) {
-        let _ = self.server_process.lock().unwrap().kill();
+        let _ = lock(&self.server_process).kill();
         self.join_threads();
     }
 
@@ -595,17 +578,20 @@ where
         .unwrap()
 }
 
-fn close_thread_actions(child: Arc<Mutex<Child>>, thread_name: &str) {
+fn close_thread_actions(server_process: Arc<Mutex<Child>>, thread_name: &str) {
     logger::log_rust_debug!("{} thread stopping server", thread_name);
-    if let Ok(mut locked) = child.lock() {
-        let result = locked.kill();
-        logger::log_rust_debug!(
-            "{} thread stop server result '{:?}'",
-            thread_name,
-            result
-        );
-    } else {
-        logger::log_rust_debug!("{} thread lock child failed", thread_name);
-    }
+    let result = lock(&server_process).kill();
+    logger::log_rust_debug!(
+        "{} thread stop server result '{:?}'",
+        thread_name,
+        result
+    );
     logger::log_rust_debug!("{} thread closing", thread_name);
+}
+
+// The design of this module is that threads should never crash, and if they do,
+// it indicates a big problem so that everything should crash.
+// Maybe too offensive coding, but let's see how it turns out in practice.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
+    mutex.lock().unwrap()
 }
