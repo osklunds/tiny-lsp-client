@@ -546,7 +546,7 @@ impl Server {
         self.server_process.lock().unwrap().id()
     }
 
-    pub fn is_working(&self) -> bool {
+    pub fn is_working(&mut self) -> bool {
         let result = self.server_process.lock().unwrap().try_wait();
         logger::log_rust_debug!(
             "is_working() try_wait(). Root path: '{}'. Result '{:?}'",
@@ -556,6 +556,8 @@ impl Server {
         if let Ok(None) = result {
             true
         } else {
+            // Stop so that threads are joined
+            self.stop_server();
             false
         }
     }
