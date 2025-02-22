@@ -201,25 +201,16 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc--notify-text-document-did-open ()
   (let* ((file (tlc--buffer-file-name))
-         (revert revert-buffer-in-progress-p)
-         (modified (buffer-modified-p))
-         (exists (file-exists-p file)))
-    (tlc--log "didOpen. File: %s Revert in progress: %s. Modified: %s. Exists: %s."
+         (revert revert-buffer-in-progress-p))
+    (tlc--log "didOpen. File: %s Revert in progress: %s."
               file
               revert
-              modified
-              exists
               )
     ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
     ;; it lead to that those changes were overwritten.
-    (when (and (or modified (not exists))
-               (not revert))
-      ;; todo: document this
-      (tlc--log "Saving buffer due to didOpen")
-      (message "tiny-lsp-client can only open saved buffers, so saving for you.")
-      (save-buffer)
-      )
-    (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name)))))
+    (tlc--send-notification "textDocument/didOpen"
+                            (list (tlc--buffer-file-name) (buffer-string))
+                            )))
 
 (defun tlc--send-notification (method params)
   (let ((return (tlc--rust-send-notification
