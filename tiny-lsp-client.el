@@ -115,7 +115,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   ;; can be used as a way to change it.
   (setq tlc--cached-root nil)
   (cond
-   ((not buffer-file-name)
+   ((not (tlc--buffer-file-name-unchecked))
     (message "tiny-lsp-client can only be used in file buffers.")
     (setq tlc-mode nil))
    ((not (tlc--initial-get-root))
@@ -477,9 +477,13 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc--buffer-file-name ()
   ;; In after-revert-hook, if there was a change, buffer-file-name is nil,
   ;; so use buffer-file-truename instead
-  (let ((name (file-truename buffer-file-truename)))
+  (let ((name (tlc--buffer-file-name-unchecked)))
     (cl-assert name)
     name))
+
+(defun tlc--buffer-file-name-unchecked ()
+  (when-let ((bft buffer-file-truename))
+    (file-truename bft)))
 
 (defun tlc--ask-start-server ()
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
