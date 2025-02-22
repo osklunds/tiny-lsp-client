@@ -519,7 +519,8 @@ impl Server {
         }
     }
 
-    // todo: inner means result, outer means if error. Try to improve
+    // Outer Option (like the other methods) represents error or not. Inner
+    // Option represents wheether a response is available now or not.
     pub fn try_recv_response(&self) -> Option<Option<Response>> {
         let res = self.receiver.try_recv();
         if let Ok(response) = res {
