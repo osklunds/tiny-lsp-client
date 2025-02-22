@@ -11,7 +11,7 @@ use std::io::Read;
 use std::io::Write;
 use std::ops::Drop;
 use std::process;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -137,186 +137,173 @@ impl Server {
             let mut reader = std::io::BufReader::new(stdout);
 
             loop {
-                let mut buf = String::new();
-                match reader.read_line(&mut buf) {
-                    Ok(len) => {
-                        if len > 0 {
-                            logger::log_rust_debug!(
-                                "Server recv loop initial line: '{:?}'",
-                                buf
-                            );
-                            buf.pop();
-                            buf.pop();
-                            let parts: Vec<&str> = buf.split(": ").collect();
-                            let num_parts = parts.len();
-                            if num_parts != 2 {
-                                logger::log_rust_debug!(
+                let content_header = match Self::read_header(&mut reader) {
+                    Some(header) => header,
+                    None => break,
+                };
+                logger::log_rust_debug!(
+                    "Server recv loop initial line: '{:?}'",
+                    content_header
+                );
+                let parts: Vec<&str> = content_header.split(": ").collect();
+                let num_parts = parts.len();
+                if num_parts != 2 {
+                    logger::log_rust_debug!(
                                     "Incorrect number of parts after split: '{}'. Parts: '{:?}'",
                                     num_parts,
                                     parts
                                 );
-                                break;
-                            }
+                    break;
+                }
 
-                            let header_name = parts[0];
-                            if header_name != "Content-Length" {
-                                // Actualy, there are other valid header names,
-                                // but handle them as they come.
-                                logger::log_rust_debug!(
-                                    "Incorrect header name: '{}'",
-                                    header_name
-                                );
-                                break;
-                            }
-                            let header_value = parts[1];
+                let header_name = parts[0];
+                if header_name != "Content-Length" {
+                    // Actualy, there are other valid header names,
+                    // but handle them as they come.
+                    logger::log_rust_debug!(
+                        "Incorrect header name: '{}'",
+                        header_name
+                    );
+                    break;
+                }
+                let header_value = parts[1];
 
-                            let size = match header_value.parse::<usize>() {
-                                Ok(s) => s,
-                                Err(e) => {
-                                    logger::log_rust_debug!(
-                                        "Could not parse size: '{:?}'",
-                                        e
-                                    );
-                                    break;
-                                }
-                            };
-
-                            let mut json_buf = Vec::new();
-                            // todo: +2 might be related the the pops above. Anyway,
-                            // need to find out why
-                            json_buf.resize(size + 2, 0);
-                            match reader.read_exact(&mut json_buf) {
-                                Ok(()) => (),
-                                Err(e) => {
-                                    logger::log_rust_debug!(
-                                        "read_exact of json failed: {:?}",
-                                        e
-                                    );
-                                    break;
-                                }
-                            }
-
-                            let json_buf_clone =
-                                if logger::is_log_enabled!(LOG_RUST_DEBUG) {
-                                    Some(json_buf.clone())
-                                } else {
-                                    None
-                                };
-                            let json = match String::from_utf8(json_buf) {
-                                Ok(json) => json,
-                                Err(e) => {
-                                    let json_buf_clone =
-                                        json_buf_clone.unwrap_or("".into());
-
-                                    logger::log_rust_debug!(
-                                        "from_utf8 failed. Reason: '{:?}'. Data as utf8 lossy: '{}'. Raw bytes: '{:?}'",
-                                        e,
-                                        String::from_utf8_lossy(&json_buf_clone),
-                                        json_buf_clone
-                                    );
-                                    break;
-                                }
-                            };
-
-                            let msg: Message = match serde_json::from_str(&json)
-                            {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    logger::log_rust_debug!(
-                                        "serde_json::from_str failed: '{:?}'",
-                                        e
-                                    );
-                                    break;
-                                }
-                            };
-
-                            let mut duration = None;
-
-                            // Only care about response so far, i.e. drop
-                            // notifications about e.g. diagnostics
-                            if let Message::Response(response) = msg {
-                                let id = response.id;
-
-                                // Only touch the mutex if IO is logged
-                                if logger::is_log_enabled!(LOG_IO) {
-                                    let mut seq_num_timestamps =
-                                        lock(&seq_num_timestamps_recv);
-                                    logger::log_rust_debug!(
-                                        "recv thread has '{}' timestamps: '{:?}'",
-                                        seq_num_timestamps.len(),
-                                        seq_num_timestamps
-                                    );
-                                    let lookup_result = seq_num_timestamps
-                                        .iter()
-                                        .enumerate()
-                                        .find(|(_i, (curr_id, _ts))| {
-                                            *curr_id == id
-                                        });
-                                    if let Some((index, (_id, ts))) =
-                                        lookup_result
-                                    {
-                                        duration = Some(Some(
-                                            ts.elapsed().as_millis(),
-                                        ));
-                                        seq_num_timestamps.swap_remove(index);
-                                    } else {
-                                        duration = Some(None);
-                                    }
-                                    drop(seq_num_timestamps);
-                                }
-
-                                if let Ok(()) = stdout_tx.send(response) {
-                                } else {
-                                    break;
-                                }
-                            }
-
-                            if logger::is_log_enabled!(LOG_IO) {
-                                // Decode as serde_json::Value too, to be able
-                                // to print fields not deserialized into msg.
-                                let full_json: serde_json::Value =
-                                    match serde_json::from_str(&json) {
-                                        Ok(full_json) => full_json,
-                                        Err(e) => {
-                                            logger::log_rust_debug!(
-                                                "Parse to full json failed. Reason: '{:?}'. Data: '{}'.",
-                                                e,
-                                                json
-                                            );
-                                            break;
-                                        }
-                                    };
-                                let pretty_json =
-                                    serde_json::to_string_pretty(&full_json)
-                                        .unwrap();
-                                let duration_part = match duration {
-                                    // Response to request where time could be found
-                                    Some(Some(ms)) => format!("({} ms) ", ms),
-
-                                    // Response to request where time could not be found
-                                    Some(None) => format!("(? ms) "),
-
-                                    // Notification
-                                    None => format!(""),
-                                };
-                                logger::log_io!(
-                                    "Received: {}{}",
-                                    duration_part,
-                                    pretty_json
-                                );
-                            }
-                        } else {
-                            logger::log_rust_debug!("recv thread got EOF");
-                            break;
-                        }
-                    }
+                let size = match header_value.parse::<usize>() {
+                    Ok(s) => s,
                     Err(e) => {
                         logger::log_rust_debug!(
-                            "recv thread got error '{:?}'",
+                            "Could not parse size: '{:?}'",
                             e
                         );
                         break;
                     }
+                };
+
+                let end_of_headers = match Self::read_header(&mut reader) {
+                    Some(header) => header,
+                    None => break,
+                };
+
+                if end_of_headers != "" {
+                    logger::log_rust_debug!(
+                        "Incorrect end of headers: '{}'",
+                        end_of_headers
+                    );
+                    break;
+                }
+                let mut json_buf = Vec::new();
+                json_buf.resize(size, 0);
+                match reader.read_exact(&mut json_buf) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        logger::log_rust_debug!(
+                            "read_exact of json failed: {:?}",
+                            e
+                        );
+                        break;
+                    }
+                }
+
+                let json_buf_clone = if logger::is_log_enabled!(LOG_RUST_DEBUG)
+                {
+                    Some(json_buf.clone())
+                } else {
+                    None
+                };
+                let json = match String::from_utf8(json_buf) {
+                    Ok(json) => json,
+                    Err(e) => {
+                        let json_buf_clone =
+                            json_buf_clone.unwrap_or("".into());
+
+                        logger::log_rust_debug!(
+                            "from_utf8 failed. Reason: '{:?}'. Data as utf8 lossy: '{}'. Raw bytes: '{:?}'",
+                            e,
+                            String::from_utf8_lossy(&json_buf_clone),
+                            json_buf_clone
+                        );
+                        break;
+                    }
+                };
+
+                let msg: Message = match serde_json::from_str(&json) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        logger::log_rust_debug!(
+                            "serde_json::from_str failed: '{:?}'",
+                            e
+                        );
+                        break;
+                    }
+                };
+
+                let mut duration = None;
+
+                // Only care about response so far, i.e. drop
+                // notifications about e.g. diagnostics
+                if let Message::Response(response) = msg {
+                    let id = response.id;
+
+                    // Only touch the mutex if IO is logged
+                    if logger::is_log_enabled!(LOG_IO) {
+                        let mut seq_num_timestamps =
+                            lock(&seq_num_timestamps_recv);
+                        logger::log_rust_debug!(
+                            "recv thread has '{}' timestamps: '{:?}'",
+                            seq_num_timestamps.len(),
+                            seq_num_timestamps
+                        );
+                        let lookup_result = seq_num_timestamps
+                            .iter()
+                            .enumerate()
+                            .find(|(_i, (curr_id, _ts))| *curr_id == id);
+                        if let Some((index, (_id, ts))) = lookup_result {
+                            duration = Some(Some(ts.elapsed().as_millis()));
+                            seq_num_timestamps.swap_remove(index);
+                        } else {
+                            duration = Some(None);
+                        }
+                        drop(seq_num_timestamps);
+                    }
+
+                    if let Ok(()) = stdout_tx.send(response) {
+                    } else {
+                        break;
+                    }
+                }
+
+                if logger::is_log_enabled!(LOG_IO) {
+                    // Decode as serde_json::Value too, to be able
+                    // to print fields not deserialized into msg.
+                    let full_json: serde_json::Value =
+                        match serde_json::from_str(&json) {
+                            Ok(full_json) => full_json,
+                            Err(e) => {
+                                logger::log_rust_debug!(
+                                    "Parse to full json failed. Reason: '{:?}'. Data: '{}'.",
+                                    e,
+                                    json
+                                );
+                                break;
+                            }
+                        };
+                    let pretty_json =
+                        serde_json::to_string_pretty(&full_json).unwrap();
+                    let duration_part = match duration {
+                        // Response to request where time could be found
+                        Some(Some(ms)) => format!("({} ms) ", ms),
+
+                        // Response to request where time could not be found
+                        Some(None) => format!("(? ms) "),
+
+                        // Notification
+                        None => format!(""),
+                    };
+                    logger::log_io!(
+                        "Received: {}{}",
+                        duration_part,
+                        pretty_json
+                    );
                 }
             }
 
@@ -361,9 +348,9 @@ impl Server {
                                     thread::sleep(Duration::from_micros(100));
                                 } else {
                                     logger::log_rust_debug!(
-                                "stderr_inner got error when reading. Reason: '{:?}'",
-                                e
-                            );
+                                        "stderr_inner got error when reading. Reason: '{:?}'",
+                                        e
+                                    );
                                     break;
                                 }
                             }
@@ -436,6 +423,29 @@ impl Server {
             next_version_number: 0,
             threads: vec![send_thread, recv_thread, stderr_thread],
         })
+    }
+
+    fn read_header(
+        reader: &mut std::io::BufReader<ChildStdout>,
+    ) -> Option<String> {
+        let mut buf = String::new();
+        match reader.read_line(&mut buf) {
+            Ok(len) => {
+                if len > 0 {
+                    if buf.ends_with("\r\n") {
+                        buf.pop();
+                        buf.pop();
+                        return Some(buf);
+                    }
+                } else {
+                    logger::log_rust_debug!("recv thread got EOF");
+                }
+            }
+            Err(e) => {
+                logger::log_rust_debug!("recv thread got error '{:?}'", e);
+            }
+        }
+        return None;
     }
 
     pub fn initialize(&mut self) -> Option<()> {
