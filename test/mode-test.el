@@ -455,7 +455,8 @@ fn second_funct() {
 
 (find-file non-existing-file)
 
-(assert-equal t (file-exists-p non-existing-file))
+;; tiny-lsp-client doesn't save anymore
+(assert-equal nil (file-exists-p non-existing-file))
 
 (assert-equal 7 (number-of-did-open))
 (assert-equal 5 (number-of-did-close))

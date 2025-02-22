@@ -83,10 +83,15 @@
 
 (test-case-message "Sending didOpen")
 
+(setq path "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")
+(setq content (with-temp-buffer
+                (insert-file-contents path)
+                (buffer-string)))
+
 (assert-equal 'ok (tlc--rust-send-notification
                    root-path
                    "textDocument/didOpen"
-                   (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+                   (list path content)))
 
 ;; -----------------------------------------------------------------------------
 ;; definition
@@ -196,7 +201,7 @@
               (tlc--rust-send-notification
                root-path
                "textDocument/didOpen"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+               (list path content)))
 
 (assert-equal 3
               (tlc--rust-send-request
@@ -222,7 +227,7 @@
               (tlc--rust-send-notification
                root-path
                "textDocument/didOpen"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+               (list path content)))
 
 (assert-equal 'no-server
               (tlc--rust-send-request

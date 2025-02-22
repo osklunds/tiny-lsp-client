@@ -115,15 +115,15 @@ path. When an existing LSP server is connected to, this hook is not run."
   ;; can be used as a way to change it.
   (setq tlc--cached-root nil)
   (cond
-   ((not (tlc--buffer-file-name-unchecked))
-    (message "tiny-lsp-client can only be used in file buffers.")
-    (setq tlc-mode nil))
-   ((not (tlc--initial-get-root))
-    (message "tiny-lsp-client can only be used in buffers where root can be found.")
-    (setq tlc-mode nil))
-   (t
+   (tlc-mode
     (cond
-     (tlc-mode
+     ((not (tlc--buffer-file-name-unchecked))
+      (message "tiny-lsp-client can only be used in file buffers.")
+      (tlc-mode -1))
+     ((not (tlc--initial-get-root))
+      (message "tiny-lsp-client can only be used in buffers where root can be found.")
+      (tlc-mode -1))
+     (t
       (tlc--start-server)
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
@@ -131,19 +131,20 @@ path. When an existing LSP server is connected to, this hook is not run."
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
       (add-hook 'before-change-functions 'tlc--before-change-hook nil t)
       (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
-      (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t)
-      )
-     (t
-      ;; todo: if last buffer, stop the server
-      (tlc--notify-text-document-did-close)
-      (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-      (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
-      (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
-      (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
-      (remove-hook 'before-change-functions 'tlc--before-change-hook t)
-      (remove-hook 'after-change-functions 'tlc--after-change-hook t)
-      (remove-hook 'change-major-mode-hook 'tlc--change-major-mode-hook t)
-      )))))
+      (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t))))
+   (t
+    ;; disable can be sent for buffers where enabling is not appropriate,
+    ;; so only send close if possible.
+    (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
+      (tlc--notify-text-document-did-close))
+    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
+    (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
+    (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
+    (remove-hook 'before-change-functions 'tlc--before-change-hook t)
+    (remove-hook 'after-change-functions 'tlc--after-change-hook t)
+    (remove-hook 'change-major-mode-hook 'tlc--change-major-mode-hook t)
+    )))
 
 (defun tlc--start-server ()
   (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
@@ -201,25 +202,20 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc--notify-text-document-did-open ()
   (let* ((file (tlc--buffer-file-name))
-         (revert revert-buffer-in-progress-p)
-         (modified (buffer-modified-p))
-         (exists (file-exists-p file)))
-    (tlc--log "didOpen. File: %s Revert in progress: %s. Modified: %s. Exists: %s."
+         (revert revert-buffer-in-progress-p))
+    (tlc--log "didOpen. File: %s Revert in progress: %s."
               file
               revert
-              modified
-              exists
               )
     ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
     ;; it lead to that those changes were overwritten.
-    (when (and (or modified (not exists))
-               (not revert))
-      ;; todo: document this
-      (tlc--log "Saving buffer due to didOpen")
-      (message "tiny-lsp-client can only open saved buffers, so saving for you.")
-      (save-buffer)
-      )
-    (tlc--send-notification "textDocument/didOpen" (list (tlc--buffer-file-name)))))
+
+    ;; lisp side now needs to use (buffer-string), otherwise tlc creates deleted
+    ;; files when running vidff on them. Note, that it *seems* rust-mode has
+    ;; the same bug, but not lisp or erlang-mode. Useful to know when testing.
+    (tlc--send-notification "textDocument/didOpen"
+                            (list (tlc--buffer-file-name) (buffer-string))
+                            )))
 
 (defun tlc--send-notification (method params)
   (let ((return (tlc--rust-send-notification
@@ -482,8 +478,10 @@ path. When an existing LSP server is connected to, this hook is not run."
     name))
 
 (defun tlc--buffer-file-name-unchecked ()
-  (when-let ((bft buffer-file-truename))
-    (file-truename bft)))
+  (let* ((bft buffer-file-truename)
+         (result (and bft (file-truename bft))))
+    (tlc--log "tlc--buffer-file-name-unchecked. buffer-name: '%s'\nbuffer-file-name: '%s'\nbuffer-file-truename: '%s'\nReturn: '%s'" (buffer-name) buffer-file-name bft result)
+    result))
 
 (defun tlc--ask-start-server ()
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
