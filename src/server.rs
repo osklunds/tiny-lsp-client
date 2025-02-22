@@ -5,10 +5,7 @@ use crate::logger;
 use crate::message::*;
 
 use serde_json::json;
-use std::io::BufRead;
-use std::io::ErrorKind;
-use std::io::Read;
-use std::io::Write;
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::ops::Drop;
 use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
@@ -134,7 +131,7 @@ impl Server {
         // Sender of messages to application
         // Receiving from stdout from lsp server
         let recv_thread = spawn_named_thread("recv", move || {
-            let mut reader = std::io::BufReader::new(stdout);
+            let mut reader = BufReader::new(stdout);
 
             loop {
                 let content_header = match Self::read_header(&mut reader) {
@@ -425,9 +422,7 @@ impl Server {
         })
     }
 
-    fn read_header(
-        reader: &mut std::io::BufReader<ChildStdout>,
-    ) -> Option<String> {
+    fn read_header(reader: &mut BufReader<ChildStdout>) -> Option<String> {
         let mut buf = String::new();
         match reader.read_line(&mut buf) {
             Ok(len) => {
