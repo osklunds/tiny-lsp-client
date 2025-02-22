@@ -7,6 +7,12 @@
 ;; Configuration
 ;;------------------------------------------------------------------------------
 
+(defun tlc--set-rust-based-option (symbol value)
+  ;; Would be better to avoid this lisp variable since duplicates what's stored
+  ;; in Rust, but customize shows state uninitialized without it.
+  (set symbol value)
+  (tlc--rust-set-option symbol value))
+
 (defgroup tiny-lsp-client nil
   "tiny-lsp-client: a minor mode for LSP."
   :group 'tools)
@@ -29,16 +35,14 @@ logged."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-log-stderr t
   "Whether stderr output from the LSP server should be logged."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-log-rust-debug nil
   "Whether debug logging (in Rust code) should be enabled. Probably mainly
@@ -46,8 +50,7 @@ useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-log-emacs-debug nil
   "Whether debug logging (in Emacs lisp code) should be enabled. Probably mainly
@@ -61,8 +64,7 @@ output. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-log-file (file-truename
                          (file-name-concat
@@ -75,8 +77,7 @@ rotation. Note that the contents of .old are not preserved."
   :group 'tiny-lsp-client
   :type 'file
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-stop-server-on-stderr nil
   "If there is any output on stderr from the LSP server, stop it. This is to
@@ -86,8 +87,7 @@ when it happened is known."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
-  :get 'tlc--rust-get-log-option
-  :set 'tlc--rust-set-log-option)
+  :set 'tlc--set-rust-based-option)
 
 (defcustom tlc-before-start-server-hook nil
   "List of functions to be called before an LSP server is started for a root
@@ -411,8 +411,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc-open-log-file ()
   "Open tiny-lsp-client's log file."
   (interactive)
-  ;; todo: is this the correct way to get custom?
-  (find-file (tlc--rust-get-log-option 'tlc-log-file)))
+  (find-file tlc-log-file))
 
 (defun tlc-info ()
   "Show information about running servers."

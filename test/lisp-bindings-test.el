@@ -36,9 +36,9 @@
 
 (test-garbage-collect "after load")
 
-(tlc--rust-set-log-option 'tlc-log-to-stdio nil)
+(tlc--rust-set-option 'tlc-log-to-stdio nil)
 
-(tlc--rust-set-log-option 'tlc-log-file (file-truename
+(tlc--rust-set-option 'tlc-log-file (file-truename
                                          (file-name-concat
                                           user-emacs-directory
                                           "tiny-lsp-client-test.log")))

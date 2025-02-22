@@ -66,15 +66,6 @@ struct LogFileInfo {
     file: Option<File>,
 }
 
-pub fn get_log_file_name() -> Option<String> {
-    let log_file_info = LOG_FILE_INFO.lock().unwrap();
-    if let Some(log_file_info) = &*log_file_info {
-        Some(log_file_info.log_file_name.clone())
-    } else {
-        None
-    }
-}
-
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     if let Some(ref mut log_file_info) = locked_log_file_info.as_mut() {

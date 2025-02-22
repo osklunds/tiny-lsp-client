@@ -20,7 +20,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - Higher priority
     - crash if vdiff on deleted file. The file of course doesn't reside on disk. But why is didOpen sent?
     - keyboard-quit seems to send SIGINT (or similar) to child processes, meaning LSP servers, but only when running emacs with -nw
-    - fix custom
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of sync
