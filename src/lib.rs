@@ -73,14 +73,6 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        1,
-        1,
-        tlc__rust_get_log_option,
-        "tlc--rust-get-log-option",
-    );
-
-    export_function(
-        env,
         2,
         2,
         tlc__rust_set_log_option,
@@ -395,41 +387,6 @@ unsafe fn handle_response(
         // Now response.error should be Some, but since no details are
         // returned anyway, no need to unwrap and risk crash
         intern(env, "error-response")
-    }
-}
-
-#[allow(non_snake_case)]
-unsafe extern "C" fn tlc__rust_get_log_option(
-    env: *mut emacs_env,
-    _nargs: isize,
-    args: *mut emacs_value,
-    _data: *mut raw::c_void,
-) -> emacs_value {
-    // Don't log args so that log file can change location before
-    // any logging takes place
-    let symbol = *args.offset(0);
-    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
-
-    if symbol == "tlc-log-file" {
-        if let Some(log_file_name) = logger::get_log_file_name() {
-            make_string(env, log_file_name)
-        } else {
-            intern(env, "nil")
-        }
-    } else {
-        let value = if symbol == "tlc-log-io" {
-            logger::is_log_enabled!(LOG_IO)
-        } else if symbol == "tlc-log-stderr" {
-            logger::is_log_enabled!(LOG_STDERR)
-        } else if symbol == "tlc-log-rust-debug" {
-            logger::is_log_enabled!(LOG_RUST_DEBUG)
-        } else if symbol == "tlc-log-to-stdio" {
-            logger::is_log_enabled!(LOG_TO_STDIO)
-        } else {
-            panic!("Incorrect log symbol")
-        };
-
-        make_bool(env, value)
     }
 }
 
