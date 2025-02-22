@@ -75,8 +75,8 @@ pub unsafe extern "C" fn emacs_module_init(
         env,
         2,
         2,
-        tlc__rust_set_log_option,
-        "tlc--rust-set-log-option",
+        tlc__rust_set_option,
+        "tlc--rust-set-option",
     );
 
     export_function(
@@ -391,7 +391,7 @@ unsafe fn handle_response(
 }
 
 #[allow(non_snake_case)]
-unsafe extern "C" fn tlc__rust_set_log_option(
+unsafe extern "C" fn tlc__rust_set_option(
     env: *mut emacs_env,
     _nargs: isize,
     args: *mut emacs_value,
