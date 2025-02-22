@@ -88,7 +88,9 @@ impl Server {
                         }
 
                         // Don't create pretty json if logging is not enabled
-                        // todo: maybe handle don't-create-args in a more generic way
+                        // todo: maybe handle don't-create-args in a more
+                        // generic way also not even format! should be called if
+                        // not enabled.
                         if logger::is_log_enabled!(LOG_IO) {
                             logger::log_io!(
                                 "Sent: {}",
