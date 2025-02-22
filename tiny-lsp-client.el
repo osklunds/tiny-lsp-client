@@ -202,7 +202,9 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc--notify-text-document-did-open ()
   (let* ((file (tlc--buffer-file-name))
-         (revert revert-buffer-in-progress-p))
+         (revert revert-buffer-in-progress-p)
+         (content (tlc--widen
+                   (buffer-substring-no-properties (point-min) (point-max)))))
     (tlc--log "didOpen. File: %s Revert in progress: %s."
               file
               revert
@@ -210,11 +212,11 @@ path. When an existing LSP server is connected to, this hook is not run."
     ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
     ;; it lead to that those changes were overwritten.
 
-    ;; lisp side now needs to use (buffer-string), otherwise tlc creates deleted
+    ;; lisp side now needs to use send the content, otherwise tlc creates deleted
     ;; files when running vidff on them. Note, that it *seems* rust-mode has
     ;; the same bug, but not lisp or erlang-mode. Useful to know when testing.
     (tlc--send-notification "textDocument/didOpen"
-                            (list (tlc--buffer-file-name) (buffer-string))
+                            (list (tlc--buffer-file-name) content)
                             )))
 
 (defun tlc--send-notification (method params)
@@ -273,16 +275,14 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Heavily inspired by eglot
 ;; nil pos means current point
 (defun tlc--pos-to-lsp-pos (&optional pos)
-  (save-excursion
-    ;; Need to save restriction and widen to handle e.g. lsp-rename from
-    ;; lsp-mode, and I guess other cases where restriction is used.
-    (save-restriction
-      (widen)
-      (let* ((line (- (line-number-at-pos pos) 1))
-             (character (progn (when pos
-                                 (goto-char pos))
-                               (current-column))))
-        (list line character)))))
+  ;; Need to save restriction and widen to handle e.g. lsp-rename from
+  ;; lsp-mode, and I guess other cases where restriction is used.
+  (tlc--widen
+   (let* ((line (- (line-number-at-pos pos) 1))
+          (character (progn (when pos
+                              (goto-char pos))
+                            (current-column))))
+     (list line character))))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
   (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
@@ -294,7 +294,8 @@ path. When an existing LSP server is connected to, this hook is not run."
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
          (end-character   (nth 3 tlc--change))
-         (text (buffer-substring-no-properties beg end))
+         (text (tlc--widen
+                (buffer-substring-no-properties beg end)))
          )
     (setq tlc--change nil)
     ;; if revert in progress, it can happen that didChange is sent before didOpen
@@ -530,6 +531,9 @@ nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
       (file-name-directory (buffer-file-name))
     (tlc-find-root-default-function)))
+
+(cl-defmacro tlc--widen (&rest body)
+  `(save-excursion (save-restriction (widen) ,@body)))
 
 
 (provide 'tiny-lsp-client)
