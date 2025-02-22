@@ -209,6 +209,10 @@ path. When an existing LSP server is connected to, this hook is not run."
               )
     ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
     ;; it lead to that those changes were overwritten.
+
+    ;; lisp side now needs to use (buffer-string), otherwise tlc creates deleted
+    ;; files when running vidff on them. Note, that it *seems* rust-mode has
+    ;; the same bug, but not lisp or erlang-mode. Useful to know when testing.
     (tlc--send-notification "textDocument/didOpen"
                             (list (tlc--buffer-file-name) (buffer-string))
                             )))
