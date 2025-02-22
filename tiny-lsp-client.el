@@ -8,8 +8,8 @@
 ;;------------------------------------------------------------------------------
 
 (defun tlc--set-log-option (symbol value)
-  ;; Would be better to avoid this lisp variable, but customize shows state
-  ;; uninitialized without it.
+  ;; Would be better to avoid this lisp variable since duplicates what's stored
+  ;; in Rust, but customize shows state uninitialized without it.
   (set symbol value)
   (tlc--rust-set-log-option symbol value))
 
@@ -411,8 +411,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc-open-log-file ()
   "Open tiny-lsp-client's log file."
   (interactive)
-  ;; todo: is this the correct way to get custom?
-  (find-file (tlc--rust-get-log-option 'tlc-log-file)))
+  (find-file tlc-log-file))
 
 (defun tlc-info ()
   "Show information about running servers."
