@@ -133,8 +133,6 @@ path. When an existing LSP server is connected to, this hook is not run."
       (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
       (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t))))
    (t
-    ;; todo: if last buffer, stop the server
-
     ;; disable can be sent for buffers where enabling is not appropriate,
     ;; so only send close if possible.
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
