@@ -556,14 +556,17 @@ impl Server {
         if let Ok(None) = result {
             true
         } else {
-            // Stop so that threads are joined
-            self.stop_server();
+            self.join_threads();
             false
         }
     }
 
     pub fn stop_server(&mut self) {
         let _ = self.server_process.lock().unwrap().kill();
+        self.join_threads();
+    }
+
+    fn join_threads(&mut self) {
         let _ = self.sender.send(None);
         for thread in std::mem::take(&mut self.threads) {
             let thread_name = thread.thread().name().map(|s| s.to_string());
