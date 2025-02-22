@@ -12,12 +12,14 @@ use std::io::Write;
 use std::ops::Drop;
 use std::process;
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
+
+pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(true);
 
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
@@ -421,6 +423,13 @@ impl Server {
                 if buf.len() > 0 {
                     let string = String::from_utf8_lossy(&buf);
                     logger::log_stderr!("{}", string);
+
+                    if STOP_SERVER_ON_STDERR.load(Ordering::Relaxed) {
+                        logger::log_rust_debug!(
+                            "Stopping server due to stderr received"
+                        );
+                        break;
+                    }
                 }
 
                 if disconnected {
@@ -429,8 +438,8 @@ impl Server {
                 }
             }
 
-            stderr_inner_thread.join().unwrap();
             close_thread_actions(child_stderr_thread, "stderr");
+            stderr_inner_thread.join().unwrap();
         });
 
         Some(Server {
