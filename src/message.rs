@@ -14,6 +14,7 @@ pub enum Message {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
+    pub jsonrpc: String,
     pub id: u32,
     pub method: String,
     pub params: RequestParams,
@@ -105,6 +106,7 @@ pub struct Range {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Notification {
+    pub jsonrpc: String,
     pub method: String,
     pub params: NotificationParams,
 }
