@@ -7,26 +7,25 @@
 ;; Configuration
 ;;------------------------------------------------------------------------------
 
-;; todo: specify types
+(defgroup tiny-lsp-client nil
+  "tiny-lsp-client: a minor mode for LSP."
+  :group 'tools)
 
-(defcustom tlc-server-cmds
-  '(
-    (rust-mode . "rust-analyzer")
-    (erlang-mode . "erlang_ls")
-    )
+(defcustom tlc-server-cmds '(
+                             (rust-mode . "rust-analyzer")
+                             (erlang-mode . "erlang_ls")
+                             )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client)
 
-(defcustom tlc-find-root-function
-  'tlc-find-root-default-function
-  "Function used for finding the root path of a project.
-
-Default to `tlc-find-root-default-function' which first tries Projectile,
-and if that fails, tries using \"git rev-parse --show-toplevel\"." 
-  :group 'tiny-lsp-client)
+(defcustom tlc-find-root-function 'tlc-find-root-default-function
+  "Function used for finding the root path of a project."
+  :group 'tiny-lsp-client
+  :type 'function)
 
 (defcustom tlc-log-io nil
-  "Whether JSON messages between tiny-lsp-client and the LSP server should be logged."
+  "Whether JSON messages between tiny-lsp-client and the LSP server should be
+logged."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
@@ -42,7 +41,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :set 'tlc--rust-set-log-option)
 
 (defcustom tlc-log-rust-debug nil
-  "Whether debug logging (in Rust code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
+  "Whether debug logging (in Rust code) should be enabled. Probably mainly
+useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
@@ -50,12 +50,14 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   :set 'tlc--rust-set-log-option)
 
 (defcustom tlc-log-emacs-debug nil
-  "Whether debug logging (in Emacs lisp code) should be enabled. Probably mainly useful for developing tiny-lsp-client."
+  "Whether debug logging (in Emacs lisp code) should be enabled. Probably mainly
+useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean)
 
 (defcustom tlc-log-to-stdio nil
-  "In addition to logging to files, if logging should also happen to standard output. Probably mainly useful for developing tiny-lsp-client."
+  "In addition to logging to file, if logging should also happen to standard
+output. Probably mainly useful for developing tiny-lsp-client."
   :group 'tiny-lsp-client
   :type 'boolean
   :initialize 'custom-initialize-set
@@ -66,9 +68,12 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
                          (file-name-concat
                           user-emacs-directory
                           "tiny-lsp-client.log"))
-  "Directory in which log files are placed."
+  "File name of the log file where tiny-lsp-client stores logs. If the file
+doesn't exist, it's created. If the file already exists, the contents are copied
+to a file with the same name but with .old as suffix, as a simple log
+rotation. Note that the contents of .old are not preserved."
   :group 'tiny-lsp-client
-  :type 'string
+  :type 'file
   :initialize 'custom-initialize-set
   :get 'tlc--rust-get-log-option
   :set 'tlc--rust-set-log-option)
@@ -85,12 +90,14 @@ when it happened is known."
   :set 'tlc--rust-set-log-option)
 
 (defcustom tlc-before-start-server-hook nil
-  "List of functions to be called before an LSP server is started for a root path. When an existing LSP server is connected to, this hook is not run."
+  "List of functions to be called before an LSP server is started for a root
+path. When an existing LSP server is connected to, this hook is not run."
   :type 'hook
   :group 'tiny-lsp-client)
 
 (defcustom tlc-after-start-server-hook nil
-  "List of functions to be called after an LSP server is started for a root path. When an existing LSP server is connected to, this hook is not run."
+  "List of functions to be called after an LSP server is started for a root
+  path. When an existing LSP server is connected to, this hook is not run."
   :type 'hook
   :group 'tiny-lsp-client)
 
@@ -167,8 +174,8 @@ when it happened is known."
     ))
 
 (defun tlc--run-hooks (hooks)
-  ;; Use root path as default-directory to make it predictable and useful for
-  ;; the hooks
+  "Wrapper around `run-hooks' that runs them with root path as
+`default-directory'."
   (let ((default-directory (tlc--root)))
     (run-hooks hooks)))
 
@@ -402,11 +409,13 @@ when it happened is known."
 ;;------------------------------------------------------------------------------
 
 (defun tlc-open-log-file ()
+  "Open tiny-lsp-client's log file."
   (interactive)
   ;; todo: is this the correct way to get custom?
   (find-file (tlc--rust-get-log-option 'tlc-log-file)))
 
 (defun tlc-info ()
+  "Show information about running servers."
   (interactive)
   (let ((infos (tlc--rust-all-server-info)))
     (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
@@ -431,7 +440,9 @@ when it happened is known."
 
 ;; todo: make sure the passed root-path begings with / to make the rust code not
 ;; crash
+;; todo: Internl tlc--stop-server
 (defun tlc-stop-server (&optional root-path nowarn-not-found)
+  "Stop an LSP server."
   (interactive
    (list
     (completing-read "Choose root path of server to stop: "
@@ -453,6 +464,7 @@ when it happened is known."
         (_ (error "bad result tlc-stop-server %s" result))))))
 
 (defun tlc-restart-server ()
+  "Restart the LSP server of the current root path."
   (interactive)
   (tlc-stop-server nil 'nowarn-not-found)
   ;; Avoid race where tlc--start-server thinks the server is still alive
@@ -465,7 +477,7 @@ when it happened is known."
 
 (defun tlc--buffer-file-name ()
   ;; In after-revert-hook, if there was a change, buffer-file-name is nil,
-  ;; so use this instead
+  ;; so use buffer-file-truename instead
   (let ((name (file-truename buffer-file-truename)))
     (cl-assert name)
     name))
@@ -503,13 +515,15 @@ a nil root is OK."
   tlc--cached-root)
 
 (defun tlc-find-root-default-function ()
+  "Default function for find the root path of a buffer. First tries Projectile,
+and if that fails, tries using \"git rev-parse --show-toplevel\"."
   (if (fboundp 'projectile-project-root)
       (projectile-project-root)
     (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
         (unless (string-match-p "fatal:" root)
           root))))
 
-(defun tlc-dev-find-root-default-function ()
+(defun tlc-dev-find-root-function ()
   "Special root finder used for developing tiny-lsp-client itself. Finds the
 nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
