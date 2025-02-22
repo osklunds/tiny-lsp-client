@@ -459,6 +459,8 @@ unsafe extern "C" fn tlc__rust_set_log_option(
             logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
         } else if symbol == "tlc-log-to-stdio" {
             logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
+        } else if symbol == "tlc-stop-server-on-stderr" {
+            server::STOP_SERVER_ON_STDERR.store(value, Ordering::Relaxed)
         } else {
             panic!("Incorrect log symbol")
         };

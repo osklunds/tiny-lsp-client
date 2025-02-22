@@ -19,7 +19,7 @@ use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
 
-pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(true);
+pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
