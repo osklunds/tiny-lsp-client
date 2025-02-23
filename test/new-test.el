@@ -1,4 +1,6 @@
 
+;; Run with "emacs -batch -l ert -l new-test.el -f ert-run-tests-batch-and-exit"
+
 ;; -----------------------------------------------------------------------------
 ;; Common setup
 ;; -----------------------------------------------------------------------------
@@ -10,10 +12,32 @@
 
 (load-file (relative-repo-root "test" "common.el"))
 
-(let ((default-directory (relative-repo-root "test" "clangd")))
-  (assert-equal 0 (call-process-shell-command "cmake .") "cmake")
-  (assert-equal 0 (call-process-shell-command "make") "make")
-  )
+(defun my-assert-equal (exp act &optional label)
+  (when (not (equal exp act))
+    (message "")
+    (message "")
+    (message "")
+    (message "-----------------------------------------------------------------------------")
+    (message "Assert failed. label: '%s'" label)
+    (message "Exp: '%s'" exp)
+    (message "Act: '%s'" act)
+    (message "-----------------------------------------------------------------------------")
+    (message "")
+    (message "")
+    (message ""))
+  (should (equal exp act)))
+
+(defun run-shell-command (command &rest components)
+  (let* ((default-directory (apply 'relative-repo-root components))
+         (code (with-temp-buffer
+                 (let ((code (call-process-shell-command command nil t)))
+                   (message (string-replace "%" "%%" (buffer-string)))
+                   code))))
+    (my-assert-equal 0 code)))
+
+(run-shell-command "cargo build")
+(run-shell-command "cmake ." "test" "clangd")
+(run-shell-command "make" "test" "clangd")
 
 ;; Manually require tlc-rust to get debug version
 (require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
@@ -31,21 +55,6 @@
 ;; -----------------------------------------------------------------------------
 ;; Common helpers
 ;; -----------------------------------------------------------------------------
-
-(defun my-assert-equal (exp act &optional label)
-  (when (not (equal exp act))
-    (message "")
-    (message "")
-    (message "")
-    (message "-----------------------------------------------------------------------------")
-    (message "Assert failed. label: '%s'" label)
-    (message "Exp: '%s'" exp)
-    (message "Act: '%s'" act)
-    (message "-----------------------------------------------------------------------------")
-    (message "")
-    (message "")
-    (message ""))
-  (should (equal exp act)))
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
