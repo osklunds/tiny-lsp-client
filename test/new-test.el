@@ -53,6 +53,7 @@
 (require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
 (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 
+;; change log-file-name early to avoid overwriting your own log file
 (customize-set-variable 'tlc-log-file log-file-name)
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
@@ -67,7 +68,10 @@
 ;; -----------------------------------------------------------------------------
 
 (defun before-each-test (test-case-name)
-  (setq log-file-name (relative-repo-root "test" (format "%s.log" test-case-name)))
+  ;; todo would be better to not hard code test file name
+  (setq log-file-name (relative-repo-root
+                       "test"
+                       (format "%s-%s.log" "new-test" test-case-name)))
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name))
 
