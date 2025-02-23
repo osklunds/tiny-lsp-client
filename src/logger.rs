@@ -6,6 +6,7 @@ use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::Path;
 use std::ptr;
 use std::str;
 use std::sync::atomic::AtomicBool;
@@ -151,9 +152,19 @@ fn rotate_to_old_file(log_file_name: &str) {
     // Can fail if new_log_file_name doesn't exist. So don't unwrap
     // and only write existing content if the new file already has content
     if let Ok(existing_content) = fs::read_to_string(log_file_name) {
-        fs::write(format!("{}.old", log_file_name), existing_content).unwrap();
+        let old_log_file_name = format!("{}.old", log_file_name);
+        create_parent_dirs(&old_log_file_name);
+        fs::write(&old_log_file_name, existing_content).unwrap();
     }
+    create_parent_dirs(&log_file_name);
     fs::write(log_file_name, "").unwrap();
+}
+
+fn create_parent_dirs(file_name: &str) {
+    let path = Path::new(file_name);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
 }
 
 // Nothing against Chrono at all, but for this project I wanted to avoid non
