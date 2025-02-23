@@ -28,13 +28,18 @@
   (should (equal exp act)))
 
 (defun run-shell-command (command &rest components)
+  (message "-----------------------------------------------------------------------------")
+  (message "Running command '%s'" command)
   (let* ((default-directory (apply 'relative-repo-root components))
          (code (with-temp-buffer
                  (let ((code (call-process-shell-command command nil t)))
                    (message (string-replace "%" "%%" (buffer-string)))
                    code)))
          (label (format "Command %s" command)))
-    (my-assert-equal 0 code label)))
+    (my-assert-equal 0 code label))
+  (message "Finished command '%s'" command)
+  (message "-----------------------------------------------------------------------------")
+  )
 
 (run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
