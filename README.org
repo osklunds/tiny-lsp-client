@@ -25,7 +25,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - Improvements
   - Higher priority
     - split lisp tests into smaller files. e.g. one for edit. one for revert. etc
-    - test unicode
+    - test unicode in content
+    - test unicode in URIs
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
   - Lower priority
