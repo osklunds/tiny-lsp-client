@@ -71,6 +71,7 @@
   ;; todo would be better to not hard code test file name
   (setq log-file-name (relative-repo-root
                        "test"
+                       "logs"
                        (format "%s-%s.log" "new-test" test-case-name)))
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name))
