@@ -75,18 +75,24 @@
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name))
 
-;; todo: macro for these
 (defun after-each-test ()
   (tlc-stop-server)
   )
+
+(cl-defmacro tlc-deftest (name () &rest body)
+  (declare (indent defun))
+  `(progn
+     (ert-deftest ,name ()
+       (before-each-test ',name)
+       ,@body
+       (after-each-test)
+       )))
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(ert-deftest open ()
-  (before-each-test "open")
-
+(tlc-deftest open ()
   (my-assert-equal 0 (number-of-did-open))
   (my-assert-equal 0 (number-of-did-close))
 
@@ -94,18 +100,11 @@
 
   (my-assert-equal 1 (number-of-did-open))
   (my-assert-equal 0 (number-of-did-close) "after")
-
-  (after-each-test)
   )
 
-(ert-deftest other-test ()
-  (before-each-test "other")
-
+(tlc-deftest other-test ()
   (my-assert-equal 0 (number-of-did-open))
   (my-assert-equal 0 (number-of-did-close))
 
   (find-file (relative-repo-root "test" "clangd" "other.cpp"))
-
-  (after-each-test)
-
   )
