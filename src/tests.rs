@@ -27,6 +27,12 @@ fn erlang_ls_test() {
     run_lisp_file("test/erlang-ls-test.el", true);
 }
 
+#[test]
+fn clangd_test() {
+    build(false);
+    run_lisp_file("test/clangd-test.el", true);
+}
+
 fn run_lisp_file<S: AsRef<str>>(lisp_file_name: S, batch: bool) {
     let eval_arg = format!("(load-file \"{}\")", lisp_file_name.as_ref());
     let mut args = vec!["-Q", "--eval", &eval_arg];

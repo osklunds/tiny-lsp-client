@@ -2,8 +2,9 @@
 #include <iostream>
 #include "other.hpp"
 
-void other_function(int arg) {
+short other_function(int arg) {
     std::cout << arg << std::endl;
+    return 1;
 }
 
 int main() {
