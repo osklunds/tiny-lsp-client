@@ -32,8 +32,9 @@
          (code (with-temp-buffer
                  (let ((code (call-process-shell-command command nil t)))
                    (message (string-replace "%" "%%" (buffer-string)))
-                   code))))
-    (my-assert-equal 0 code)))
+                   code)))
+         (label (format "Command %s" command)))
+    (my-assert-equal 0 code label)))
 
 (run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
