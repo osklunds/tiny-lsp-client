@@ -75,6 +75,7 @@
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name))
 
+;; todo: macro for these
 (defun after-each-test ()
   (tlc-stop-server)
   )
