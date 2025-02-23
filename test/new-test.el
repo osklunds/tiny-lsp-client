@@ -53,8 +53,6 @@
 (require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
 (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 
-;; change log-file-name early to avoid overwriting your own log file
-(customize-set-variable 'tlc-log-file log-file-name)
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
