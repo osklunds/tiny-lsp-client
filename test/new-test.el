@@ -75,6 +75,10 @@
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name))
 
+(defun after-each-test ()
+  (tlc-stop-server)
+  )
+
 ;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
@@ -89,7 +93,18 @@
 
   (my-assert-equal 1 (number-of-did-open))
   (my-assert-equal 0 (number-of-did-close) "after")
+
+  (after-each-test)
   )
 
 (ert-deftest other-test ()
-  (should (= 2 2)))
+  (before-each-test "other")
+
+  (my-assert-equal 0 (number-of-did-open))
+  (my-assert-equal 0 (number-of-did-close))
+
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
+
+  (after-each-test)
+
+  )
