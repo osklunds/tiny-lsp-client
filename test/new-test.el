@@ -5,7 +5,7 @@
 ;; Loading common functions
 ;; -----------------------------------------------------------------------------
 
-;; Catch-22: can't be in common.el because then common.el can't be found
+;; Moment 22: can't be in common.el because then common.el can't be found
 (defun relative-repo-root (&rest components)
   (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
     (apply 'file-name-concat repo-root components)))
