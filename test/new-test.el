@@ -66,12 +66,17 @@
 ;; Common helpers
 ;; -----------------------------------------------------------------------------
 
+(defun before-each-test (test-case-name)
+  (setq log-file-name (relative-repo-root "test" (format "%s.log" test-case-name)))
+  (delete-file log-file-name)
+  (customize-set-variable 'tlc-log-file log-file-name))
+
 ;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(ert-deftest my-test ()
-  (delete-file log-file-name)
+(ert-deftest open ()
+  (before-each-test "open")
 
   (my-assert-equal 0 (number-of-did-open))
   (my-assert-equal 0 (number-of-did-close))
