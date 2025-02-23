@@ -89,6 +89,10 @@
 ;; Test case framework
 ;; -----------------------------------------------------------------------------
 
+(defvar log-file-name 'not-set
+  "Set before running a test case, because each test case has its own log file
+  name.")
+
 (defun before-each-test (test-case-name)
   ;; todo would be better to not hard code test file name
   (setq log-file-name (relative-repo-root
