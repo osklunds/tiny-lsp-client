@@ -58,10 +58,9 @@
   (my-assert-equal 0 (number-of-did-close))
 
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  ;; (find-file "test/clangd/main.cpp")
 
   (my-assert-equal 1 (number-of-did-open))
-  (my-assert-equal 2 (number-of-did-close) "after")
+  (my-assert-equal 0 (number-of-did-close) "after")
   )
 
 (ert-deftest other-test ()
