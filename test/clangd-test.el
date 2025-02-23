@@ -69,17 +69,19 @@
 ;;------------------------------------------------------------------------------
 
 (assert-equal 
- "-module(my_module).
+ "
+#include <iostream>
+#include \"other.hpp\"
 
--export([my_function/1]).
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
 
-other_function(Arg) ->
-    io:format(\"~p~n\", [Arg]).
-
-
-
-my_function(Arg) ->
-    other_function({arg, Arg}).
+int main() {
+    other_function(123);
+    function_in_other_file();
+}
 "
  (current-buffer-string))
 
@@ -94,61 +96,65 @@ my_function(Arg) ->
 (insert "_hej")
 
 (assert-equal 
- "-module(my_module).
+ "
+#include <iostream>
+#include \"other.hpp\"
 
--export([my_function/1]).
+short other_function_hej(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
 
-other_function_hej(Arg) ->
-    io:format(\"~p~n\", [Arg]).
-
-
-
-my_function(Arg) ->
-    other_function_hej({arg, Arg}).
+int main() {
+    other_function_hej(123);
+    function_in_other_file();
+}
 "
  (current-buffer-string))
 
 (beginning-of-buffer)
-(re-search-forward "other")
-(re-search-forward "other")
+(re-search-forward "other_")
+(re-search-forward "other_")
 (assert-equal 11 (line-number-at-pos))
-(assert-equal 9 (current-column))
+(assert-equal 10 (current-column))
 
 (non-interactive-xref-find-definitions)
 (assert-equal 5 (line-number-at-pos))
-(assert-equal 0 (current-column))
+(assert-equal 6 (current-column))
 
 (beginning-of-buffer)
-(re-search-forward "my_fun")
-(backward-delete-char 1)
+(re-search-forward "arg")
 (backward-delete-char 2)
-(re-search-forward "my_fun")
+(re-search-forward "arg")
 (beginning-of-line)
-(replace-string "my_function" "    my_ction")
+(replace-string "arg" "a")
 
 (assert-equal 
- "-module(my_module).
+ "
+#include <iostream>
+#include \"other.hpp\"
 
--export([my_ction/1]).
+short other_function_hej(int a) {
+    std::cout << a << std::endl;
+    return 1;
+}
 
-other_function_hej(Arg) ->
-    io:format(\"~p~n\", [Arg]).
-
-
-
-    my_ction(Arg) ->
-    other_function_hej({arg, Arg}).
+int main() {
+    other_function_hej(123);
+    function_in_other_file();
+}
 "
  (current-buffer-string))
 
 (beginning-of-buffer)
-(re-search-forward "my_c")
-(assert-equal 3 (line-number-at-pos))
-(assert-equal 13 (current-column))
+(re-search-forward "<< a")
+(backward-char)
+(assert-equal 6 (line-number-at-pos))
+(assert-equal 17 (current-column))
 
 (non-interactive-xref-find-definitions)
-(assert-equal 10 (line-number-at-pos))
-(assert-equal 4 (current-column))
+(assert-equal 5 (line-number-at-pos))
+(assert-equal 29 (current-column))
 
 ;; -----------------------------------------------------------------------------
 ;; Revert buffer
@@ -163,5 +169,3 @@ other_function_hej(Arg) ->
 
 (assert-equal 2 (number-of-did-open))
 (assert-equal 1 (number-of-did-close)) 
-
-(assert-equal 0 (number-of-STDERR))

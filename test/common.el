@@ -8,6 +8,7 @@
 
 (defun assert-equal (exp act &optional msg)
   (unless (equal exp act)
+    (sleep-for 2)
     (when msg
       (test-case-message msg))
     (message "Expected '%s'\nActual '%s'" exp act)
