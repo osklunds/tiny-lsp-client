@@ -10,10 +10,8 @@
   (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
     (apply 'file-name-concat repo-root components)))
 
-(load-file (relative-repo-root "test" "common.el"))
-
 ;; -----------------------------------------------------------------------------
-;; Setup before running test cases
+;; Common helpers
 ;; -----------------------------------------------------------------------------
 
 (defun my-assert-equal (exp act &optional label)
@@ -45,6 +43,32 @@
   (message "-----------------------------------------------------------------------------")
   )
 
+(defun non-interactive-xref-find-definitions ()
+  (let ((xref-prompt-for-identifier nil))
+    (call-interactively 'xref-find-definitions)))
+
+;; Since this should always be 0, it's hard to know if it's working
+;; properly
+(defun number-of-STDERR ()
+  (count-in-log-file "STDERR"))
+
+(defun number-of-did-open ()
+  (count-in-log-file "\"method\": \"textDocument/didOpen\","))
+
+(defun number-of-did-close ()
+  (count-in-log-file "\"method\": \"textDocument/didClose\","))
+
+(defun count-in-log-file (pattern)
+  (string-to-number (shell-command-to-string
+   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+
+(defun current-buffer-string ()
+  (buffer-substring-no-properties (point-min) (point-max)))
+
+;; -----------------------------------------------------------------------------
+;; Setup before running test cases
+;; -----------------------------------------------------------------------------
+
 (run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
 (run-shell-command "make" "test" "clangd")
@@ -62,7 +86,7 @@
 (add-hook 'c++-mode-hook 'tlc-mode)
 
 ;; -----------------------------------------------------------------------------
-;; Common helpers
+;; Test case framework
 ;; -----------------------------------------------------------------------------
 
 (defun before-each-test (test-case-name)
