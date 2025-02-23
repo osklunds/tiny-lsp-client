@@ -18,6 +18,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - licenses and attribution
 - Bugs
   - Higher priority
+    - clangd: jump to thing in lib file
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of sync
