@@ -2,7 +2,7 @@
 ;; Run with "emacs -batch -l ert -l new-test.el -f ert-run-tests-batch-and-exit"
 
 ;; -----------------------------------------------------------------------------
-;; Common setup
+;; Loading common functions
 ;; -----------------------------------------------------------------------------
 
 ;; Catch-22: can't be in common.el because then common.el can't be found
@@ -11,6 +11,10 @@
     (apply 'file-name-concat repo-root components)))
 
 (load-file (relative-repo-root "test" "common.el"))
+
+;; -----------------------------------------------------------------------------
+;; Setup before running test cases
+;; -----------------------------------------------------------------------------
 
 (defun my-assert-equal (exp act &optional label)
   (when (not (equal exp act))
