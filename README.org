@@ -19,14 +19,15 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - Bugs
   - Higher priority
     - unicode support in URIs, need percentage encoding
+    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl support the convenient one
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements
   - Higher priority
     - split lisp tests into smaller files. e.g. one for edit. one for revert. etc
-    - test unicode in content
-    - test unicode in URIs
+      - Add script for running all suites, one suite, or one test
+      - Add wrapper ERT for running cargo test
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
   - Lower priority
