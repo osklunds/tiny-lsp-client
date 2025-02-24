@@ -37,7 +37,7 @@
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(tlc-deftest open-a-file ()
+(tlc-deftest open-a-file-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -56,7 +56,7 @@
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
   )
 
-(tlc-deftest find-definition ()
+(tlc-deftest find-definition-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -79,7 +79,7 @@
   (assert-equal 0 (number-of-did-close))
   )
 
-(tlc-deftest edit ()
+(tlc-deftest edit-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -188,7 +188,7 @@ int main() {
   (assert-equal 0 (number-of-did-close))
   )
 
-(tlc-deftest reverting-buffer ()
+(tlc-deftest revert-buffer-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))

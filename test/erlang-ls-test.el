@@ -36,7 +36,7 @@
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(tlc-deftest open-a-file ()
+(tlc-deftest open-a-file-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -53,7 +53,7 @@
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
   )
 
-(tlc-deftest find-definition ()
+(tlc-deftest find-definition-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -79,7 +79,7 @@
   )
 
 ;; todo: need newlines here too
-(tlc-deftest edit ()
+(tlc-deftest edit-test ()
   (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
 
   (assert-equal 
@@ -165,7 +165,7 @@ other_function_hej(Arg) ->
   (assert-equal 4 (current-column))
   )
 
-(tlc-deftest reverting-buffer ()
+(tlc-deftest revert-buffer-test ()
   ;; Arrange
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
