@@ -75,7 +75,7 @@
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(tlc-deftest start-server-hooks ()
+(tlc-deftest start-server-hooks-test ()
   (setq num-before-hook-calls 0)
   (setq num-after-hook-calls 0)
   (setq hook-last-caller 'after)
@@ -107,7 +107,7 @@
   (assert-equal 1 num-after-hook-calls)
   )
 
-(tlc-deftest toggle-tlc-mode ()
+(tlc-deftest toggle-tlc-mode-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -137,7 +137,7 @@
   (assert-equal 1 (number-of-did-close))
   )
 
-(tlc-deftest toggle-tlc-mode-by-changing-major-mode ()
+(tlc-deftest toggle-tlc-mode-by-changing-major-mode-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -167,7 +167,7 @@
   (assert-equal 1 (number-of-did-close))
   )
 
-(tlc-deftest reverting-buffer ()
+(tlc-deftest revert-buffer-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -208,7 +208,7 @@
   (assert-equal 3 (number-of-did-close))
   )
 
-(tlc-deftest edit ()
+(tlc-deftest edit-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -320,7 +320,7 @@ third_function();
   (assert-equal 0 (number-of-did-close))
   )
 
-(tlc-deftest edit-with-restriction ()
+(tlc-deftest edit-with-restriction-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
