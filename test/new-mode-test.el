@@ -85,3 +85,198 @@
   (assert-equal 1 num-before-hook-calls)
   (assert-equal 1 num-after-hook-calls)
   )
+
+(tlc-deftest toggle-tlc-mode ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act1
+  (tlc-mode -1)
+
+  ;; Assert1
+  (assert-equal nil tlc-mode)
+  (assert-equal '(etags--xref-backend) xref-backend-functions)
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  ;; Act2
+  (tlc-mode t)
+
+  ;; Assert2
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest toggle-tlc-mode-by-changing-major-mode ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 'c++-mode major-mode)
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act1
+  (text-mode)
+
+  ;; Assert1
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  (assert-equal 'text-mode major-mode)
+  (assert-equal nil tlc-mode)
+  (assert-equal '(etags--xref-backend) xref-backend-functions)
+
+  ;; Act2
+  (c++-mode)
+  (assert-equal 'c++-mode major-mode)
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest reverting-buffer ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act1
+  (revert-buffer-quick)
+
+  ;; Assert1
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  ;; Act2
+  (revert-buffer nil 'no-confirm)
+
+  ;; Assert2
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 3 (number-of-did-open))
+  (assert-equal 2 (number-of-did-close)) 
+
+  ;; Act3
+  ;; When preserve-modes is true
+  (revert-buffer nil 'no-confirm 'preserve-modes)
+
+  ;; Assert3
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 4 (number-of-did-open))
+  (assert-equal 3 (number-of-did-close))
+  )
+
+(tlc-deftest edit ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  ;; Act
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  ;; Some single-character edits
+  (insert "h")
+  (insert "e")
+  (insert "j")
+
+  (beginning-of-line)
+  (re-search-forward "other")
+  (backward-delete-char 1)
+  (backward-delete-char 1)
+  (backward-delete-char 1)
+
+  (re-search-forward "other_function")
+  ;; Some multi-character edits
+  (insert "hej")
+  (end-of-line)
+  (insert "\n") ;; and a newline
+  (insert "third_function();\n")
+
+  (previous-line 2)
+  (beginning-of-line)
+  (re-search-forward "other")
+  (backward-delete-char 3)
+
+  (beginning-of-buffer)
+  (next-line 3)
+  (insert "i")
+  (insert "n")
+  (insert "t")
+  (insert " third_function()")
+  (insert " ")
+  (insert "{ return 7;")
+  (insert " ")
+  (insert "}")
+
+  (beginning-of-buffer)
+  (re-search-forward "main")
+  (previous-line)
+  (backward-delete-char 1)
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+int third_function() { return 7; }
+short ot_functionhej(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+int main() {
+    ot_functionhej(123);
+third_function();
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  )
+
+
+
+
+
+
+
+
