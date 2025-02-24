@@ -251,6 +251,7 @@ int main() {
   (beginning-of-buffer)
   (re-search-forward "main")
   (previous-line)
+  ;; Deletes a newline. Important for the test so that the line numbers change
   (backward-delete-char 1)
 
   (assert-equal 
@@ -271,6 +272,31 @@ third_function();
 "
    (current-buffer-string))
 
+  ;; Assert
+  (beginning-of-buffer)
+  (re-search-forward "third_function")
+  (re-search-forward "third_function")
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 14 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 4 (current-column))
+
+  (beginning-of-buffer)
+  (re-search-forward "ot_functionhej")
+  (re-search-forward "ot_functionhej")
+
+  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
   )
 
 
