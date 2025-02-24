@@ -39,6 +39,25 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(defvar num-before-hook-calls 0)
+(defvar num-after-hook-calls 0)
+
+(defvar hook-last-caller 'after)
+
+(defun before-hook ()
+  (assert-equal (tlc--root) default-directory)
+  (cl-incf num-before-hook-calls)
+  (assert-equal 'after hook-last-caller)
+  (setq hook-last-caller 'before)
+  (message "before-hook called"))
+
+(defun after-hook ()
+  (assert-equal (tlc--root) default-directory)
+  (cl-incf num-after-hook-calls)
+  (assert-equal 'before hook-last-caller)
+  (setq hook-last-caller 'after)
+  (message "after-hook called"))
+
 (defun assert-tlc-info (exp-root-path exp-command)
   (let ((info (tlc-info)))
     (assert-equal 1 (length info))
@@ -57,24 +76,9 @@
 ;; -----------------------------------------------------------------------------
 
 (tlc-deftest start-server-hooks ()
-  (defvar num-before-hook-calls 0)
-  (defvar num-after-hook-calls 0)
-
-  (defvar hook-last-caller 'after)
-
-  (defun before-hook ()
-    (assert-equal (tlc--root) default-directory)
-    (cl-incf num-before-hook-calls)
-    (assert-equal 'after hook-last-caller)
-    (setq hook-last-caller 'before)
-    (message "before-hook called"))
-
-  (defun after-hook ()
-    (assert-equal (tlc--root) default-directory)
-    (cl-incf num-after-hook-calls)
-    (assert-equal 'before hook-last-caller)
-    (setq hook-last-caller 'after)
-    (message "after-hook called"))
+  (setq num-before-hook-calls 0)
+  (setq num-after-hook-calls 0)
+  (setq hook-last-caller 'after)
 
   (add-hook 'tlc-before-start-server-hook 'before-hook)
   (add-hook 'tlc-after-start-server-hook 'after-hook)
@@ -480,6 +484,35 @@ abc(123);
   (assert-equal 0 (number-of-did-close))
   )
 
+(tlc-deftest restart-server-test ()
+  ;; Arrange
+  (setq num-before-hook-calls 0)
+  (setq num-after-hook-calls 0)
+  (setq hook-last-caller 'after)
+
+  (add-hook 'tlc-before-start-server-hook 'before-hook)
+  (add-hook 'tlc-after-start-server-hook 'after-hook)
+
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 1 num-before-hook-calls)
+  (assert-equal 1 num-after-hook-calls)
+
+  (tlc-stop-server)
+  (assert-equal 0 (length (tlc-info)))
+
+  ;; Act
+  (tlc-restart-server)
+
+  ;; Assert
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 2 num-before-hook-calls)
+  (assert-equal 2 num-after-hook-calls)
+  )
 
 
 
