@@ -220,7 +220,7 @@ path. When an existing LSP server is connected to, this hook is not run."
                             (list (tlc--buffer-file-name) content)
                             )))
 
-(defun tlc--send-notification (method params)
+(defun tlc--send-notification (method params &optional dont-ask-if-no-server)
   (let ((return (tlc--rust-send-notification
                  (tlc--root)
                  method
@@ -231,7 +231,8 @@ path. When an existing LSP server is connected to, this hook is not run."
       ('ok nil)
 
       ;; alternative but valid case - server crashed or not started
-      ('no-server (tlc--ask-start-server))
+      ('no-server (unless dont-ask-if-no-server
+                    (tlc--ask-start-server)))
 
       ;; bug case - some other return
       (_ (error "bad return")))))
@@ -239,7 +240,9 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc--notify-text-document-did-close ()
   (tlc--send-notification
    "textDocument/didClose"
-   (list (tlc--buffer-file-name))))
+   (list (tlc--buffer-file-name))
+   ;; If there's no server, there's no point in starting one to send didClose.
+   'dont-ask-if-no-server))
 
 ;; todo: lsp-mode becomes disabled if rust-mode becomes disabled, but something
 ;; like this wasn't needed. Why? Eglot has it too though, but doesn't check
