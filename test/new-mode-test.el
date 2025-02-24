@@ -478,7 +478,7 @@ abc(123);
   (shell-command (format "kill -9 %s" pid))
 
   ;; Assert
-  (sleep-for 1) ;; Avoid race
+  (sleep-for 0.1) ;; Avoid race
   (assert-equal 0 (length (tlc-info)))
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
