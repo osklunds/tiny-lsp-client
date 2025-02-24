@@ -36,6 +36,23 @@
 (add-hook 'c++-mode-hook 'tlc-mode)
 
 ;; -----------------------------------------------------------------------------
+;; Helpers
+;; -----------------------------------------------------------------------------
+
+(defun assert-tlc-info (exp-root-path exp-command)
+  (let ((info (tlc-info)))
+    (assert-equal 1 (length info))
+    (pcase (tlc-info)
+      (`((,root-path ,command ,process-id))
+       (assert-equal exp-root-path root-path)
+       (assert-equal exp-command command)
+       (assert-equal t (integerp process-id))
+       process-id
+       )
+      (x
+       (error "unexpected return: %s" x)))))
+
+;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
@@ -377,8 +394,91 @@ abc(123);
   (assert-equal 6 (current-column))
   )
 
+(tlc-deftest kill-buffer-test ()
+  ;; Arrange
+  (setq file (relative-repo-root "test" "clangd" "main.cpp"))
 
+  (find-file file)
 
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  ;; Act
+  (kill-buffer)
+
+  ;; Assert
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  ;; Opening the same file should result in didOpen again
+  (find-file file)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest open-non-existing-file-test ()
+  ;; Arrange
+  (setq non-existing-file "doesnt_exist_right.cpp")
+  (assert-equal nil (file-exists-p non-existing-file))
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  ;; Act
+  (find-file non-existing-file)
+
+  ;; Assert
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest stop-server-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq root-path (tlc--root))
+  (assert-equal t (stringp root-path))
+
+  (assert-tlc-info root-path "clangd")
+
+  ;; Act
+  (tlc-stop-server)
+
+  ;; To see that spamming doesn't cause issues
+  (tlc-stop-server)
+  (tlc-stop-server)
+  (tlc-stop-server)
+
+  ;; Assert
+  (assert-equal 0 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest kill-server-process-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq root-path (tlc--root))
+  (assert-equal t (stringp root-path))
+
+  (setq pid (assert-tlc-info root-path "clangd"))
+
+  ;; Act
+  (shell-command (format "kill -9 %s" pid))
+
+  ;; Assert
+  (sleep-for 1) ;; Avoid race
+  (assert-equal 0 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
 
 
 
