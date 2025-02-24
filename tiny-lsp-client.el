@@ -216,6 +216,8 @@ path. When an existing LSP server is connected to, this hook is not run."
     ;; lisp side now needs to use send the content, otherwise tlc creates deleted
     ;; files when running vidff on them. Note, that it *seems* rust-mode has
     ;; the same bug, but not lisp or erlang-mode. Useful to know when testing.
+    ;; todo: could consider to let rust side send if possible, i.e. if file
+    ;; exists and is saved
     (tlc--send-notification "textDocument/didOpen"
                             (list (tlc--buffer-file-name) content)
                             )))
