@@ -299,6 +299,83 @@ third_function();
   (assert-equal 0 (number-of-did-close))
   )
 
+(tlc-deftest edit-with-restriction ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  ;; Act
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  (re-search-forward "other_function")
+
+  (let* ((p (point))
+         (source-buffer (current-buffer)))
+    (with-temp-buffer
+      (insert "\n") ;; Important so that line numbers change
+      (insert "\n")
+      (insert "abc")
+      (let ((temp-buffer (current-buffer)))
+        (with-current-buffer source-buffer
+          (narrow-to-region (- p (length "    other_function")) p)
+          (replace-buffer-contents temp-buffer)))))
+
+  (widen)
+
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  (backward-delete-char (length "other_function"))
+  (insert "abc")
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short abc(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+
+
+abc(123);
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  ;; Assert
+  (beginning-of-buffer)
+  (re-search-forward "abc")
+  (re-search-forward "abc")
+  (assert-equal 13 (line-number-at-pos))
+  (assert-equal 3 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
 
 
 
