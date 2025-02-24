@@ -93,6 +93,8 @@ this common file. Is used to differentiate log file names.")
       ;; Then kill the buffer too so that didOpen is sent if the same file
       ;; is used in many tests
       (kill-buffer buffer))
+    (customize-set-variable 'tlc-before-start-server-hook nil)
+    (customize-set-variable 'tlc-after-start-server-hook nil)
     ))
 
 (cl-defmacro tlc-deftest (name () &rest body)
