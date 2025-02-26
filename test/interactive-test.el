@@ -6,11 +6,6 @@
 
 (add-to-list 'load-path default-directory)
 
-(define-derived-mode rust-mode prog-mode "Rust"
-  "Fake rust-mode for testing.")
-
-(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-mode))
-
 (require 'tiny-lsp-client)
 
 (customize-set-variable 'tlc-log-file (file-truename
@@ -23,6 +18,6 @@
 (customize-set-variable 'tlc-log-emacs-debug t)
 (customize-set-variable 'tlc-log-to-stdio t)
 
-(add-hook 'rust-mode-hook 'tlc-mode)
+(add-hook 'c++-mode-hook 'tlc-mode)
 
-(find-file "src/dummy.rs")
+(find-file "test/clangd/main.cpp")
