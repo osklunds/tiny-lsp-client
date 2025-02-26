@@ -11,7 +11,7 @@
   (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
     (apply 'file-name-concat repo-root components)))
 
-(load (relative-repo-root "test" "new-common.el"))
+(load (relative-repo-root "test" "common.el"))
 (setq test-file-name "new-mode-test")
 
 ;; -----------------------------------------------------------------------------
