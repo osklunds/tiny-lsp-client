@@ -27,6 +27,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
+    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
   - Lower priority
     - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
     - make (root, lang) key, so that one project with multiple languages can be supported.
