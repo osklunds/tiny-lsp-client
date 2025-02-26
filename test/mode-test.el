@@ -1,45 +1,43 @@
 
-;; -----------------------------------------------------------------------------
-;; Load common test functions
-;; -----------------------------------------------------------------------------
-
-(add-to-list 'load-path default-directory)
-
-(load "test/common.el")
+;; Tests focusing on tlc-mode itself, not specific to any LSP server. Using
+;; clangd since it's faster to start than rust-analyzer.
 
 ;; -----------------------------------------------------------------------------
-;; Preparation
-;;------------------------------------------------------------------------------
+;; Loading common functions
+;; -----------------------------------------------------------------------------
 
-(define-derived-mode rust-mode prog-mode "Rust"
-  "Fake rust-mode for testing.")
+;; Moment 22: can't be in common.el because then common.el can't be found
+(defun relative-repo-root (&rest components)
+  (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
+    (apply 'file-name-concat repo-root components)))
 
-(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-mode))
+(load (relative-repo-root "test" "common.el"))
+(setq test-file-name "new-mode-test")
 
 ;; -----------------------------------------------------------------------------
-;; Loading tlc-mode
-;;------------------------------------------------------------------------------
-(test-case-message "loading tlc-mode")
+;; Setup before running test cases
+;; -----------------------------------------------------------------------------
 
-;; Manually add tlc-rust to get debug version
-(require 'tlc-rust "target/debug/libtiny_lsp_client.so")
-(require 'tiny-lsp-client)
+;; todo: move cargo build to common
+(run-shell-command "cargo build")
+(run-shell-command "cmake ." "test" "clangd")
+(run-shell-command "make" "test" "clangd")
 
-(customize-set-variable 'tlc-log-file log-file-name)
+;; Manually require tlc-rust to get debug version
+(require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
+(require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
+
 (customize-set-variable 'tlc-log-io t)
 (customize-set-variable 'tlc-log-stderr t)
 (customize-set-variable 'tlc-log-rust-debug t)
 (customize-set-variable 'tlc-log-emacs-debug t)
 (customize-set-variable 'tlc-log-to-stdio nil)
 
-(add-hook 'rust-mode-hook 'tlc-mode)
-
-(delete-file log-file-name)
+(add-hook 'c++-mode-hook 'tlc-mode)
 
 ;; -----------------------------------------------------------------------------
-;; Opening a file
-;;------------------------------------------------------------------------------
-(test-case-message "opening a file")
+;; Helpers
+;; -----------------------------------------------------------------------------
 
 (defvar num-before-hook-calls 0)
 (defvar num-after-hook-calls 0)
@@ -51,479 +49,470 @@
   (cl-incf num-before-hook-calls)
   (assert-equal 'after hook-last-caller)
   (setq hook-last-caller 'before)
-  (test-case-message "before-hook called"))
+  (message "before-hook called"))
 
 (defun after-hook ()
   (assert-equal (tlc--root) default-directory)
   (cl-incf num-after-hook-calls)
   (assert-equal 'before hook-last-caller)
   (setq hook-last-caller 'after)
-  (test-case-message "after-hook called"))
+  (message "after-hook called"))
 
-(add-hook 'tlc-before-start-server-hook 'before-hook)
-(add-hook 'tlc-after-start-server-hook 'after-hook)
-
-(assert-equal 0 (number-of-did-open))
-(assert-equal 0 (number-of-did-close))
-
-(find-file "src/dummy.rs")
-
-(assert-equal 'rust-mode major-mode)
-(assert-equal t tlc-mode)
-(assert-equal '(tlc-xref-backend t) xref-backend-functions)
-
-(assert-equal 1 (number-of-did-open))
-(assert-equal 0 (number-of-did-close))
-
-(assert-equal 1 num-before-hook-calls)
-(assert-equal 1 num-after-hook-calls)
+(defun assert-tlc-info (exp-root-path exp-command)
+  (let ((info (tlc-info)))
+    (assert-equal 1 (length info))
+    (pcase (tlc-info)
+      (`((,root-path ,command ,process-id))
+       (assert-equal exp-root-path root-path)
+       (assert-equal exp-command command)
+       (assert-equal t (integerp process-id))
+       process-id
+       )
+      (x
+       (error "unexpected return: %s" x)))))
 
 ;; -----------------------------------------------------------------------------
-;; Xref find definition
-;;------------------------------------------------------------------------------
-(test-case-message "xref find definition")
-
-(re-search-forward "second_function")
-(assert-equal 5 (line-number-at-pos))
-(assert-equal 19 (current-column))
-
-(defun xref-find-definition-until-success ()
-  (ignore-errors
-    (non-interactive-xref-find-definitions))
-  (if (equal 8 (line-number-at-pos))
-      'ok
-    (sleep-for 0.1)
-    (xref-find-definition-until-success)))
-
-(xref-find-definition-until-success)
-
-(assert-equal 8 (line-number-at-pos))
-(assert-equal 3 (current-column))
-
-(assert-equal 1 (number-of-did-open))
-(assert-equal 0 (number-of-did-close))
-
+;; Test cases
 ;; -----------------------------------------------------------------------------
-;; Disable tlc-mode
-;;------------------------------------------------------------------------------
-(test-case-message "Disable tlc-mode")
 
-(tlc-mode -1)
-(assert-equal nil tlc-mode)
-(assert-equal '(etags--xref-backend) xref-backend-functions)
+(tlc-deftest start-server-hooks-test ()
+  (setq num-before-hook-calls 0)
+  (setq num-after-hook-calls 0)
+  (setq hook-last-caller 'after)
 
-(assert-equal 1 (number-of-did-open))
-(assert-equal 1 (number-of-did-close))
+  (add-hook 'tlc-before-start-server-hook 'before-hook)
+  (add-hook 'tlc-after-start-server-hook 'after-hook)
 
-(test-case-message "disable tlc")
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
 
-;; -----------------------------------------------------------------------------
-;; Enable tlc-mode again
-;;------------------------------------------------------------------------------
-(test-case-message "Enable tlc-mode again")
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
-(tlc-mode t)
-(assert-equal t tlc-mode)
-(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (assert-equal 'c++-mode major-mode)
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
-(assert-equal 2 (number-of-did-open))
-(assert-equal 1 (number-of-did-close))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
 
-;; -----------------------------------------------------------------------------
-;; Toggle tlc-mode by changing major mode
-;;------------------------------------------------------------------------------
-(test-case-message "Toggle tlc-mode by changing major mode")
+  (assert-equal 1 num-before-hook-calls)
+  (assert-equal 1 num-after-hook-calls)
 
-(text-mode)
-(assert-equal 'text-mode major-mode)
-(assert-equal nil tlc-mode)
-(assert-equal '(etags--xref-backend) xref-backend-functions)
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
 
-(assert-equal 2 (number-of-did-open))
-(assert-equal 2 (number-of-did-close))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
 
-(rust-mode)
-(assert-equal 'rust-mode major-mode)
-(assert-equal t tlc-mode)
-(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (assert-equal 1 num-before-hook-calls)
+  (assert-equal 1 num-after-hook-calls)
+  )
 
-(assert-equal 3 (number-of-did-open) "after enable rust-mode")
-(assert-equal 2 (number-of-did-close))
+(tlc-deftest toggle-tlc-mode-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
-;; -----------------------------------------------------------------------------
-;; Revert buffer
-;;------------------------------------------------------------------------------
-(test-case-message "revert buffer")
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
-;; Testing didOpen and didClose at revert. Note, I know no good way to
-;; automatically test did. Need to inspect the log and see that no duplicate
-;; error is printed.
+  ;; Act1
+  (tlc-mode -1)
 
-(revert-buffer-quick)
-(assert-equal t tlc-mode)
-(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  ;; Assert1
+  (assert-equal nil tlc-mode)
+  (assert-equal '(etags--xref-backend) xref-backend-functions)
 
-(assert-equal 4 (number-of-did-open))
-(assert-equal 3 (number-of-did-close) "after revert-buffer-quick") 
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
 
-;; When preserve-modes is true
-(revert-buffer nil 'no-confirm 'preserve-modes)
-(assert-equal t tlc-mode)
-(assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  ;; Act2
+  (tlc-mode t)
 
-(assert-equal 5 (number-of-did-open))
-(assert-equal 4 (number-of-did-close) "after revert with preserve-modes") 
+  ;; Assert2
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
-;; -----------------------------------------------------------------------------
-;; Editing
-;;------------------------------------------------------------------------------
-(test-case-message "Editing")
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
 
-(assert-equal 
- "
-// Don't change this file. It is used in tests
+(tlc-deftest toggle-tlc-mode-by-changing-major-mode-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
-fn first_function() {
-    second_function();
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 'c++-mode major-mode)
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act1
+  (text-mode)
+
+  ;; Assert1
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  (assert-equal 'text-mode major-mode)
+  (assert-equal nil tlc-mode)
+  (assert-equal '(etags--xref-backend) xref-backend-functions)
+
+  ;; Act2
+  (c++-mode)
+  (assert-equal 'c++-mode major-mode)
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest revert-buffer-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act1
+  (revert-buffer-quick)
+
+  ;; Assert1
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  ;; Act2
+  (revert-buffer nil 'no-confirm)
+
+  ;; Assert2
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 3 (number-of-did-open))
+  (assert-equal 2 (number-of-did-close)) 
+
+  ;; Act3
+  ;; When preserve-modes is true
+  (revert-buffer nil 'no-confirm 'preserve-modes)
+
+  ;; Assert3
+  (assert-equal t tlc-mode)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  (assert-equal 4 (number-of-did-open))
+  (assert-equal 3 (number-of-did-close))
+  )
+
+(tlc-deftest edit-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
 }
 
-fn second_function() {
-
+int main() {
+    other_function(123);
+    function_in_other_file();
 }
 "
- (current-buffer-string))
+   (current-buffer-string))
 
-;; Re-position
-(beginning-of-buffer)
-(next-line)
-(next-line)
-(assert-equal 3 (line-number-at-pos))
-(assert-equal 0 (current-column))
+  ;; Act
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  ;; Some single-character edits
+  (insert "h")
+  (insert "e")
+  (insert "j")
 
-;; Some single-character edits
-(insert "f")
-(insert "n")
-(insert " ")
+  (beginning-of-line)
+  (re-search-forward "other")
+  (backward-delete-char 1)
+  (backward-delete-char 1)
+  (backward-delete-char 1)
 
-;; Some multi-character edits
-(insert "third_function")
-(insert "() {")
+  (re-search-forward "other_function")
+  ;; Some multi-character edits
+  (insert "hej")
+  (end-of-line)
+  (insert "\n") ;; and a newline
+  (insert "third_function();\n")
 
-;; newline
-(insert "\n")
+  (previous-line 2)
+  (beginning-of-line)
+  (re-search-forward "other")
+  (backward-delete-char 3)
 
-;; finishing the function
-(insert "    first_function(); // call from third }")
+  (beginning-of-buffer)
+  (next-line 3)
+  (insert "i")
+  (insert "n")
+  (insert "t")
+  (insert " third_function()")
+  (insert " ")
+  (insert "{ return 7;")
+  (insert " ")
+  (insert "}")
 
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    first_function(); // call from third }
-fn first_function() {
-    second_function();
+  (beginning-of-buffer)
+  (re-search-forward "main")
+  (previous-line)
+  ;; Deletes a newline. Important for the test so that the line numbers change
+  (backward-delete-char 1)
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+int third_function() { return 7; }
+short ot_functionhej(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
 }
+int main() {
+    ot_functionhej(123);
+third_function();
 
-fn second_function() {
-
-}
-"
- (current-buffer-string))
-
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "    first_function")
-(assert-equal 4 (line-number-at-pos))
-(assert-equal 18 (current-column))
-
-;; Find definition
-(non-interactive-xref-find-definitions)
-(assert-equal 5 (line-number-at-pos))
-(assert-equal 3 (current-column))
-
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "fn second_function")
-(assert-equal 9 (line-number-at-pos))
-(assert-equal 18 (current-column))
-
-;; Edits
-(previous-line)
-(backward-delete-char 1)
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    first_function(); // call from third }
-fn first_function() {
-    second_function();
-}
-fn second_function() {
-
+    function_in_other_file();
 }
 "
- (current-buffer-string))
+   (current-buffer-string))
 
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "second_function")
+  ;; Assert
+  (beginning-of-buffer)
+  (re-search-forward "third_function")
+  (re-search-forward "third_function")
 
-(assert-equal 6 (line-number-at-pos))
-(assert-equal 19 (current-column))
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 14 (current-column))
 
-;; Find definition
-(non-interactive-xref-find-definitions)
-(assert-equal 8 (line-number-at-pos))
-(assert-equal 3 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 4 (current-column))
 
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "second_function")
-(assert-equal 6 (line-number-at-pos))
-(assert-equal 19 (current-column))
+  (beginning-of-buffer)
+  (re-search-forward "ot_functionhej")
+  (re-search-forward "ot_functionhej")
 
-;; Edits
-(backward-delete-char 1)
-(backward-delete-char 1)
-(backward-delete-char 1)
+  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 18 (current-column))
 
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "fn second_function")
-(assert-equal 8 (line-number-at-pos))
-(assert-equal 18 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
 
-;; Edits
-(backward-delete-char 1)
-(backward-delete-char 1)
-(backward-delete-char 1)
-(previous-line)
-(insert "\n")
-(insert "\n")
-(insert "\n")
-(insert "\n")
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
 
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    first_function(); // call from third }
-fn first_function() {
-    second_funct();
+(tlc-deftest edit-with-restriction-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
 }
 
-
-
-
-fn second_funct() {
-
+int main() {
+    other_function(123);
+    function_in_other_file();
 }
 "
- (current-buffer-string))
+   (current-buffer-string))
 
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "second_funct")
-(assert-equal 6 (line-number-at-pos))
-(assert-equal 16 (current-column))
+  ;; Act
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  (re-search-forward "other_function")
 
-;; Find definition
-(non-interactive-xref-find-definitions)
-(assert-equal 12 (line-number-at-pos))
-(assert-equal 3 (current-column))
+  (let* ((p (point))
+         (source-buffer (current-buffer)))
+    (with-temp-buffer
+      (insert "\n") ;; Important so that line numbers change
+      (insert "\n")
+      (insert "abc")
+      (let ((temp-buffer (current-buffer)))
+        (with-current-buffer source-buffer
+          (narrow-to-region (- p (length "    other_function")) p)
+          (replace-buffer-contents temp-buffer)))))
 
-(assert-equal 5 (number-of-did-open))
-(assert-equal 4 (number-of-did-close))
+  (widen)
 
-;; -----------------------------------------------------------------------------
-;; Edit with restriction
-;; -----------------------------------------------------------------------------
-(test-case-message "Edit with restriction")
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  (backward-delete-char (length "other_function"))
+  (insert "abc")
 
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    first_function(); // call from third }
-fn first_function() {
-    second_funct();
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short abc(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
 }
 
+int main() {
 
 
-
-fn second_funct() {
-
-}
-"
- (current-buffer-string))
-
-(beginning-of-buffer)
-(re-search-forward "first_function")
-
-(let* ((p (point))
-       (source-buffer (current-buffer)))
-  (with-temp-buffer
-    (insert "abc")
-    (let ((temp-buffer (current-buffer)))
-      (with-current-buffer source-buffer
-        (narrow-to-region (- p 14) p)
-        (replace-buffer-contents temp-buffer)))))
-
-(widen)
-
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    abc(); // call from third }
-fn first_function() {
-    second_funct();
-}
-
-
-
-
-fn second_funct() {
-
+abc(123);
+    function_in_other_file();
 }
 "
- (current-buffer-string))
+   (current-buffer-string))
 
-(beginning-of-buffer)
-(re-search-forward "first_function")
-(replace-string "first_function" "abc" nil (point-min) (point))
+  ;; Assert
+  (beginning-of-buffer)
+  (re-search-forward "abc")
+  (re-search-forward "abc")
+  (assert-equal 13 (line-number-at-pos))
+  (assert-equal 3 (current-column))
 
-(previous-line)
-(end-of-line)
-(insert "\n\n")
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
 
-(assert-equal 
- "
-// Don't change this file. It is used in tests
-fn third_function() {
-    abc(); // call from third }
+(tlc-deftest kill-buffer-test ()
+  ;; Arrange
+  (setq file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (find-file file)
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  ;; Act
+  (kill-buffer)
+
+  ;; Assert
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  ;; Opening the same file should result in didOpen again
+  (find-file file)
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest open-non-existing-file-test ()
+  ;; Arrange
+  (setq non-existing-file "doesnt_exist_right.cpp")
+  (assert-equal nil (file-exists-p non-existing-file))
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  ;; Act
+  (find-file non-existing-file)
+
+  ;; Assert
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest stop-server-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq root-path (tlc--root))
+  (assert-equal t (stringp root-path))
+
+  (assert-tlc-info root-path "clangd")
+
+  ;; Act
+  (tlc-stop-server)
+
+  ;; To see that spamming doesn't cause issues
+  (tlc-stop-server)
+  (tlc-stop-server)
+  (tlc-stop-server)
+
+  ;; Assert
+  (assert-equal 0 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest kill-server-process-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq root-path (tlc--root))
+  (assert-equal t (stringp root-path))
+
+  (setq pid (assert-tlc-info root-path "clangd"))
+
+  ;; Act
+  (shell-command (format "kill -9 %s" pid))
+
+  ;; Assert
+  (sleep-for 0.1) ;; Avoid race
+  (assert-equal 0 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest restart-server-test ()
+  ;; Arrange
+  (setq num-before-hook-calls 0)
+  (setq num-after-hook-calls 0)
+  (setq hook-last-caller 'after)
+
+  (add-hook 'tlc-before-start-server-hook 'before-hook)
+  (add-hook 'tlc-after-start-server-hook 'after-hook)
+
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 1 num-before-hook-calls)
+  (assert-equal 1 num-after-hook-calls)
+
+  (tlc-stop-server)
+  (assert-equal 0 (length (tlc-info)))
+
+  ;; Act
+  (tlc-restart-server)
+
+  ;; Assert
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 2 num-before-hook-calls)
+  (assert-equal 2 num-after-hook-calls)
+  )
 
 
-fn abc() {
-    second_funct();
-}
 
-
-
-
-fn second_funct() {
-
-}
-"
- (current-buffer-string))
-
-;; Re-position
-(beginning-of-buffer)
-(re-search-forward "abc")
-(assert-equal 4 (line-number-at-pos))
-(assert-equal 7 (current-column) "before xref def")
-
-;; Find definition
-(non-interactive-xref-find-definitions)
-(assert-equal 7 (line-number-at-pos) "after xref def")
-(assert-equal 3 (current-column))
-
-
-;; -----------------------------------------------------------------------------
-;; Kill buffer
-;;------------------------------------------------------------------------------
-(test-case-message "Kill buffer")
-
-(kill-buffer)
-
-(assert-equal 5 (number-of-did-open))
-(assert-equal 5 (number-of-did-close))
-
-(find-file "src/dummy.rs")
-
-(assert-equal 6 (number-of-did-open))
-(assert-equal 5 (number-of-did-close))
-
-;; -----------------------------------------------------------------------------
-;; Open non-existing file
-;; -----------------------------------------------------------------------------
-(test-case-message "Open non-existing file")
-
-(setq non-existing-file "doesnt_exist_right.rs")
-(assert-equal nil (file-exists-p non-existing-file))
-
-(find-file non-existing-file)
-
-;; tiny-lsp-client doesn't save anymore
-(assert-equal nil (file-exists-p non-existing-file))
-
-(assert-equal 7 (number-of-did-open))
-(assert-equal 5 (number-of-did-close))
-
-(kill-buffer)
-
-(assert-equal 7 (number-of-did-open))
-(assert-equal 6 (number-of-did-close))
-
-(assert-equal "dummy.rs" (buffer-name))
-
-(delete-file non-existing-file)
-
-;; -----------------------------------------------------------------------------
-;; Info and stop
-;; -----------------------------------------------------------------------------
-(test-case-message "Info and stop")
-
-(setq root-path (tlc--root))
-(assert-equal t (stringp root-path))
-
-(defun assert-tlc-info ()
-  (pcase (tlc-info)
-    (`((,r ,command ,process-id))
-     (assert-equal root-path r)
-     (assert-equal "rust-analyzer" command)
-     (assert-equal t (integerp process-id))
-     process-id
-     )
-    (x
-     (error "unexpected return: %s" x))))
-
-(setq old-pid (assert-tlc-info))
-
-(tlc-stop-server)
-
-;; avoid race
-(sleep-for 1)
-
-(assert-equal nil (tlc-info))
-
-(assert-equal 1 num-before-hook-calls)
-(assert-equal 1 num-after-hook-calls)
-
-;; To see that spamming doesn't cause issues
-(tlc-stop-server)
-(tlc-stop-server)
-(tlc-stop-server)
-
-(assert-equal 7 (number-of-did-open) "didOpen before restart")
-(assert-equal 6 (number-of-did-close))
-
-(tlc-restart-server)
-;; avoid race
-(sleep-for 1)
-
-(assert-equal 8 (number-of-did-open) "didOpen after restart")
-(assert-equal 6 (number-of-did-close))
-
-(assert-equal 2 num-before-hook-calls)
-(assert-equal 2 num-after-hook-calls)
-
-(setq new-pid (assert-tlc-info))
-
-(test-case-message "New: %s Old: %s" new-pid old-pid)
-(assert-equal nil (equal new-pid old-pid))
-
-(test-case-message "After stop restart info")
-
-(assert-equal 0 (number-of-STDERR))

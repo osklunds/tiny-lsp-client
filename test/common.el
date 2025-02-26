@@ -1,27 +1,38 @@
 
-(require 'cl-lib)
+;; -----------------------------------------------------------------------------
+;; Helpers
+;; -----------------------------------------------------------------------------
 
-(setq log-file-name (file-truename
-                     (file-name-concat
-                      user-emacs-directory
-                      "tiny-lsp-client-test.log")))
+(defun assert-equal (exp act &optional label)
+  (when (not (equal exp act))
+    (message "")
+    (message "")
+    (message "")
+    (message "-----------------------------------------------------------------------------")
+    (message "Assert failed. label: '%s'" label)
+    (message "Exp: '%s'" exp)
+    (message "Act: '%s'" act)
+    (message "-----------------------------------------------------------------------------")
+    (message "")
+    (message "")
+    (message "")
+    (sleep-for 1)
+    )
+  (should (equal exp act)))
 
-(defun assert-equal (exp act &optional msg)
-  (unless (equal exp act)
-    (sleep-for 2)
-    (when msg
-      (test-case-message msg))
-    (message "Expected '%s'\nActual '%s'" exp act)
-    ;; Sleep to have time for uncluttered printout
-    (sleep-for 2)
-    (cl-assert (equal exp act) 'show)))
-
-(defun test-case-message (format-string &rest format-args)
-  (let* ((new-format-string (concat "[test-case-message]  " format-string))
-         (args (cons new-format-string format-args)))
-    ;; (apply 'message args)))
-    (print (apply 'format args)
-           'external-debugging-output)))
+(defun run-shell-command (command &rest components)
+  (message "-----------------------------------------------------------------------------")
+  (message "Running command '%s'" command)
+  (let* ((default-directory (apply 'relative-repo-root components))
+         (code (with-temp-buffer
+                 (let ((code (call-process-shell-command command nil t)))
+                   (message (string-replace "%" "%%" (buffer-string)))
+                   code)))
+         (label (format "Command %s" command)))
+    (assert-equal 0 code label))
+  (message "Finished command '%s'" command)
+  (message "-----------------------------------------------------------------------------")
+  )
 
 (defun non-interactive-xref-find-definitions ()
   (let ((xref-prompt-for-identifier nil))
@@ -44,3 +55,53 @@
 
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
+
+;; -----------------------------------------------------------------------------
+;; Test case framework
+;; -----------------------------------------------------------------------------
+
+(defvar log-file-name 'not-set
+  "Set before running a test case, because each test case has its own log file
+  name.")
+
+(defvar test-file-name 'not-set
+  "Name of the .el file with test cases. Needs to be set when loading
+this common file. Is used to differentiate log file names.")
+
+(defun before-each-test (test-case-name)
+  (assert-equal t (stringp test-file-name) "test-file-name")
+  (setq log-file-name (relative-repo-root
+                       "test"
+                       "logs"
+                       (format "%s-%s.log" test-file-name test-case-name)))
+  (delete-file log-file-name)
+  (customize-set-variable 'tlc-log-file log-file-name))
+
+(defun after-each-test ()
+  ;; One drawback of running in the same emacs instance with ERT is that
+  ;; this clean up in the end is needed.
+
+  ;; Only kill buffers visiting a file
+  (let ((buffers (cl-remove-if-not 'buffer-file-name (buffer-list))))
+    (dolist (buffer buffers)
+      (with-current-buffer buffer
+        ;; First disable tlc-mode so that kill-buffer doesn't trigger
+        ;; didClose
+        (tlc-mode -1)
+        ;; Stop server in a buffer where root path is known
+        (tlc-stop-server))
+      ;; Then kill the buffer too so that didOpen is sent if the same file
+      ;; is used in many tests
+      (kill-buffer buffer))
+    (customize-set-variable 'tlc-before-start-server-hook nil)
+    (customize-set-variable 'tlc-after-start-server-hook nil)
+    ))
+
+(cl-defmacro tlc-deftest (name () &rest body)
+  (declare (indent defun))
+  `(progn
+     (ert-deftest ,name ()
+       (before-each-test ',name)
+       ,@body
+       (after-each-test)
+       )))

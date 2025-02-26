@@ -1,11 +1,17 @@
 
+;; Tests focusing on the lisp bindings that lib.rs exposes.
+
 ;; -----------------------------------------------------------------------------
-;; Load common test functions
+;; Loading common functions
 ;; -----------------------------------------------------------------------------
 
-(add-to-list 'load-path default-directory)
+;; Moment 22: can't be in common.el because then common.el can't be found
+(defun relative-repo-root (&rest components)
+  (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
+    (apply 'file-name-concat repo-root components)))
 
-(load "test/common.el")
+(load (relative-repo-root "test" "common.el"))
+(setq test-file-name "lisp-bindings-test")
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers
@@ -14,233 +20,229 @@
 ;; Before, there used to be a bug that if garbage-collect was done with
 ;; --release emacs would crash. But now it seems to work, even though no
 ;; non-test code change was needed as of this commit to make it work.
-(defun test-garbage-collect (mark)
-  (test-case-message "garbage-collect before (%s)" mark)
-  (test-case-message "%s" (garbage-collect))
-  (test-case-message "garbage-collect after (%s)" mark))
-
-(defun kill-server ()
-  (interactive)
-  (pcase-let ((`((,r ,c ,i)) (tlc--rust-all-server-info)))
-    (shell-command (format "kill %s" i))))
+(defun test-garbage-collect (label)
+  (message "garbage-collect before (%s)" label)
+  (message "%s" (garbage-collect))
+  (message "garbage-collect after (%s)" label))
 
 ;; -----------------------------------------------------------------------------
-;; Load the module
+;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-(test-case-message "Before load")
-
-(require 'tlc-rust "target/release/libtiny_lsp_client.so")
-
-(test-case-message "After load")
-
-(test-garbage-collect "after load")
-
-(tlc--rust-set-option 'tlc-log-to-stdio nil)
-
-(tlc--rust-set-option 'tlc-log-file (file-truename
-                                         (file-name-concat
-                                          user-emacs-directory
-                                          "tiny-lsp-client-test.log")))
-
-(assert-equal nil (tlc--rust-all-server-info))
-
-(test-garbage-collect "after some calls")
+(run-shell-command "cargo build --release")
 
 ;; -----------------------------------------------------------------------------
-;; Initialize
+;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(setq root-path (file-truename default-directory))
+(ert-deftest lisp-bindings-test ()
 
-(test-case-message "Starting server")
+  ;; ---------------------------------------------------------------------------
+  ;; Loading the module
+  ;; ---------------------------------------------------------------------------
+  (message "Before load")
 
-(assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
+  ;; todo: find a way to assert that newly loaded and release
+  (require 'tlc-rust (relative-repo-root "target" "release" "libtiny_lsp_client.so"))
 
-(assert-equal 'started (tlc--rust-start-server root-path "rust-analyzer"))
+  (message "After load")
 
-(pcase (tlc--rust-all-server-info)
-  (`((,r ,command ,process-id))
-   (assert-equal root-path r)
-   (assert-equal "rust-analyzer" command)
-   (assert-equal t (integerp process-id))
-   )
-  (x
-   (error "unexpected return: %s" x)))
+  (test-garbage-collect "after load")
 
-(assert-equal 'already-started (tlc--rust-start-server root-path "rust-analyzer"))
+  (tlc--rust-set-option 'tlc-log-to-stdio nil)
 
-(test-case-message "Server started")
+  (tlc--rust-set-option 'tlc-log-file
+                        (relative-repo-root "test" "logs" "lisp-bindings-test.log"))
 
-(test-garbage-collect "after server started")
+  (assert-equal nil (tlc--rust-all-server-info))
 
-;; -----------------------------------------------------------------------------
-;; didOpen
-;; -----------------------------------------------------------------------------
+  (test-garbage-collect "after some calls")
 
-;; todo: need to loop even if less clear, becase now is unstable
-(sleep-for 2)
+  ;; ---------------------------------------------------------------------------
+  ;; Initialize
+  ;; ---------------------------------------------------------------------------
 
-(test-case-message "Sending didOpen")
+  (setq root-path (file-truename default-directory))
 
-(setq path "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")
-(setq content (with-temp-buffer
-                (insert-file-contents path)
-                (buffer-string)))
+  (message "Starting server")
 
-(assert-equal 'ok (tlc--rust-send-notification
-                   root-path
-                   "textDocument/didOpen"
-                   (list path content)))
+  (assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
 
-;; -----------------------------------------------------------------------------
-;; definition
-;; -----------------------------------------------------------------------------
+  (assert-equal 'started (tlc--rust-start-server root-path "clangd"))
 
-(sleep-for 10)
+  (pcase (tlc--rust-all-server-info)
+    (`((,r ,command ,process-id))
+     (assert-equal root-path r)
+     (assert-equal "clangd" command)
+     (assert-equal t (integerp process-id))
+     )
+    (x
+     (error "unexpected return: %s" x)))
 
-(test-case-message "Sending definition")
+  (assert-equal 'already-started (tlc--rust-start-server root-path "clangd"))
 
-(assert-equal 'no-server
-              (tlc--rust-send-request
-               "/some/root_path/that/does/not/exist"
-               "textDocument/definition"
-               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+  (message "Server started")
 
-(assert-equal 1
-              (tlc--rust-send-request
-               root-path
-               "textDocument/definition"
-               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+  (test-garbage-collect "after server started")
 
-(defun recv-response ()
-  (let ((response (tlc--rust-recv-response root-path)))
-    (if (equal 'no-response response)
-        (progn
-          (test-case-message "recv-response retry")
-          (sleep-for 1)
-          (recv-response))
-      response)))
+  ;; ---------------------------------------------------------------------------
+  ;; didOpen
+  ;; ---------------------------------------------------------------------------
 
-(assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
+  (message "Sending didOpen")
 
-(assert-equal '(ok-response 1 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
-              (recv-response))
+  (setq file-path (relative-repo-root "test" "clangd" "main.cpp"))
+  (setq content (with-temp-buffer
+                  (insert-file-contents file-path)
+                  (buffer-string)))
 
-(test-garbage-collect "after textDocument/definition")
+  (assert-equal 'ok (tlc--rust-send-notification
+                     root-path
+                     "textDocument/didOpen"
+                     (list file-path content)))
 
-;; -----------------------------------------------------------------------------
-;; didChange
-;; -----------------------------------------------------------------------------
+  ;; ---------------------------------------------------------------------------
+  ;; definition
+  ;; ---------------------------------------------------------------------------
 
-(test-case-message "Sending didChange")
+  (message "Sending definition")
 
-(assert-equal 'no-server
-              (tlc--rust-send-notification
-               "/some/root/path/not/found"
-               "textDocument/didChange"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
+  (assert-equal 'no-server
+                (tlc--rust-send-request
+                 "/some/root_path/that/does/not/exist"
+                 "textDocument/definition"
+                 `(,file-path 4 10)))
 
-(assert-equal 'ok
-              (tlc--rust-send-notification
-               root-path
-               "textDocument/didChange"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 6 0 "\n")))))
+  (assert-equal 1
+                (tlc--rust-send-request
+                 root-path
+                 "textDocument/definition"
+                 `(,file-path 10 4)))
 
-;; -----------------------------------------------------------------------------
-;; definition after didChange
-;; -----------------------------------------------------------------------------
+  ;; todo: need to loop even if less clear, becase now is unstable and
+  ;; wastefully slow
+  (sleep-for 2)
 
-(test-case-message "Sending definition after didChange")
+  (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
 
-(assert-equal 2
-              (tlc--rust-send-request
-               root-path
-               "textDocument/definition"
-               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+  (assert-equal `(ok-response 1 ((,file-path 4 6)))
+                (tlc--rust-recv-response root-path)
+                "recv resp first definition")
 
-(assert-equal '(ok-response 2 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 8 3)))
-              (recv-response))
+  (test-garbage-collect "after textDocument/definition")
 
-;; -----------------------------------------------------------------------------
-;; textDocument/didChange to revert the previous change, so that rust-analyzer's
-;; view matches the file system
-;; -----------------------------------------------------------------------------
+  ;; ---------------------------------------------------------------------------
+  ;; didChange
+  ;; ---------------------------------------------------------------------------
 
-(test-case-message "Sending didChange to revert")
+  (message "Sending didChange")
 
-(assert-equal 'ok
-              (tlc--rust-send-notification
-               root-path
-               "textDocument/didChange"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" '((6 0 7 1 "")))))
+  (assert-equal 'no-server
+                (tlc--rust-send-notification
+                 "/some/root/path/not/found"
+                 "textDocument/didChange"
+                 (list file-path '((3 0 3 0 "\n")))))
 
-;; -----------------------------------------------------------------------------
-;; didClose
-;; -----------------------------------------------------------------------------
+  (assert-equal 'ok
+                (tlc--rust-send-notification
+                 root-path
+                 "textDocument/didChange"
+                 (list file-path '((3 0 3 0 "\n")))))
 
-(test-case-message "Sending didClose")
+  ;; ---------------------------------------------------------------------------
+  ;; definition after didChange
+  ;; ---------------------------------------------------------------------------
 
-(assert-equal 'ok
-              (tlc--rust-send-notification
-               root-path
-               "textDocument/didClose"
-               (list "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs")))
+  (message "Sending definition after didChange")
 
-;; -----------------------------------------------------------------------------
-;; didOpen + definition again
-;; -----------------------------------------------------------------------------
+  (assert-equal 2
+                (tlc--rust-send-request
+                 root-path
+                 "textDocument/definition"
+                 `(,file-path 11 4)))
 
-;; Do a definition again to ensure that rust-analyzer did not crash due to
-;; faulty data sent in didClose above. Since it's a notification we can't
-;; wait for a response.
+  (sleep-for 0.1)
 
-(test-case-message "Sending didOpen+definition")
+  (assert-equal `(ok-response 2 ((,file-path 5 6)))
+                (tlc--rust-recv-response root-path))
 
-(assert-equal 'ok
-              (tlc--rust-send-notification
-               root-path
-               "textDocument/didOpen"
-               (list path content)))
+  ;; ---------------------------------------------------------------------------
+  ;; textDocument/didChange to revert the previous change, so that clangd's
+  ;; view matches the file system
+  ;; ---------------------------------------------------------------------------
 
-(assert-equal 3
-              (tlc--rust-send-request
-               root-path
-               "textDocument/definition"
-               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+  (message "Sending didChange to revert")
 
-(assert-equal '(ok-response 3 (("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 7 3)))
-              (recv-response))
+  (assert-equal 'ok
+                (tlc--rust-send-notification
+                 root-path
+                 "textDocument/didChange"
+                 `(,file-path ((3 0 4 1 "")))))
 
-;; -----------------------------------------------------------------------------
-;; Stopping the LSP server
-;; -----------------------------------------------------------------------------
+  ;; ---------------------------------------------------------------------------
+  ;; didClose
+  ;; ---------------------------------------------------------------------------
 
-(test-case-message "killing server")
+  (message "Sending didClose")
 
-(kill-server)
+  (assert-equal 'ok
+                (tlc--rust-send-notification
+                 root-path
+                 "textDocument/didClose"
+                 `(,file-path)))
 
-;; to avoid race condition
-(sleep-for 1)
+  ;; ---------------------------------------------------------------------------
+  ;; didOpen + definition again
+  ;; ---------------------------------------------------------------------------
 
-(assert-equal 'no-server
-              (tlc--rust-send-notification
-               root-path
-               "textDocument/didOpen"
-               (list path content)))
+  ;; Do a definition again to ensure that clangd did not crash due to
+  ;; faulty data sent in didClose above. Since it's a notification we can't
+  ;; wait for a response.
 
-(assert-equal 'no-server
-              (tlc--rust-send-request
-               root-path
-               "textDocument/definition"
-               '("/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs" 4 10)))
+  (message "Sending didOpen+definition")
 
-(assert-equal 'no-server (recv-response))
+  (assert-equal 'ok
+                (tlc--rust-send-notification
+                 root-path
+                 "textDocument/didOpen"
+                 `(,file-path ,content)))
 
-;; -----------------------------------------------------------------------------
-;; End
-;; -----------------------------------------------------------------------------
+  (assert-equal 3
+                (tlc--rust-send-request
+                 root-path
+                 "textDocument/definition"
+                 `(,file-path 10 4)))
 
-(test-garbage-collect "in the end")
+  (sleep-for 2)
 
-(test-case-message "done")
+  (assert-equal `(ok-response 3 ((,file-path 4 6)))
+                (tlc--rust-recv-response root-path))
+
+  ;; ---------------------------------------------------------------------------
+  ;; Stopping the LSP server
+  ;; ---------------------------------------------------------------------------
+
+  (message "Stopping server")
+
+  (tlc--rust-stop-server root-path)
+
+  (assert-equal 'no-server
+                (tlc--rust-send-notification
+                 root-path
+                 "textDocument/didOpen"
+                 `(,file-path ,content)))
+
+  (assert-equal 'no-server
+                (tlc--rust-send-request
+                 root-path
+                 "textDocument/definition"
+                 `(,file-path 4 10)))
+
+  (assert-equal 'no-server (tlc--rust-recv-response root-path))
+
+  ;; -----------------------------------------------------------------------------
+  ;; End
+  ;; -----------------------------------------------------------------------------
+
+  (test-garbage-collect "in the end")
+  )
