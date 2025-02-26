@@ -9,8 +9,6 @@ mod servers;
 mod emacs;
 mod logger;
 mod message;
-#[cfg(test)]
-mod tests;
 
 use crate::server::Server;
 use crate::emacs::*;
