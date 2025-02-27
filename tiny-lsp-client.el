@@ -415,7 +415,15 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 ;; Inspired by eglot
 (defun tlc-completion-at-point ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol)))
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (response (tlc--sync-request
+                    "textDocument/completion"
+                    (list file line character))))
+    (message "response: %s" response)
     (list
      (or (car bounds) (point))
      (or (cdr bounds) (point))
