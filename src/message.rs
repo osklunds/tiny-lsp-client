@@ -78,6 +78,7 @@ pub struct ResponseError {
 #[serde(untagged)]
 pub enum Result {
     TextDocumentDefinitionResult(DefinitionResult),
+    TextDocumentCompletionResult(CompletionResult),
     Untyped(serde_json::Value),
 }
 
@@ -111,6 +112,16 @@ impl LocationLink {
             range: self.target_selection_range
         }
     }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionResult {
+    pub items: Vec<CompletionItem>,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionItem {
+    pub label: String,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
