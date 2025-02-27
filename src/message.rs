@@ -47,6 +47,15 @@ pub struct Position {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position,
+    #[serde(rename = "textDocument")]
+    pub trigger_kind: usize,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
     pub id: u32,
     pub result: Option<Result>,
