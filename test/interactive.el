@@ -8,6 +8,9 @@
 
 (add-to-list 'load-path default-directory)
 
+
+;; Manually require tlc-rust to get debug version, faster to compile that release
+(require 'tlc-rust "target/debug/libtiny_lsp_client.so")
 (require 'tiny-lsp-client)
 
 (customize-set-variable 'tlc-log-file (file-truename
