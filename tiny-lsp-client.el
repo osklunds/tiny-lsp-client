@@ -1,3 +1,4 @@
+;;; tiny-lsp-client.el --- Tiny LSP Client  -*- lexical-binding: t; -*-
 
 (require 'tlc-rust "libtiny_lsp_client.so")
 (require 'subr-x)
@@ -423,7 +424,6 @@ path. When an existing LSP server is connected to, this hook is not run."
          (response (tlc--sync-request
                     "textDocument/completion"
                     (list file line character))))
-    (message "response: %s" response)
     (list
      (or (car bounds) (point))
      (or (cdr bounds) (point))
@@ -434,13 +434,19 @@ path. When an existing LSP server is connected to, this hook is not run."
                       '(metadata . nil)))
          ('nil (progn
                 (message "oskar: %s" "nil")
-                nil))
+                (message "bound: %s" (boundp 'response))
+                (try-completion probe response)))
          ('t (progn
               (message "oskar: %s" "t")
-              nil))
+              (all-completions
+               ""
+               response
+               (lambda (item)
+                 (and (or (null pred) (funcall pred item))
+                      (string-prefix-p probe item completion-ignore-case))))))
          ('lambda (progn
               (message "oskar: %s" "lambda")
-              nil))
+              (test-completion probe response)))
          (_ (progn
               (message "oskar: %s" "other")
               nil))
