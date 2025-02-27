@@ -166,6 +166,8 @@ unsafe extern "C" fn tlc__rust_send_request(
 
         let request_params = if request_type == "textDocument/definition" {
             build_text_document_definition(env, request_args, server)
+        } else if request_type == "textDocument/completion" {
+            build_text_document_completion(env, request_args, server)
         } else {
             panic!("Incorrect request type")
         };
@@ -194,6 +196,29 @@ unsafe fn build_text_document_definition(
     RequestParams::DefinitionParams(DefinitionParams {
         text_document: TextDocumentIdentifier { uri },
         position: Position { line, character },
+    })
+}
+
+#[allow(non_snake_case)]
+unsafe fn build_text_document_completion(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    _server: &mut Server,
+) -> RequestParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = check_path(extract_string(env, file_path));
+    let uri = file_path_to_uri(file_path);
+
+    let line = nth(env, 1, request_args);
+    let line = extract_integer(env, line) as usize;
+
+    let character = nth(env, 2, request_args);
+    let character = extract_integer(env, character) as usize;
+
+    RequestParams::CompletionParams(CompletionParams {
+        text_document: TextDocumentIdentifier { uri },
+        position: Position { line, character },
+        context: CompletionContext { trigger_kind: 1 },
     })
 }
 
