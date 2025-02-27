@@ -4,15 +4,15 @@
 #[allow(warnings)]
 #[rustfmt::skip]
 mod dummy;
-mod server;
-mod servers;
 mod emacs;
 mod logger;
 mod message;
+mod server;
+mod servers;
 
-use crate::server::Server;
 use crate::emacs::*;
 use crate::message::*;
+use crate::server::Server;
 
 use std::os::raw;
 use std::path::Path;
@@ -68,13 +68,7 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-send-notification",
     );
 
-    export_function(
-        env,
-        2,
-        2,
-        tlc__rust_set_option,
-        "tlc--rust-set-option",
-    );
+    export_function(env, 2, 2, tlc__rust_set_option, "tlc--rust-set-option");
 
     export_function(
         env,
@@ -109,10 +103,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
                 vec![
                     make_string(env, root_path),
                     make_string(env, server.get_command()),
-                    make_integer(
-                        env,
-                        server.get_server_process_id() as i64,
-                    ),
+                    make_integer(env, server.get_server_process_id() as i64),
                 ],
             );
             server_info_list.push(info);
@@ -397,6 +388,24 @@ unsafe fn handle_response(
                 env,
                 "list",
                 vec![intern(env, "ok-response"), id, lisp_location_list],
+            )
+        } else if let Result::TextDocumentCompletionResult(completion_result) =
+            result
+        {
+            let mut completion_list_vec = Vec::new();
+
+            for completion_item in completion_result.items {
+                completion_list_vec
+                    .push(make_string(env, completion_item.label));
+            }
+
+            let completion_list = call(env, "list", completion_list_vec);
+
+            let id = make_integer(env, response.id as i64);
+            call(
+                env,
+                "list",
+                vec![intern(env, "ok-response"), id, completion_list],
             )
         } else {
             logger::log_rust_debug!(
