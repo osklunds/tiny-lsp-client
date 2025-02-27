@@ -24,6 +24,7 @@ pub struct Request {
 #[serde(untagged)]
 pub enum RequestParams {
     DefinitionParams(DefinitionParams),
+    CompletionParams(CompletionParams),
     Untyped(serde_json::Value),
 }
 
@@ -51,8 +52,13 @@ pub struct CompletionParams {
     #[serde(rename = "textDocument")]
     pub text_document: TextDocumentIdentifier,
     pub position: Position,
-    #[serde(rename = "textDocument")]
-    pub trigger_kind: usize,
+    pub context: CompletionContext,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionContext {
+    #[serde(rename = "triggerKind")]
+    pub trigger_kind: usize, // todo: enum
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
