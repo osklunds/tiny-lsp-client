@@ -430,6 +430,9 @@ path. When an existing LSP server is connected to, this hook is not run."
          ('t (progn
               (message "oskar: %s" "t")
               nil))
+         ('lambda (progn
+              (message "oskar: %s" "lambda")
+              nil))
          (_ (progn
               (message "oskar: %s" "other")
               nil))
