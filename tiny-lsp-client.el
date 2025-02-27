@@ -421,9 +421,14 @@ path. When an existing LSP server is connected to, this hook is not run."
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
          (character (cadr pos))
-         (response (tlc--sync-request
-                    "textDocument/completion"
-                    (list file line character))))
+         (cached-response 'none)
+         (response-fun (lambda ()
+                         (if (listp cached-response) cached-response
+                           (setq cached-response
+                                 (tlc--sync-request
+                                  "textDocument/completion"
+                                  (list file line character))))))
+         )
     (list
      (or (car bounds) (point))
      (or (cdr bounds) (point))
@@ -433,20 +438,19 @@ path. When an existing LSP server is connected to, this hook is not run."
                       (message "oskar: %s" "metadata")
                       '(metadata . nil)))
          ('nil (progn
-                (message "oskar: %s" "nil")
-                (message "bound: %s" (boundp 'response))
-                (try-completion probe response)))
+                 (message "oskar: %s" "nil")
+                 (try-completion probe (funcall response-fun))))
          ('t (progn
-              (message "oskar: %s" "t")
-              (all-completions
-               ""
-               response
-               (lambda (item)
-                 (and (or (null pred) (funcall pred item))
-                      (string-prefix-p probe item completion-ignore-case))))))
+               (message "oskar: %s" "t")
+               (all-completions
+                ""
+                (funcall response-fun)
+                (lambda (item)
+                  (and (or (null pred) (funcall pred item))
+                       (string-prefix-p probe item completion-ignore-case))))))
          ('lambda (progn
-              (message "oskar: %s" "lambda")
-              (test-completion probe response)))
+                    (message "oskar: %s" "lambda")
+                    (test-completion probe (funcall response-fun))))
          (_ (progn
               (message "oskar: %s" "other")
               nil))
