@@ -1,4 +1,6 @@
 
+(require 'cc-mode)
+
 (split-window-below)
 (other-window 1)
 (switch-to-buffer "*Messages*")
@@ -19,5 +21,7 @@
 (customize-set-variable 'tlc-log-to-stdio t)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
+
+(define-key c++-mode-map (kbd "M-p") 'completion-at-point)
 
 (find-file "test/clangd/main.cpp")
