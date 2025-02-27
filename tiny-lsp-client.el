@@ -127,6 +127,7 @@ path. When an existing LSP server is connected to, this hook is not run."
      (t
       (tlc--start-server)
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+      (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
@@ -139,6 +140,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -406,6 +408,33 @@ path. When an existing LSP server is connected to, this hook is not run."
                    "todo"
                    (xref-make-file-location file-target line-target character-start)))))
             response)))
+
+;; -----------------------------------------------------------------------------
+;; Capf
+;; -----------------------------------------------------------------------------
+
+;; Inspired by eglot
+(defun tlc-completion-at-point ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol)))
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (pcase action
+         ('metadata (progn
+                      (message "oskar: %s" "metadata")
+                      '(metadata . nil)))
+         ('nil (progn
+                (message "oskar: %s" "nil")
+                nil))
+         ('t (progn
+              (message "oskar: %s" "t")
+              nil))
+         (_ (progn
+              (message "oskar: %s" "other")
+              nil))
+         ))
+     )))
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"
