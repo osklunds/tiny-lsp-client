@@ -1,4 +1,5 @@
 
+(setq debug-on-error t)
 (require 'cc-mode)
 
 (split-window-below)
