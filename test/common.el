@@ -60,7 +60,7 @@
   (buffer-substring-no-properties (point-min) (point-max)))
 
 (defun list-has-string-match-p (string list)
-  (null (null (cl-member "other_function" result1 :test 'string-match-p))))
+  (null (null (cl-member string list :test 'string-match-p))))
 
 ;; -----------------------------------------------------------------------------
 ;; Test case framework

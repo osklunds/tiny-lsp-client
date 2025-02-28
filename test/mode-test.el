@@ -566,6 +566,7 @@ abc(123);
 
   (assert-equal t (>= (length result1) 100))
 
+  (assert-equal nil (list-has-string-match-p "junk" result1))
   (assert-equal t (list-has-string-match-p "other_function" result1))
 
   (setq result2 (funcall tlc-collection-fun "" nil t))
