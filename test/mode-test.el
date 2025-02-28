@@ -1,3 +1,4 @@
+;;;  -*- lexical-binding: t; -*-
 
 ;; Tests focusing on tlc-mode itself, not specific to any LSP server. Using
 ;; clangd since it's faster to start than rust-analyzer.
@@ -537,32 +538,22 @@ abc(123);
   (assert-equal 2 (number-of-completion-requests))
   )
 
-(tlc-deftest completion-at-point-direct-call-test ()
+(tlc-deftest capf-all-completions-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
 
-  (sleep-for 0.5)
-
   (re-search-forward "other_function" nil nil 2)
   (next-line)
 
-  (pcase (tlc-completion-at-point)
-    (`(,start ,end ,collection . ,props)
-     (assert-equal (point) start)
-     (assert-equal (point) end)
-     (assert-equal nil props)
+  ;; Sleep to let clangd have time to start and be able to return more
+  ;; completions
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
 
-     (setq tlc-collection-fun collection)
-
-     (assert-equal 0 (number-of-completion-requests))
-     )
-    (_ (error "bad match"))
-    )
-
+  ;; Completions are lazily fetched
   (assert-equal 0 (number-of-completion-requests))
 
-  ;; all-completions operation
   (setq result1 (funcall tlc-collection-fun "" nil t))
   (assert-equal 1 (number-of-completion-requests))
 
@@ -572,20 +563,50 @@ abc(123);
   (assert-equal t (list-has-string-match-p "other_function" result1))
 
   (setq result2 (funcall tlc-collection-fun "" nil t))
+
   ;; Still 1 thanks to cache, same tlc-collection-fun is being used
   (assert-equal 1 (number-of-completion-requests))
-  (assert-equal t (list-has-string-match-p "other_function" result2))
-
-  ;; test-completion operation
-  (assert-equal nil (funcall tlc-collection-fun "other_functio" nil  'lambda))
-  (assert-equal t   (funcall tlc-collection-fun "other_function" nil 'lambda))
-
-  ;; try-completion operation
-  (assert-equal nil (funcall tlc-collection-fun "junk" nil nil))
-  (assert-equal "other_function" (funcall tlc-collection-fun "other_functio" nil nil))
-  (assert-equal t (funcall tlc-collection-fun "other_function" nil nil))
-  
-
+  (assert-equal result2 result1)
   )
+
+(tlc-deftest capf-test-completion-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
+
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  (assert-equal 0 (number-of-completion-requests))
+  (assert-equal nil (funcall tlc-collection-fun "other_functio"  nil 'lambda))
+  (assert-equal t   (funcall tlc-collection-fun "other_function" nil 'lambda))
+  (assert-equal 1 (number-of-completion-requests))
+  )
+
+(tlc-deftest capf-try-completion-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
+
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  (assert-equal 0 (number-of-completion-requests))
+  (assert-equal nil              (funcall tlc-collection-fun "junk"           nil nil))
+  (assert-equal "other_function" (funcall tlc-collection-fun "other_functio"  nil nil))
+  (assert-equal t                (funcall tlc-collection-fun "other_function" nil nil))
+  (assert-equal 1 (number-of-completion-requests))
+  )
+
+(defun get-tlc-collection-fun ()
+  (pcase (tlc-completion-at-point)
+    (`(,start ,end ,collection . ,props)
+     (assert-equal (point) start)
+     (assert-equal (point) end)
+     (assert-equal nil props)
+     collection
+     )
+    (_ (error "bad match"))
+    ))
 
 
