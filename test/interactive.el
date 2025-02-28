@@ -34,3 +34,6 @@
 (define-key c++-mode-map (kbd "M-p") 'completion-at-point)
 
 (find-file "test/clangd/interactive.cpp")
+
+(re-search-forward "other_function" nil nil 2)
+(next-line)
