@@ -49,6 +49,9 @@
 (defun number-of-did-close ()
   (count-in-log-file "\"method\": \"textDocument/didClose\","))
 
+(defun number-of-completion-request ()
+  (count-in-log-file "\"method\": \"textDocument/completion\","))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
    (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))

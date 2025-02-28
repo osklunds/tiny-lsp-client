@@ -518,5 +518,23 @@ abc(123);
   (assert-equal 2 num-after-hook-calls)
   )
 
+(tlc-deftest completion-at-point-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+  (assert-equal 0 (number-of-completion-request))
+
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
+
+  ;; Act1
+  (completion-at-point)
+
+  ;; Assert1
+  (assert-equal 1 (number-of-completion-request))
+  (completion-at-point)
+  (assert-equal 2 (number-of-completion-request))
+  )
+
 
 
