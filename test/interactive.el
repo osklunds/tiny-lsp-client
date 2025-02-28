@@ -1,5 +1,10 @@
 
 (setq debug-on-error t)
+
+(customize-set-variable 'make-backup-files nil)
+(customize-set-variable 'auto-save-default nil)
+(setq create-lockfiles nil)
+
 (require 'cc-mode)
 
 (split-window-below)
