@@ -518,23 +518,57 @@ abc(123);
   (assert-equal 2 num-after-hook-calls)
   )
 
-(tlc-deftest completion-at-point-test ()
+(tlc-deftest completion-at-point-end-to-end-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
-  (assert-equal 0 (number-of-completion-request))
+  (assert-equal 0 (number-of-completion-requests))
 
   (re-search-forward "other_function" nil nil 2)
   (next-line)
 
-  ;; Act1
+  ;; Act
+  ;; This is end-to-end, but not much verification except no crashes can be done
   (completion-at-point)
 
-  ;; Assert1
-  (assert-equal 1 (number-of-completion-request))
+  ;; Assert
+  (assert-equal 1 (number-of-completion-requests))
   (completion-at-point)
-  (assert-equal 2 (number-of-completion-request))
+  (assert-equal 2 (number-of-completion-requests))
   )
 
+(tlc-deftest completion-at-point-direct-call-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+  (assert-equal 0 (number-of-completion-requests))
+
+  (sleep-for 0.5)
+
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
+
+  (pcase (tlc-completion-at-point)
+    (`(,start ,end ,collection . ,props)
+     (assert-equal (point) start)
+     (assert-equal (point) end)
+     (assert-equal nil props)
+
+     (setq tlc-collection-fun collection)
+
+     (assert-equal 0 (number-of-completion-requests))
+     )
+    (_ (error "bad match"))
+    )
+
+  (assert-equal 0 (number-of-completion-requests))
+  (setq result1 (funcall tlc-collection-fun "" nil t))
+  (assert-equal 1 (number-of-completion-requests))
+
+  (assert-equal t (>= (length result1) 100))
+
+  (assert-equal
+   "other_function"
+   (car (cl-member "other_function" result1 :test 'string-match-p)))
+  )
 
 
