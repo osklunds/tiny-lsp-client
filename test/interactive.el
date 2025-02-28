@@ -28,4 +28,4 @@
 
 (define-key c++-mode-map (kbd "M-p") 'completion-at-point)
 
-(find-file "test/clangd/main.cpp")
+(find-file "test/clangd/interactive.cpp")
