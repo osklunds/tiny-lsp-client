@@ -647,6 +647,9 @@ abc(123);
   (assert-equal t (> (length no-probe) (length probe)))
   (assert-equal '("other_function") probe)
 
+  ;; next steps: fallback using insertText and textEdit
+  ;; remove duplicates in lib.rs
+
   ;; new test file for completions with e.g. my_fun1 my_fun2
 
   )
