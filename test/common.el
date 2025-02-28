@@ -54,10 +54,13 @@
 
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
-   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+                     (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
 
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
+
+(defun list-has-string-match-p (string list)
+  (null (null (cl-member "other_function" result1 :test 'string-match-p))))
 
 ;; -----------------------------------------------------------------------------
 ;; Test case framework

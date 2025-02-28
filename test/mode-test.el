@@ -566,9 +566,13 @@ abc(123);
 
   (assert-equal t (>= (length result1) 100))
 
-  (assert-equal
-   "other_function"
-   (car (cl-member "other_function" result1 :test 'string-match-p)))
+  (assert-equal t (list-has-string-match-p "other_function" result1))
+
+  (setq result2 (funcall tlc-collection-fun "" nil t))
+  ;; Still 1 thanks to cache
+  (assert-equal 1 (number-of-completion-requests))
+
+  (assert-equal t (list-has-string-match-p "other_function" result2))
   )
 
 
