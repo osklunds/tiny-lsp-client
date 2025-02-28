@@ -16,6 +16,7 @@ use crate::server::Server;
 
 use std::os::raw;
 use std::path::Path;
+use std::str;
 use std::sync::atomic::Ordering;
 
 #[no_mangle]
@@ -395,8 +396,10 @@ unsafe fn handle_response(
             let mut completion_list_vec = Vec::new();
 
             for completion_item in completion_result.items {
-                completion_list_vec
-                    .push(make_string(env, completion_item.label));
+                completion_list_vec.push(make_string(
+                    env,
+                    str::trim_start(&completion_item.label),
+                ));
             }
 
             let completion_list = call(env, "list", completion_list_vec);
