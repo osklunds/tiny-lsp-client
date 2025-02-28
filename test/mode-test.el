@@ -227,6 +227,7 @@ short other_function(int arg) {
 
 int main() {
     other_function(123);
+
     function_in_other_file();
 }
 "
@@ -288,6 +289,7 @@ int main() {
     ot_functionhej(123);
 third_function();
 
+
     function_in_other_file();
 }
 "
@@ -339,6 +341,7 @@ short other_function(int arg) {
 
 int main() {
     other_function(123);
+
     function_in_other_file();
 }
 "
@@ -381,6 +384,7 @@ int main() {
 
 
 abc(123);
+
     function_in_other_file();
 }
 "

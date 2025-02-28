@@ -98,6 +98,7 @@ short other_function(int arg) {
 
 int main() {
     other_function(123);
+
     function_in_other_file();
 }
 "
@@ -126,6 +127,7 @@ short other_function_hej(int arg) {
 
 int main() {
     other_function_hej(123);
+
     function_in_other_file();
 }
 "
@@ -165,6 +167,7 @@ short other_function_hej(int a) {
 
 int main() {
     other_function_hej(123);
+
     function_in_other_file();
 }
 "
