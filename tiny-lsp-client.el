@@ -432,6 +432,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (list
      (or (car bounds) (point))
      (or (cdr bounds) (point))
+     ;; consider use complete-with-action like lsp-mode does
      (lambda (probe pred action)
        (pcase action
          ('metadata (progn
