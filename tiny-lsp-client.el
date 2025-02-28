@@ -433,26 +433,23 @@ path. When an existing LSP server is connected to, this hook is not run."
      (or (car bounds) (point))
      (or (cdr bounds) (point))
      (lambda (probe pred action)
+       (message "oskar: %s %s %s" probe pred action)
        (pcase action
          ('metadata (progn
-                      (message "oskar: %s" "metadata")
                       '(metadata . nil)))
          ('nil (progn
-                 (message "oskar: %s" "nil")
                  (try-completion probe (funcall response-fun))))
          ('t (progn
-               (message "oskar: %s" "t")
                (all-completions
                 ""
                 (funcall response-fun)
                 (lambda (item)
+                  (message "oskar item: %s" item)
                   (and (or (null pred) (funcall pred item))
                        (string-prefix-p probe item completion-ignore-case))))))
          ('lambda (progn
-                    (message "oskar: %s" "lambda")
                     (test-completion probe (funcall response-fun))))
          (_ (progn
-              (message "oskar: %s" "other")
               nil))
          ))
      )))
