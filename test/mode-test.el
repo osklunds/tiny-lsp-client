@@ -561,6 +561,8 @@ abc(123);
     )
 
   (assert-equal 0 (number-of-completion-requests))
+
+  ;; all-completions operation
   (setq result1 (funcall tlc-collection-fun "" nil t))
   (assert-equal 1 (number-of-completion-requests))
 
@@ -574,10 +576,16 @@ abc(123);
   (assert-equal 1 (number-of-completion-requests))
   (assert-equal t (list-has-string-match-p "other_function" result2))
 
+  ;; test-completion operation
   (assert-equal nil (funcall tlc-collection-fun "other_functio" nil  'lambda))
   (assert-equal t   (funcall tlc-collection-fun "other_function" nil 'lambda))
 
-  (assert-equal 1 (number-of-completion-requests))
+  ;; try-completion operation
+  (assert-equal nil (funcall tlc-collection-fun "junk" nil nil))
+  (assert-equal "other_function" (funcall tlc-collection-fun "other_functio" nil nil))
+  (assert-equal t (funcall tlc-collection-fun "other_function" nil nil))
+  
+
   )
 
 
