@@ -633,3 +633,20 @@ abc(123);
                 '("function_in_other_file()" "function_in_other_file" "other_function"))
 
   )
+
+(tlc-deftest capf-probe-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
+
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  (setq no-probe (funcall tlc-collection-fun "" nil t))
+  (setq probe (funcall tlc-collection-fun "oth" nil t))
+  (assert-equal t (> (length no-probe) (length probe)))
+  (assert-equal '("other_function") probe)
+
+  ;; new test file for completions with e.g. my_fun1 my_fun2
+
+  )
