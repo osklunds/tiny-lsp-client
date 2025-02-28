@@ -437,6 +437,7 @@ path. When an existing LSP server is connected to, this hook is not run."
          ('metadata (progn
                       '(metadata . nil)))
          ('nil (progn
+                 ;; todo: eglot doesn't pass pred here. Why?
                  (try-completion probe (funcall response-fun))))
          ('t (progn
                (all-completions
@@ -446,6 +447,7 @@ path. When an existing LSP server is connected to, this hook is not run."
                   (and (or (null pred) (funcall pred item))
                        (string-prefix-p probe item completion-ignore-case))))))
          ('lambda (progn
+                    ;; todo: eglot doesn't pass pred here. Why?
                     (test-completion probe (funcall response-fun))))
          (_ (progn
               nil))

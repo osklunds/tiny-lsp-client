@@ -562,12 +562,24 @@ abc(123);
   (assert-equal nil (list-has-string-match-p "junk" result1))
   (assert-equal t (list-has-string-match-p "other_function" result1))
 
+  ;; todo: test with not "" as string
   (setq result2 (funcall tlc-collection-fun "" nil t))
 
   ;; Still 1 thanks to cache, same tlc-collection-fun is being used
   (assert-equal 1 (number-of-completion-requests))
   (assert-equal result2 result1)
   )
+
+(defun get-tlc-collection-fun ()
+  (pcase (tlc-completion-at-point)
+    (`(,start ,end ,collection . ,props)
+     (assert-equal (point) start)
+     (assert-equal (point) end)
+     (assert-equal nil props)
+     collection
+     )
+    (_ (error "bad match"))
+    ))
 
 (tlc-deftest capf-test-completion-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
@@ -598,15 +610,26 @@ abc(123);
   (assert-equal 1 (number-of-completion-requests))
   )
 
-(defun get-tlc-collection-fun ()
-  (pcase (tlc-completion-at-point)
-    (`(,start ,end ,collection . ,props)
-     (assert-equal (point) start)
-     (assert-equal (point) end)
-     (assert-equal nil props)
-     collection
-     )
-    (_ (error "bad match"))
-    ))
+;; todo: test bounds, test pred, test call again cache cleared
 
+(tlc-deftest capf-pred-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (re-search-forward "other_function" nil nil 2)
+  (next-line)
 
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  (setq pred (lambda (item)
+               (string-match-p "function" item)
+               ))
+
+  (setq unfiltered (funcall tlc-collection-fun "" nil t))
+  (setq filtered (funcall tlc-collection-fun "" pred t))
+
+  (assert-equal t (> (length unfiltered) (length filtered)))
+
+  (assert-equal filtered
+                '("function_in_other_file()" "function_in_other_file" "other_function"))
+
+  )
