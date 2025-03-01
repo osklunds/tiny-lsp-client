@@ -71,7 +71,7 @@
   (non-interactive-xref-find-definitions)
 
   ;; Assert
-  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 11 (line-number-at-pos))
   (assert-equal 0 (current-column))
 
   (assert-equal 1 (number-of-did-open))
@@ -88,6 +88,7 @@
 -export([my_function/1]).
 
 other_function(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -113,6 +114,7 @@ my_function(Arg) ->
 -export([my_function/1]).
 
 other_function_hej(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -125,7 +127,7 @@ my_function(Arg) ->
   (beginning-of-buffer)
   (re-search-forward "other")
   (re-search-forward "other")
-  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 12 (line-number-at-pos))
   (assert-equal 9 (current-column))
 
   (non-interactive-xref-find-definitions)
@@ -146,6 +148,7 @@ my_function(Arg) ->
 -export([my_ction/1]).
 
 other_function_hej(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -161,7 +164,7 @@ other_function_hej(Arg) ->
   (assert-equal 13 (current-column))
 
   (non-interactive-xref-find-definitions)
-  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 11 (line-number-at-pos))
   (assert-equal 4 (current-column))
   )
 
@@ -189,4 +192,23 @@ other_function_hej(Arg) ->
 
   (assert-equal 2 (number-of-did-open))
   (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest capf-test ()
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (re-search-forward "other_function")
+  (next-line)
+  (sleep-for 1)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal '("other_function") (funcall tlc-collection-fun "" nil t))
+
+  (setq pred (lambda (item)
+               (string-match-p "function" item)))
+  ;; todo: fix below when duplicates are removed
+  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
+                (funcall tlc-collection-fun "" pred t))
+
+  (assert-equal 1 (number-of-completion-requests))
   )
