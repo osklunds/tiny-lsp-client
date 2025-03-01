@@ -15,6 +15,8 @@
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
+(run-shell-command "cargo build")
+
 (define-derived-mode rust-mode prog-mode "Rust"
   "Fake rust-mode for testing.")
 
@@ -208,3 +210,71 @@ fn other_function_hej(arg: u32) -> u32 {
       (assert (cl-member exp result :test 'string-equal) exp))
     )
   )
+
+;; Only been able to trigger this in rust-analyzer
+(tlc-deftest null-result-test ()
+  (find-file (relative-repo-root "test" "rust_analyzer" "src" "main.rs"))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (assert-equal 
+   "
+fn main() {
+    other_function(2);
+
+    println!(\"Hello, world!\");
+}
+
+
+
+fn other_function(arg: u32) -> u32 {
+    arg + 1
+}
+"
+   (current-buffer-string))
+
+  (re-search-forward "other_function")
+  ;; Need to find def to detect when rust_analyzer is ready
+  (sleep-for 2)
+  (let ((max-lisp-eval-depth 100000))
+    (non-interactive-xref-find-definitions))
+
+  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 3 (current-column))
+
+  (beginning-of-buffer)
+  (re-search-forward "other_function")
+  (end-of-line)
+  (insert " // comment")
+
+  (assert-equal 
+   "
+fn main() {
+    other_function(2); // comment
+
+    println!(\"Hello, world!\");
+}
+
+
+
+fn other_function(arg: u32) -> u32 {
+    arg + 1
+}
+"
+   (current-buffer-string))
+
+  ;; When in a comment, null result
+  (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
+    (assert-equal 1 (number-of-completion-requests))
+    (assert-not result "null result")
+    )
+
+  (next-line)
+
+  ;; As soon as move outside, gets some result
+  (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
+    (assert-equal 2 (number-of-completion-requests))
+    (assert result "non null")
+    (assert (cl-member "other_function" result :test 'string-equal))
+    )
+
+)
