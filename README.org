@@ -23,6 +23,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of sync
+    - If no server in current root, stop should set it as default
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
