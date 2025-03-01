@@ -655,6 +655,13 @@ abc(123);
   (assert-equal "my_function1()" (funcall tlc-collection-fun "my_function1"   nil nil))
   (assert-equal t                (funcall tlc-collection-fun "my_function1()" nil nil))
   (assert-equal 1 (number-of-completion-requests))
+
+  (setq pred (lambda (item)
+               (string-match-p "fun" item)
+               ))
+  ;; Note, as soon as pred passed, can complete longer because var no longer valid
+  (assert-equal "my_"    (funcall tlc-collection-fun "my" nil nil))
+  (assert-equal "my_fun" (funcall tlc-collection-fun "my" pred nil))
   )
 
 ;; todo: test bounds, test pred, test call again cache cleared
