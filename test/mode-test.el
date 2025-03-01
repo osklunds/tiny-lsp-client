@@ -579,31 +579,28 @@ abc(123);
 
   ;; With prefix
   (let ((result (funcall tlc-collection-fun "my_f" nil t)))
-    (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
-                   "my_function1" "my_function2" "my_function3" "my_function4"
-                   "my_function5"))
-      (assert-equal t (list-has-string-match-p exp result) exp))
-    (assert-equal nil (list-has-string-match-p "my_var1" result) "with prefix"))
+    (assert-equal '("my_fun1()" "my_fun2()" "my_fun3()" "my_fun4()" "my_fun5()"
+                    "my_function1()" "my_function2()" "my_function3()"
+                    "my_function4()" "my_function5()")
+                  result)
+    )
 
   ;; With pred
   (setq pred (lambda (item)
-               (string-match-p "function" item)
+               (string-match-p "y_function" item)
                ))
-
   (let ((result (funcall tlc-collection-fun "" pred t)))
-    (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
-                   "my_function5" "last_function"))
-      (assert-equal t (list-has-string-match-p exp result) exp))
-    (assert-equal nil (list-has-string-match-p "my_var1" result) "with pred"))
+    (assert-equal '("my_function1()" "my_function2()" "my_function3()"
+                    "my_function4()" "my_function5()" "__PRETTY_FUNCTION__")
+                  result)
+    )
 
   ;; With prefix and pred
   (let ((result (funcall tlc-collection-fun "my" pred t)))
-    (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
-                   "my_function5"))
-      (assert-equal t (list-has-string-match-p exp result) exp))
-    (assert-equal nil
-                  (list-has-string-match-p "last_function" result)
-                  "with prefix and pred"))
+    (assert-equal '("my_function1()" "my_function2()" "my_function3()"
+                    "my_function4()" "my_function5()")
+                  result)
+    )
   )
 
 (defun get-tlc-collection-fun ()
