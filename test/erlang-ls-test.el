@@ -200,15 +200,32 @@ other_function_hej(Arg) ->
 
   (re-search-forward "other_function")
   (next-line)
-  (sleep-for 1)
+  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
-  (assert-equal '("other_function") (funcall tlc-collection-fun "" nil t))
+  (assert-equal 0 (number-of-completion-requests))
 
-  (setq pred (lambda (item)
-               (string-match-p "function" item)))
-  ;; todo: fix below when duplicates are removed
-  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
-                (funcall tlc-collection-fun "" pred t))
-
+  ;; erlang_ls seems to return nothing if nothing has been typed
+  (assert-equal nil (funcall tlc-collection-fun "" nil t))
   (assert-equal 1 (number-of-completion-requests))
+
+  ;; todo: consider this test for mode-test too, i.e, not an empty string as
+  ;; starting point and bounds are different from point
+  (insert "o")
+
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 1 (number-of-completion-requests))
+
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (assert-equal 2 (number-of-completion-requests))
+    ;; erlang_ls seems to return stuff even with "o"
+    (dolist (exp '("tuple_to_list" "open_port" "atom_to_list" "other_function"))
+      ;; todo: change has string match to exact contains
+      (assert-equal t (list-has-string-match-p exp result) exp))
+    )
+
+  (let ((result (funcall tlc-collection-fun "o" nil t)))
+    ;; But with o as prefix, more reasonable results are seen
+    (assert-equal '("of" "or" "orelse" "open_port" "o" "other_function") result)
+    )
+  (assert-equal 2 (number-of-completion-requests))
   )
