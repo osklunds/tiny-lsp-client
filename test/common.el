@@ -3,6 +3,8 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(setq debug-on-error t)
+
 (defun assert-equal (exp act &optional label)
   (when (not (equal exp act))
     (message "")
