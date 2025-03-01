@@ -128,4 +128,4 @@ impact. Can consider optimizations.
 2. Operations inside lib.rs are cheap. No GC (except for lisp) and rust is faster than lisp (probably for native compiled lisp too, but would be interesting to compare). However, the user needs to wait.
 3. Operations inside tiny-lsp-client.el and other lisp code is expensive.
 
-So prioritize to put operations in 1, and then 2, and only 3 if needed.
+So prioritize to put operations in 1, and then 2, and only 3 if needed. capf filtering has to be done at 3, and this is where lsp-bridge can avoid big costs. Maybe I can call a rust function to filter? Maybe filtering 50K isn't expensive (that's normal work for counsel "rg --files" and also see this SO QA: https://emacs.stackexchange.com/questions/15276/how-do-i-write-a-simple-completion-at-point-functions-function)
