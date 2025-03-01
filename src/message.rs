@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -109,7 +112,7 @@ impl LocationLink {
     pub fn to_location(self) -> Location {
         Location {
             uri: self.target_uri,
-            range: self.target_selection_range
+            range: self.target_selection_range,
         }
     }
 }
@@ -125,7 +128,7 @@ pub struct CompletionItem {
     #[serde(rename = "insertText")]
     pub insert_text: Option<String>,
     #[serde(rename = "textEdit")]
-    pub text_edit: Option<TextEdit>
+    pub text_edit: Option<TextEdit>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
