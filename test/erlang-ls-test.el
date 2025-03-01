@@ -82,6 +82,8 @@
 (tlc-deftest edit-test ()
   (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
 
+  (sleep-for 1) ;; prevent instability
+
   (assert-equal 
    "-module(my_module).
 
@@ -219,8 +221,7 @@ other_function_hej(Arg) ->
     (assert-equal 2 (number-of-completion-requests))
     ;; erlang_ls seems to return stuff even with "o"
     (dolist (exp '("tuple_to_list" "open_port" "atom_to_list" "other_function"))
-      ;; todo: change has string match to exact contains
-      (assert-equal t (list-has-string-match-p exp result) exp))
+      (assert (cl-member exp result :test 'string-equal) exp))
     )
 
   (let ((result (funcall tlc-collection-fun "o" nil t)))

@@ -22,10 +22,10 @@
     )
   (should (equal exp act)))
 
-(defun assert-nil (act &optional label)
+(defun assert-not (act &optional label)
   (assert-equal nil act label))
 
-(defun assert-non-nil (act &optional label)
+(defun assert (act &optional label)
   (assert-equal t (not (not act)) label))
 
 (defun run-shell-command (command &rest components)
@@ -76,9 +76,6 @@
 
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
-
-(defun list-has-string-match-p (string list)
-  (null (null (cl-member string list :test 'string-match-p))))
 
 ;; -----------------------------------------------------------------------------
 ;; Test case framework

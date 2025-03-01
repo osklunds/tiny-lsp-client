@@ -566,8 +566,8 @@ abc(123);
                    "my_var1" "my_var2" "my_var3" "my_var4"
                    "my_variable1" "my_variable2" "my_variable3" "my_variable4"
                    "last_variable" "last_function"))
-      (assert-equal t (list-has-string-match-p exp result) exp))
-    (assert-equal nil (list-has-string-match-p "not_found" result))
+      (assert (cl-member exp result :test 'string-equal) exp))
+    (assert-not (cl-member "junk" result :test 'string-equal))
 
     ;; Results are cached, so no new request due to the above
     (assert-equal 1 (number-of-completion-requests)))
@@ -620,9 +620,9 @@ abc(123);
                (not (string-match-p "1" item))
                ))
   ;; Note, as soon as pred passed, what used to be a match is no longer a match
-  (assert-non-nil (funcall tlc-collection-fun "my_fun1" nil  'lambda))
-  (assert-nil     (funcall tlc-collection-fun "my_fun1" pred 'lambda))
-  (assert-non-nil (funcall tlc-collection-fun "my_var2" pred 'lambda) "my_var2")
+  (assert     (funcall tlc-collection-fun "my_fun1" nil  'lambda))
+  (assert-not (funcall tlc-collection-fun "my_fun1" pred 'lambda))
+  (assert     (funcall tlc-collection-fun "my_var2" pred 'lambda) "my_var2")
 
   (assert-equal 1 (number-of-completion-requests))
   )

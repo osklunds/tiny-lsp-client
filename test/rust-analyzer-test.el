@@ -55,7 +55,7 @@
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
   ;; to see that correct root is used by test cases
-  (assert-non-nil (string-suffix-p "tiny-lsp-client/test/rust_analyzer/" tlc--cached-root))
+  (assert (string-suffix-p "tiny-lsp-client/test/rust_analyzer/" tlc--cached-root))
   )
 
 (tlc-deftest find-definition-test ()
@@ -204,8 +204,7 @@ fn other_function_hej(arg: u32) -> u32 {
 
   (let ((result (funcall tlc-collection-fun "" nil t)))
     (assert-equal 1 (number-of-completion-requests))
-    (message "oskar: %s" result)
     (dolist (exp '("main" "other_function" "assert_eq!"))
-      (assert-equal t (list-has-string-match-p exp result) exp))
+      (assert (cl-member exp result :test 'string-equal) exp))
     )
   )
