@@ -354,6 +354,7 @@ unsafe fn handle_response(
     env: *mut emacs_env,
     response: Response,
 ) -> emacs_value {
+    let id = make_integer(env, response.id as i64);
     if let Some(result) = response.result {
         if let Result::TextDocumentDefinitionResult(definition_result) = result
         {
@@ -384,7 +385,6 @@ unsafe fn handle_response(
                 lisp_location_list_vec.push(lisp_location);
             }
             let lisp_location_list = call(env, "list", lisp_location_list_vec);
-            let id = make_integer(env, response.id as i64);
             call(
                 env,
                 "list",
@@ -407,7 +407,6 @@ unsafe fn handle_response(
 
             let completion_list = call(env, "list", completion_list_vec);
 
-            let id = make_integer(env, response.id as i64);
             call(
                 env,
                 "list",
@@ -421,9 +420,16 @@ unsafe fn handle_response(
             intern(env, "error-response")
         }
     } else {
-        // Now response.error should be Some, but since no details are
-        // returned anyway, no need to unwrap and risk crash
-        intern(env, "error-response")
+        if response.error.is_some() {
+            intern(env, "error-response")
+        } else {
+            // Happens e.g. when rust-analyzer doesn't send any completion result
+            call(
+                env,
+                "list",
+                vec![intern(env, "null-response"), id],
+            )
+        }
     }
 }
 

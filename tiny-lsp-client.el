@@ -365,6 +365,10 @@ path. When an existing LSP server is connected to, this hook is not run."
         ;; normal case - response to current request
         (t                 params)))
 
+      ;; alternative but valid case - the request was OK, but the server
+      ;; has nothing to reply.
+      (`(null-response, id) nil)
+
       ;; normal case - no response yet
       ('no-response (tlc--wait-for-response request-id))
 
