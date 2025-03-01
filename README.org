@@ -9,8 +9,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 
 - +phase 1: basics + find definition+
 - +phase 2: erlang+
-- phase 3: completions
-  - bug: rust-analyzer sometimes returns null as result
+- phase 3: completions (ongoing) 
   - async
   - fast filter ala lsp-bridge
 - phase 4: make public
