@@ -39,3 +39,75 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
       - Use clangd instead of rust-analyzer for rust tests
       - Separate lisp level rust-analyzer tests
       - More unit tests
+
+* notes
+
+rust-analzyer completion:
+{
+  "additionalTextEdits": [],
+  "deprecated": false,
+  "filterText": "S",
+  "kind": 25,
+  "label": "S",
+  "sortText": "7fffffff",
+  "textEdit": {
+    "newText": "S",
+    "range": {
+      "end": {
+        "character": 6,
+        "line": 493
+      },
+      "start": {
+        "character": 4,
+        "line": 493
+      }
+    }
+  }
+}
+clangd completion:
+{
+  "detail": "long",
+  "filterText": "my_function4",
+  "insertText": "my_function4",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": " my_function4()",
+  "score": 1.0087924003601074,
+  "sortText": "407edfe4my_function4",
+  "textEdit": {
+    "newText": "my_function4",
+    "range": {
+      "end": {
+        "character": 6,
+        "line": 25
+      },
+      "start": {
+        "character": 4,
+        "line": 25
+      }
+    }
+  }
+}
+erlang_ls completion:
+{
+  "kind": 14,
+  "label": "when"
+},
+{
+  "kind": 14,
+  "label": "xor"
+},
+{
+  "data": {},
+  "insertText": "binary_to_atom",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": "binary_to_atom/1"
+},
+{
+  "data": {},
+  "insertText": "binary_to_existing_atom",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": "binary_to_existing_atom/1"
+},
