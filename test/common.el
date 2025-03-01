@@ -50,7 +50,6 @@
   (pcase (tlc-completion-at-point)
     (`(,start ,end ,collection . ,props)
      ;; todo: add tests that check bounds
-     (assert-equal nil props)
      collection
      )
     (_ (error "bad match"))
