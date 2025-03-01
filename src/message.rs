@@ -131,6 +131,18 @@ pub struct CompletionItem {
     pub text_edit: Option<TextEdit>,
 }
 
+impl CompletionItem {
+    pub fn get_text(&self) -> &str {
+        if let Some(text_edit) = &self.text_edit {
+            &text_edit.new_text
+        } else if let Some(insert_text) = &self.insert_text {
+            &insert_text
+        } else {
+            &self.label
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct TextEdit {
     // todo: serde might had some option to camel case all fields
