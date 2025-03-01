@@ -444,7 +444,12 @@ path. When an existing LSP server is connected to, this hook is not run."
         ((eq (car-safe action) 'boundaries) nil)
         (t
          (complete-with-action action (funcall response-fun) probe pred))))
-     ))
+     :annotation-function
+     (lambda (_item)
+       (concat "tlc") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
   )
 
 ;; -----------------------------------------------------------------------------
