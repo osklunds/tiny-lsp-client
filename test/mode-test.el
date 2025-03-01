@@ -664,7 +664,104 @@ abc(123);
   (assert-equal "my_fun" (funcall tlc-collection-fun "my" pred nil))
   )
 
-;; todo: test bounds, test pred, test call again cache cleared
+(tlc-deftest capf-cache-test ()
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal
+   "
+void my_fun1() {}
+short my_fun2() { return 1; }
+int my_fun3() { return 1; }
+long my_fun4() { return 1; }
+char my_fun5() { return 1; }
+
+void my_function1() {}
+short my_function2() { return 1; }
+int my_function3() { return 1; }
+long my_function4() { return 1; }
+char my_function5() { return 1; }
+
+void last_function() {
+    short my_var1 = 1;
+    int my_var2 = 1;
+    long my_var3 = 1;
+    char my_var4 = 1;
+
+    short my_variable1 = 1;
+    int my_variable2 = 1;
+    long my_variable3 = 1;
+    char my_variable4 = 1;
+
+    int last_variable = 2;
+
+}
+"
+   (current-buffer-string))
+
+  (re-search-forward "last_variable")
+  (next-line)
+
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  (assert-equal 0 (number-of-completion-requests))
+  (let ((result (funcall tlc-collection-fun "my_variable" nil t)))
+    (assert-equal '("my_variable1" "my_variable2" "my_variable3" "my_variable4")
+                  result)
+    )
+  (assert-equal 1 (number-of-completion-requests))
+
+  (insert "    int my_variable_new = 3;\n")
+
+  (assert-equal
+   "
+void my_fun1() {}
+short my_fun2() { return 1; }
+int my_fun3() { return 1; }
+long my_fun4() { return 1; }
+char my_fun5() { return 1; }
+
+void my_function1() {}
+short my_function2() { return 1; }
+int my_function3() { return 1; }
+long my_function4() { return 1; }
+char my_function5() { return 1; }
+
+void last_function() {
+    short my_var1 = 1;
+    int my_var2 = 1;
+    long my_var3 = 1;
+    char my_var4 = 1;
+
+    short my_variable1 = 1;
+    int my_variable2 = 1;
+    long my_variable3 = 1;
+    char my_variable4 = 1;
+
+    int last_variable = 2;
+    int my_variable_new = 3;
+
+}
+"
+   (current-buffer-string))
+
+  ;; Since same collection fun, same result without the new variable
+  (let ((result (funcall tlc-collection-fun "my_variable" nil t)))
+    (assert-equal '("my_variable1" "my_variable2" "my_variable3" "my_variable4")
+                  result)
+    )
+
+  (setq new-tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 1 (number-of-completion-requests))
+
+  ;; With a new collection fun, the new variable is visible
+  (let ((result (funcall new-tlc-collection-fun "my_variable" nil t)))
+    (assert-equal '("my_variable1" "my_variable2" "my_variable3" "my_variable4"
+                    "my_variable_new")
+                  result)
+    )
+  (assert-equal 2 (number-of-completion-requests))
+
+  )
 
 ;; next steps: fallback using insertText and textEdit
 ;; remove duplicates in lib.rs
