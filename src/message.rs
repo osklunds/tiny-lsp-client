@@ -122,6 +122,17 @@ pub struct CompletionResult {
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct CompletionItem {
     pub label: String,
+    #[serde(rename = "insertText")]
+    pub insert_text: Option<String>,
+    #[serde(rename = "textEdit")]
+    pub text_edit: Option<TextEdit>
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct TextEdit {
+    // todo: serde might had some option to camel case all fields
+    #[serde(rename = "newText")]
+    pub new_text: String,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]

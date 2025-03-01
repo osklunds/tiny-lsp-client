@@ -579,9 +579,9 @@ abc(123);
 
   ;; With prefix
   (let ((result (funcall tlc-collection-fun "my_f" nil t)))
-    (assert-equal '("my_fun1()" "my_fun2()" "my_fun3()" "my_fun4()" "my_fun5()"
-                    "my_function1()" "my_function2()" "my_function3()"
-                    "my_function4()" "my_function5()")
+    (assert-equal '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
+                    "my_function1" "my_function2" "my_function3"
+                    "my_function4" "my_function5")
                   result)
     )
 
@@ -590,15 +590,15 @@ abc(123);
                (string-match-p "y_function" item)
                ))
   (let ((result (funcall tlc-collection-fun "" pred t)))
-    (assert-equal '("my_function1()" "my_function2()" "my_function3()"
-                    "my_function4()" "my_function5()" "__PRETTY_FUNCTION__")
+    (assert-equal '("my_function1" "my_function2" "my_function3"
+                    "my_function4" "my_function5" "__PRETTY_FUNCTION__")
                   result)
     )
 
   ;; With prefix and pred
   (let ((result (funcall tlc-collection-fun "my" pred t)))
-    (assert-equal '("my_function1()" "my_function2()" "my_function3()"
-                    "my_function4()" "my_function5()")
+    (assert-equal '("my_function1" "my_function2" "my_function3"
+                    "my_function4" "my_function5")
                   result)
     )
   )
@@ -625,14 +625,14 @@ abc(123);
 
   (assert-equal 0 (number-of-completion-requests))
   (assert-equal nil (funcall tlc-collection-fun "my_fun"    nil 'lambda))
-  (assert-equal t   (funcall tlc-collection-fun "my_fun1()" nil 'lambda))
+  (assert-equal t   (funcall tlc-collection-fun "my_fun1" nil 'lambda))
 
   (setq pred (lambda (item)
                (not (string-match-p "1" item))
                ))
   ;; Note, as soon as pred passed, what used to be a match is no longer a match
-  (assert-non-nil (funcall tlc-collection-fun "my_fun1()" nil  'lambda))
-  (assert-nil     (funcall tlc-collection-fun "my_fun1()" pred 'lambda))
+  (assert-non-nil (funcall tlc-collection-fun "my_fun1" nil  'lambda))
+  (assert-nil     (funcall tlc-collection-fun "my_fun1" pred 'lambda))
   (assert-non-nil (funcall tlc-collection-fun "my_var2" pred 'lambda) "my_var2")
 
   (assert-equal 1 (number-of-completion-requests))
@@ -648,12 +648,11 @@ abc(123);
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   (assert-equal 0 (number-of-completion-requests))
-  (assert-equal nil              (funcall tlc-collection-fun "junk"           nil nil))
-  (assert-equal "my_"            (funcall tlc-collection-fun "my"             nil nil))
-  (assert-equal "my_fun"         (funcall tlc-collection-fun "my_f"           nil nil))
-  (assert-equal "my_function"    (funcall tlc-collection-fun "my_func"        nil nil))
-  (assert-equal "my_function1()" (funcall tlc-collection-fun "my_function1"   nil nil))
-  (assert-equal t                (funcall tlc-collection-fun "my_function1()" nil nil))
+  (assert-equal nil            (funcall tlc-collection-fun "junk"           nil nil))
+  (assert-equal "my_"          (funcall tlc-collection-fun "my"             nil nil))
+  (assert-equal "my_fun"       (funcall tlc-collection-fun "my_f"           nil nil))
+  (assert-equal "my_function"  (funcall tlc-collection-fun "my_func"        nil nil))
+  (assert-equal t              (funcall tlc-collection-fun "my_function1"   nil nil))
   (assert-equal 1 (number-of-completion-requests))
 
   (setq pred (lambda (item)

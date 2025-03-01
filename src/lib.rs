@@ -395,11 +395,17 @@ unsafe fn handle_response(
         {
             let mut completion_list_vec = Vec::new();
 
-            for completion_item in completion_result.items {
-                completion_list_vec.push(make_string(
-                    env,
-                    str::trim_start(&completion_item.label),
-                ));
+            for item in completion_result.items {
+                let text = if let Some(text_edit) = item.text_edit {
+                    text_edit.new_text
+                } else if let Some(insert_text) = item.insert_text {
+                    insert_text
+                } else {
+                    item.label
+                };
+
+                completion_list_vec
+                    .push(make_string(env, str::trim_start(&text)));
             }
 
             let completion_list = call(env, "list", completion_list_vec);
