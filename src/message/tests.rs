@@ -4,7 +4,7 @@ use serde_json::json;
 
 #[test]
 fn completion_result() {
-    let untyped: serde_json::Value = json!({
+    let json: serde_json::Value = json!({
         "jsonrpc": 2.0,
         "id": 123,
         "result": {
@@ -15,10 +15,8 @@ fn completion_result() {
             ]
         }
     });
-    let json: String = serde_json::to_string(&untyped).unwrap();
-    let typed: Message = serde_json::from_str(&json).unwrap();
 
-    let exp = Message::Response(Response {
+    let decoded = Message::Response(Response {
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(CompletionResult {
             items: vec![CompletionItem {
@@ -30,5 +28,11 @@ fn completion_result() {
         error: None,
     });
 
-    assert_eq!(exp, typed);
+    assert_json_decodes_into(json, decoded);
+}
+
+fn assert_json_decodes_into(json: serde_json::Value, exp_decoded: Message) {
+    let encoded: String = serde_json::to_string(&json).unwrap();
+    let decoded: Message = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(exp_decoded, decoded);
 }
