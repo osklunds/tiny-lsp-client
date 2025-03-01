@@ -214,3 +214,20 @@ int main() {
   (assert-equal 2 (number-of-did-open))
   (assert-equal 1 (number-of-did-close)) 
   )
+
+(tlc-deftest capf-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (re-search-forward "function_in_other_file")
+  (previous-line)
+
+  ;; Sleep to let clangd have time to start and be able to return more
+  ;; completions
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (setq result (funcall tlc-collection-fun "oth" nil t))
+  (assert-equal 1 (number-of-completion-requests))
+
+  (assert-equal '("other_function") result)
+  )

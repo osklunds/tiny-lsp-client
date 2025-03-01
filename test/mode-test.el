@@ -603,17 +603,6 @@ abc(123);
     )
   )
 
-(defun get-tlc-collection-fun ()
-  (pcase (tlc-completion-at-point)
-    (`(,start ,end ,collection . ,props)
-     (assert-equal (point) start)
-     (assert-equal (point) end)
-     (assert-equal nil props)
-     collection
-     )
-    (_ (error "bad match"))
-    ))
-
 (tlc-deftest capf-test-completion-test ()
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal 0 (number-of-completion-requests))

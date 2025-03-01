@@ -44,6 +44,17 @@
   (let ((xref-prompt-for-identifier nil))
     (call-interactively 'xref-find-definitions)))
 
+(defun get-tlc-collection-fun ()
+  (pcase (tlc-completion-at-point)
+    (`(,start ,end ,collection . ,props)
+     (assert-equal (point) start)
+     (assert-equal (point) end)
+     (assert-equal nil props)
+     collection
+     )
+    (_ (error "bad match"))
+    ))
+
 ;; Since this should always be 0, it's hard to know if it's working
 ;; properly
 (defun number-of-STDERR ()
