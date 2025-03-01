@@ -762,5 +762,6 @@ void last_function() {
 
   )
 
-;; next steps: fallback using insertText and textEdit
+;; test other servers too
+;; investigate what company does
 ;; remove duplicates in lib.rs
