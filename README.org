@@ -22,28 +22,36 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - Bugs
   - Higher priority
     - unicode support in URIs, need percentage encoding
-    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl support the convenient one
+    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl
+      support the convenient one
   - Lower priority
     - Sometimes duplicate didOpen/didClose
-    - At stop, sometimes get duplicate didOpen due to mode and server out of sync
+    - At stop, sometimes get duplicate didOpen due to mode and server out of
+      sync
     - If no server in current root, stop should set it as default
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
-    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
+    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but
+      still frequent possibilities to C-g. Can also fix exceed lisp nesting
     - if user answers no to restart server, disable mode
   - Lower priority
-    - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
-    - make (root, lang) key, so that one project with multiple languages can be supported.
+    - in general, ensure no bad args sent to rust. e.g. stop-server with "path"
+      because doesn't start with /
+    - make (root, lang) key, so that one project with multiple languages can be
+      supported.
     - consider caching didChange like eglot
-    - Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
+    - Clean up server.rs by having smaller functions (like read_header) and
+      having a flatter sructure since break can return early.
     - tests
       - Use clangd instead of rust-analyzer for rust tests
       - Separate lisp level rust-analyzer tests
       - More unit tests
+      - test error during xref or capf
     - understands bounds and symbol better for capf
-    - understand commit chars, range, etc from LSP better. Check what lsp-mode and eglot do
+    - understand commit chars, range, etc from LSP better. Check what lsp-mode
+      and eglot do
 
 * notes
 
