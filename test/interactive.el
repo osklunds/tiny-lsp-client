@@ -7,6 +7,11 @@
 
 (require 'cc-mode)
 
+(define-derived-mode erlang-mode prog-mode "Erlang"
+  "Fake erlang-mode for testing.")
+
+(add-to-list 'auto-mode-alist '("\\.erl\\'" . erlang-mode))
+
 (split-window-below)
 (other-window 1)
 (switch-to-buffer "*Messages*")
@@ -30,10 +35,13 @@
 (customize-set-variable 'tlc-log-to-stdio t)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
+(add-hook 'erlang-mode-hook 'tlc-mode)
 
-(define-key c++-mode-map (kbd "M-p") 'completion-at-point)
+(define-key prog-mode-map (kbd "M-p") 'completion-at-point)
 
-(find-file "test/clangd/main.cpp")
+;; (find-file "test/clangd/main.cpp")
+(find-file "test/erlang_ls/my_module.erl")
 
 (re-search-forward "other_function" nil nil 2)
+(re-search-forward "other_function" nil nil 1)
 (next-line)
