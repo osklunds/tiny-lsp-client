@@ -395,7 +395,12 @@ unsafe fn handle_response(
         {
             let mut completion_list_vec = Vec::new();
 
-            for item in completion_result.items {
+            let items = match completion_result {
+                CompletionResult::CompletionList(CompletionList { items }) => items,
+                CompletionResult::CompletionItems(items) => items,
+            };
+
+            for item in items {
                 completion_list_vec
                     .push(make_string(env, str::trim_start(item.get_text())));
             }

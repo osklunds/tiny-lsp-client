@@ -118,7 +118,14 @@ impl LocationLink {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct CompletionResult {
+#[serde(untagged)]
+pub enum CompletionResult {
+    CompletionList(CompletionList),
+    CompletionItems(Vec<CompletionItem>),
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionList {
     pub items: Vec<CompletionItem>,
 }
 
