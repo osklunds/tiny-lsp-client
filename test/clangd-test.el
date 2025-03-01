@@ -226,8 +226,13 @@ int main() {
   ;; completions
   (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
-  (setq result (funcall tlc-collection-fun "oth" nil t))
-  (assert-equal 1 (number-of-completion-requests))
+  (assert-equal '("other_function") (funcall tlc-collection-fun "oth" nil t))
 
-  (assert-equal '("other_function") result)
+  (setq pred (lambda (item)
+               (string-match-p "function" item)))
+  ;; todo: fix below when duplicates are removed
+  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
+                (funcall tlc-collection-fun "" pred t))
+
+  (assert-equal 1 (number-of-completion-requests))
   )
