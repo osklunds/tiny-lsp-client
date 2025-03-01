@@ -4,18 +4,19 @@
 #[allow(warnings)]
 #[rustfmt::skip]
 mod dummy;
-mod server;
-mod servers;
 mod emacs;
 mod logger;
 mod message;
+mod server;
+mod servers;
 
-use crate::server::Server;
 use crate::emacs::*;
 use crate::message::*;
+use crate::server::Server;
 
 use std::os::raw;
 use std::path::Path;
+use std::str;
 use std::sync::atomic::Ordering;
 
 #[no_mangle]
@@ -68,13 +69,7 @@ pub unsafe extern "C" fn emacs_module_init(
         "tlc--rust-send-notification",
     );
 
-    export_function(
-        env,
-        2,
-        2,
-        tlc__rust_set_option,
-        "tlc--rust-set-option",
-    );
+    export_function(env, 2, 2, tlc__rust_set_option, "tlc--rust-set-option");
 
     export_function(
         env,
@@ -109,10 +104,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
                 vec![
                     make_string(env, root_path),
                     make_string(env, server.get_command()),
-                    make_integer(
-                        env,
-                        server.get_server_process_id() as i64,
-                    ),
+                    make_integer(env, server.get_server_process_id() as i64),
                 ],
             );
             server_info_list.push(info);
@@ -166,6 +158,8 @@ unsafe extern "C" fn tlc__rust_send_request(
 
         let request_params = if request_type == "textDocument/definition" {
             build_text_document_definition(env, request_args, server)
+        } else if request_type == "textDocument/completion" {
+            build_text_document_completion(env, request_args, server)
         } else {
             panic!("Incorrect request type")
         };
@@ -194,6 +188,29 @@ unsafe fn build_text_document_definition(
     RequestParams::DefinitionParams(DefinitionParams {
         text_document: TextDocumentIdentifier { uri },
         position: Position { line, character },
+    })
+}
+
+#[allow(non_snake_case)]
+unsafe fn build_text_document_completion(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    _server: &mut Server,
+) -> RequestParams {
+    let file_path = nth(env, 0, request_args);
+    let file_path = check_path(extract_string(env, file_path));
+    let uri = file_path_to_uri(file_path);
+
+    let line = nth(env, 1, request_args);
+    let line = extract_integer(env, line) as usize;
+
+    let character = nth(env, 2, request_args);
+    let character = extract_integer(env, character) as usize;
+
+    RequestParams::CompletionParams(CompletionParams {
+        text_document: TextDocumentIdentifier { uri },
+        position: Position { line, character },
+        context: CompletionContext { trigger_kind: 1 },
     })
 }
 
@@ -337,12 +354,13 @@ unsafe fn handle_response(
     env: *mut emacs_env,
     response: Response,
 ) -> emacs_value {
+    let id = make_integer(env, response.id as i64);
     if let Some(result) = response.result {
         if let Result::TextDocumentDefinitionResult(definition_result) = result
         {
             let location_list = match definition_result {
                 DefinitionResult::LocationList(location_list) => location_list,
-                DefinitionResult::LocationLinkList(location_link_list) => {
+                DefinitionResult::LocationLinks(location_link_list) => {
                     location_link_list
                         .into_iter()
                         .map(|location_link| location_link.to_location())
@@ -367,11 +385,34 @@ unsafe fn handle_response(
                 lisp_location_list_vec.push(lisp_location);
             }
             let lisp_location_list = call(env, "list", lisp_location_list_vec);
-            let id = make_integer(env, response.id as i64);
             call(
                 env,
                 "list",
                 vec![intern(env, "ok-response"), id, lisp_location_list],
+            )
+        } else if let Result::TextDocumentCompletionResult(completion_result) =
+            result
+        {
+            let mut completion_list_vec = Vec::new();
+
+            let items = match completion_result {
+                CompletionResult::CompletionList(CompletionList { items }) => {
+                    items
+                }
+                CompletionResult::CompletionItems(items) => items,
+            };
+
+            for item in items {
+                completion_list_vec
+                    .push(make_string(env, str::trim_start(item.get_text())));
+            }
+
+            let completion_list = call(env, "list", completion_list_vec);
+
+            call(
+                env,
+                "list",
+                vec![intern(env, "ok-response"), id, completion_list],
             )
         } else {
             logger::log_rust_debug!(
@@ -381,9 +422,12 @@ unsafe fn handle_response(
             intern(env, "error-response")
         }
     } else {
-        // Now response.error should be Some, but since no details are
-        // returned anyway, no need to unwrap and risk crash
-        intern(env, "error-response")
+        if response.error.is_some() {
+            intern(env, "error-response")
+        } else {
+            // Happens e.g. when rust-analyzer doesn't send any completion result
+            call(env, "list", vec![intern(env, "null-response"), id])
+        }
     }
 }
 

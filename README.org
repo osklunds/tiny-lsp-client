@@ -9,7 +9,9 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 
 - +phase 1: basics + find definition+
 - +phase 2: erlang+
-- phase 3: completions
+- phase 3: completions (ongoing) 
+  - async
+  - fast filter ala lsp-bridge
 - phase 4: make public
   - architecture
   - error strategy
@@ -19,21 +21,119 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - Bugs
   - Higher priority
     - unicode support in URIs, need percentage encoding
-    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl support the convenient one
+    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl
+      support the convenient one
   - Lower priority
     - Sometimes duplicate didOpen/didClose
-    - At stop, sometimes get duplicate didOpen due to mode and server out of sync
+    - At stop, sometimes get duplicate didOpen due to mode and server out of
+      sync
+    - If no server in current root, stop should set it as default
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
-    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
+    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but
+      still frequent possibilities to C-g. Can also fix exceed lisp nesting
+    - if user answers no to restart server, disable mode
   - Lower priority
-    - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
-    - make (root, lang) key, so that one project with multiple languages can be supported.
+    - in general, ensure no bad args sent to rust. e.g. stop-server with "path"
+      because doesn't start with /
+    - make (root, lang) key, so that one project with multiple languages can be
+      supported.
     - consider caching didChange like eglot
-    - Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
+    - Clean up server.rs by having smaller functions (like read_header) and
+      having a flatter sructure since break can return early.
     - tests
       - Use clangd instead of rust-analyzer for rust tests
       - Separate lisp level rust-analyzer tests
       - More unit tests
+      - test error during xref or capf
+      - Some tests are unstable, especially when running all
+    - understands bounds and symbol better for capf
+    - understand commit chars, range, etc from LSP better. Check what lsp-mode
+      and eglot do
+
+* notes
+
+rust-analzyer completion:
+{
+  "additionalTextEdits": [],
+  "deprecated": false,
+  "filterText": "S",
+  "kind": 25,
+  "label": "S",
+  "sortText": "7fffffff",
+  "textEdit": {
+    "newText": "S",
+    "range": {
+      "end": {
+        "character": 6,
+        "line": 493
+      },
+      "start": {
+        "character": 4,
+        "line": 493
+      }
+    }
+  }
+}
+clangd completion:
+{
+  "detail": "long",
+  "filterText": "my_function4",
+  "insertText": "my_function4",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": " my_function4()",
+  "score": 1.0087924003601074,
+  "sortText": "407edfe4my_function4",
+  "textEdit": {
+    "newText": "my_function4",
+    "range": {
+      "end": {
+        "character": 6,
+        "line": 25
+      },
+      "start": {
+        "character": 4,
+        "line": 25
+      }
+    }
+  }
+}
+erlang_ls completion:
+{
+  "kind": 14,
+  "label": "when"
+},
+{
+  "kind": 14,
+  "label": "xor"
+},
+{
+  "data": {},
+  "insertText": "binary_to_atom",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": "binary_to_atom/1"
+},
+{
+  "data": {},
+  "insertText": "binary_to_existing_atom",
+  "insertTextFormat": 1,
+  "kind": 3,
+  "label": "binary_to_existing_atom/1"
+},
+
+It seems like company calls the capf function for every keystroke, and thus
+triggering a request towards the LSP. But built-in capf only does it once. So
+built-in assumes the retrived once are always valid kind of. Maybe performance
+impact. Can consider optimizations.
+
+* Performance notes
+
+1. Operations inside send/recv threads are essentially free. No GC and no blocking for user. So JSON encode/decode is done there.
+2. Operations inside lib.rs are cheap. No GC (except for lisp) and rust is faster than lisp (probably for native compiled lisp too, but would be interesting to compare). However, the user needs to wait.
+3. Operations inside tiny-lsp-client.el and other lisp code is expensive.
+
+So prioritize to put operations in 1, and then 2, and only 3 if needed. capf filtering has to be done at 3, and this is where lsp-bridge can avoid big costs. Maybe I can call a rust function to filter? Maybe filtering 50K isn't expensive (that's normal work for counsel "rg --files" and also see this SO QA: https://emacs.stackexchange.com/questions/15276/how-do-i-write-a-simple-completion-at-point-functions-function)

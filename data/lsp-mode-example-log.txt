@@ -686,3 +686,159 @@ Params: {
     }
   ]
 }
+
+
+[Trace - 08:34:06 PM] Sending request 'textDocument/completion - (1032)'.
+Params: {
+  "textDocument": {
+    "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/server.rs"
+  },
+  "position": {
+    "line": 458,
+    "character": 9
+  },
+  "context": {
+    "triggerKind": 1
+  }
+}
+
+[Trace - 08:34:06 PM] Received response 'textDocument/completion - (1032)' in 193ms.
+Result: {
+  "isIncomplete": true,
+  "items": [
+    {
+      "label": "rust_2021 (use core::prelude::rust_2021)",
+      "kind": 9,
+      "documentation": {
+        "kind": "markdown",
+        "value": "The 2021 version of the core prelude.\n\nSee the [module-level documentation](self) for more."
+      },
+      "deprecated": null,
+      "sortText": "80000000",
+      "filterText": "rust_2021",
+      "textEdit": {
+        "newText": "rust_2021",
+        "insert": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        },
+        "replace": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        }
+      },
+      "additionalTextEdits": [],
+      "data": {
+        "position": {
+          "textDocument": {
+            "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/server.rs"
+          },
+          "position": {
+            "line": 458,
+            "character": 9
+          }
+        },
+        "imports": [
+          {
+            "full_import_path": "core::prelude::rust_2021",
+            "imported_name": "rust_2021"
+          }
+        ],
+        "version": 7
+      }
+    },
+    {
+      "label": "R10 (use libc::R10)",
+      "kind": 21,
+      "detail": "i32",
+      "deprecated": null,
+      "sortText": "80000000",
+      "filterText": "R10",
+      "textEdit": {
+        "newText": "R10",
+        "insert": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        },
+        "replace": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        }
+      },
+      "additionalTextEdits": [],
+      "data": {
+        "position": {
+          "textDocument": {
+            "uri": "file:///home/oskar/own_repos/tiny-lsp-client/src/server.rs"
+          },
+          "position": {
+            "line": 458,
+            "character": 9
+          }
+        },
+        "imports": [
+          {
+            "full_import_path": "libc::R10",
+            "imported_name": "R10"
+          }
+        ],
+        "version": 7
+      }
+    },
+
+    {
+      "label": "Response",
+      "kind": 22,
+      "detail": "Response",
+      "deprecated": null,
+      "sortText": "7fffffff",
+      "filterText": "Response",
+      "textEdit": {
+        "newText": "Response",
+        "insert": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        },
+        "replace": {
+          "start": {
+            "line": 458,
+            "character": 8
+          },
+          "end": {
+            "line": 458,
+            "character": 9
+          }
+        }
+      },
+      "additionalTextEdits": []
+    },

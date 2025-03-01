@@ -5,7 +5,7 @@
 
 ;; Moment 22: can't be in common.el because then common.el can't be found
 (defun relative-repo-root (&rest components)
-  (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
+  (let* ((repo-root (file-truename (locate-dominating-file "." ".git"))))
     (apply 'file-name-concat repo-root components)))
 
 (load (relative-repo-root "test" "common.el"))
@@ -71,7 +71,7 @@
   (non-interactive-xref-find-definitions)
 
   ;; Assert
-  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 11 (line-number-at-pos))
   (assert-equal 0 (current-column))
 
   (assert-equal 1 (number-of-did-open))
@@ -82,12 +82,15 @@
 (tlc-deftest edit-test ()
   (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
 
+  (sleep-for 1) ;; prevent instability
+
   (assert-equal 
    "-module(my_module).
 
 -export([my_function/1]).
 
 other_function(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -113,6 +116,7 @@ my_function(Arg) ->
 -export([my_function/1]).
 
 other_function_hej(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -125,7 +129,7 @@ my_function(Arg) ->
   (beginning-of-buffer)
   (re-search-forward "other")
   (re-search-forward "other")
-  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 12 (line-number-at-pos))
   (assert-equal 9 (current-column))
 
   (non-interactive-xref-find-definitions)
@@ -146,6 +150,7 @@ my_function(Arg) ->
 -export([my_ction/1]).
 
 other_function_hej(Arg) ->
+
     io:format(\"~p~n\", [Arg]).
 
 
@@ -161,7 +166,7 @@ other_function_hej(Arg) ->
   (assert-equal 13 (current-column))
 
   (non-interactive-xref-find-definitions)
-  (assert-equal 10 (line-number-at-pos))
+  (assert-equal 11 (line-number-at-pos))
   (assert-equal 4 (current-column))
   )
 
@@ -189,4 +194,39 @@ other_function_hej(Arg) ->
 
   (assert-equal 2 (number-of-did-open))
   (assert-equal 1 (number-of-did-close))
+  )
+
+(tlc-deftest capf-test ()
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (re-search-forward "other_function")
+  (next-line)
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 0 (number-of-completion-requests))
+
+  ;; erlang_ls seems to return nothing if nothing has been typed
+  (assert-equal nil (funcall tlc-collection-fun "" nil t))
+  (assert-equal 1 (number-of-completion-requests))
+
+  ;; todo: consider this test for mode-test too, i.e, not an empty string as
+  ;; starting point and bounds are different from point
+  (insert "o")
+
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 1 (number-of-completion-requests))
+
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (assert-equal 2 (number-of-completion-requests))
+    ;; erlang_ls seems to return stuff even with "o"
+    (dolist (exp '("tuple_to_list" "open_port" "atom_to_list" "other_function"))
+      (assert (cl-member exp result :test 'string-equal) exp))
+    )
+
+  (let ((result (funcall tlc-collection-fun "o" nil t)))
+    ;; But with o as prefix, more reasonable results are seen
+    (assert-equal '("of" "or" "orelse" "open_port" "o" "other_function") result)
+    )
+  (assert-equal 2 (number-of-completion-requests))
   )

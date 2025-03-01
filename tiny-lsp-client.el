@@ -1,3 +1,4 @@
+;;; tiny-lsp-client.el --- Tiny LSP Client  -*- lexical-binding: t; -*-
 
 (require 'tlc-rust "libtiny_lsp_client.so")
 (require 'subr-x)
@@ -127,6 +128,7 @@ path. When an existing LSP server is connected to, this hook is not run."
      (t
       (tlc--start-server)
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+      (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
@@ -139,6 +141,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -362,6 +365,10 @@ path. When an existing LSP server is connected to, this hook is not run."
         ;; normal case - response to current request
         (t                 params)))
 
+      ;; alternative but valid case - the request was OK, but the server
+      ;; has nothing to reply.
+      (`(null-response, id) nil)
+
       ;; normal case - no response yet
       ('no-response (tlc--wait-for-response request-id))
 
@@ -406,6 +413,44 @@ path. When an existing LSP server is connected to, this hook is not run."
                    "todo"
                    (xref-make-file-location file-target line-target character-start)))))
             response)))
+
+;; -----------------------------------------------------------------------------
+;; Capf
+;; -----------------------------------------------------------------------------
+
+;; Inspired by eglot
+(defun tlc-completion-at-point ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (cached-response 'none)
+         (response-fun (lambda ()
+                         (if (listp cached-response) cached-response
+                           (setq cached-response
+                                 (tlc--sync-request
+                                  "textDocument/completion"
+                                  (list file line character))))))
+         )
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (cond
+        ((eq action 'metadata) (progn
+                                 '(metadata . nil)))
+
+        ((eq (car-safe action) 'boundaries) nil)
+        (t
+         (complete-with-action action (funcall response-fun) probe pred))))
+     :annotation-function
+     (lambda (_item)
+       (concat "tlc") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
+  )
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"
@@ -536,7 +581,11 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
       (file-name-directory (buffer-file-name))
-    (tlc-find-root-default-function)))
+    (if (string-match-p "clangd" (buffer-file-name))
+        (file-name-directory (buffer-file-name))
+      (if (string-match-p "rust_analyzer" (buffer-file-name))
+          (file-name-parent-directory (file-name-directory (buffer-file-name)))
+        (tlc-find-root-default-function)))))
 
 (cl-defmacro tlc--widen (&rest body)
   `(save-excursion (save-restriction (widen) ,@body)))

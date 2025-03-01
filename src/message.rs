@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -24,6 +27,7 @@ pub struct Request {
 #[serde(untagged)]
 pub enum RequestParams {
     DefinitionParams(DefinitionParams),
+    CompletionParams(CompletionParams),
     Untyped(serde_json::Value),
 }
 
@@ -47,6 +51,20 @@ pub struct Position {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position,
+    pub context: CompletionContext,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionContext {
+    #[serde(rename = "triggerKind")]
+    pub trigger_kind: usize, // todo: enum
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
     pub id: u32,
     pub result: Option<Result>,
@@ -63,6 +81,7 @@ pub struct ResponseError {
 #[serde(untagged)]
 pub enum Result {
     TextDocumentDefinitionResult(DefinitionResult),
+    TextDocumentCompletionResult(CompletionResult),
     Untyped(serde_json::Value),
 }
 
@@ -70,7 +89,7 @@ pub enum Result {
 #[serde(untagged)]
 pub enum DefinitionResult {
     LocationList(Vec<Location>),
-    LocationLinkList(Vec<LocationLink>),
+    LocationLinks(Vec<LocationLink>),
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -93,9 +112,49 @@ impl LocationLink {
     pub fn to_location(self) -> Location {
         Location {
             uri: self.target_uri,
-            range: self.target_selection_range
+            range: self.target_selection_range,
         }
     }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum CompletionResult {
+    CompletionList(CompletionList),
+    CompletionItems(Vec<CompletionItem>),
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionList {
+    pub items: Vec<CompletionItem>,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct CompletionItem {
+    pub label: String,
+    #[serde(rename = "insertText")]
+    pub insert_text: Option<String>,
+    #[serde(rename = "textEdit")]
+    pub text_edit: Option<TextEdit>,
+}
+
+impl CompletionItem {
+    pub fn get_text(&self) -> &str {
+        if let Some(text_edit) = &self.text_edit {
+            &text_edit.new_text
+        } else if let Some(insert_text) = &self.insert_text {
+            &insert_text
+        } else {
+            &self.label
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct TextEdit {
+    // todo: serde might had some option to camel case all fields
+    #[serde(rename = "newText")]
+    pub new_text: String,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]

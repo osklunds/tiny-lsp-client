@@ -9,5 +9,6 @@ short other_function(int arg) {
 
 int main() {
     other_function(123);
+
     function_in_other_file();
 }

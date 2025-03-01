@@ -280,7 +280,7 @@ fn receive_until_definition_response_with_one_location_1(
     let response = server.recv_response().unwrap();
     if let Some(result) = &response.result {
         if let Result::TextDocumentDefinitionResult(result) = result {
-            if let DefinitionResult::LocationLinkList(result) = result {
+            if let DefinitionResult::LocationLinks(result) = result {
                 if !result.is_empty() {
                     return (response, next_id);
                 }
@@ -305,7 +305,7 @@ fn assert_definition_response(exp_target_range: Range, response: Response) {
     let Result::TextDocumentDefinitionResult(result) = result else {
         panic!()
     };
-    if let DefinitionResult::LocationLinkList(result) = result {
+    if let DefinitionResult::LocationLinks(result) = result {
         assert_eq!(1, result.len());
         let location_link = result[0].clone();
         let target_range = &location_link.target_range;

@@ -3,6 +3,8 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(setq debug-on-error t)
+
 (defun assert-equal (exp act &optional label)
   (when (not (equal exp act))
     (message "")
@@ -19,6 +21,12 @@
     (sleep-for 1)
     )
   (should (equal exp act)))
+
+(defun assert-not (act &optional label)
+  (assert-equal nil act label))
+
+(defun assert (act &optional label)
+  (assert-equal t (not (not act)) label))
 
 (defun run-shell-command (command &rest components)
   (message "-----------------------------------------------------------------------------")
@@ -38,6 +46,15 @@
   (let ((xref-prompt-for-identifier nil))
     (call-interactively 'xref-find-definitions)))
 
+(defun get-tlc-collection-fun ()
+  (pcase (tlc-completion-at-point)
+    (`(,start ,end ,collection . ,props)
+     ;; todo: add tests that check bounds
+     collection
+     )
+    (_ (error "bad match"))
+    ))
+
 ;; Since this should always be 0, it's hard to know if it's working
 ;; properly
 (defun number-of-STDERR ()
@@ -49,9 +66,12 @@
 (defun number-of-did-close ()
   (count-in-log-file "\"method\": \"textDocument/didClose\","))
 
+(defun number-of-completion-requests ()
+  (count-in-log-file "\"method\": \"textDocument/completion\","))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
-   (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+                     (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
 
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))

@@ -7,7 +7,7 @@
 
 ;; Moment 22: can't be in common.el because then common.el can't be found
 (defun relative-repo-root (&rest components)
-  (let* ((repo-root (file-truename (locate-dominating-file "." "Cargo.toml"))))
+  (let* ((repo-root (file-truename (locate-dominating-file "." ".git"))))
     (apply 'file-name-concat repo-root components)))
 
 (load (relative-repo-root "test" "common.el"))
@@ -98,6 +98,7 @@ short other_function(int arg) {
 
 int main() {
     other_function(123);
+
     function_in_other_file();
 }
 "
@@ -126,6 +127,7 @@ short other_function_hej(int arg) {
 
 int main() {
     other_function_hej(123);
+
     function_in_other_file();
 }
 "
@@ -165,6 +167,7 @@ short other_function_hej(int a) {
 
 int main() {
     other_function_hej(123);
+
     function_in_other_file();
 }
 "
@@ -210,4 +213,26 @@ int main() {
 
   (assert-equal 2 (number-of-did-open))
   (assert-equal 1 (number-of-did-close)) 
+  )
+
+(tlc-deftest capf-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (re-search-forward "function_in_other_file")
+  (previous-line)
+
+  ;; Sleep to let clangd have time to start and be able to return more
+  ;; completions
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal '("other_function") (funcall tlc-collection-fun "oth" nil t))
+
+  (setq pred (lambda (item)
+               (string-match-p "function" item)))
+  ;; todo: fix below when duplicates are removed
+  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
+                (funcall tlc-collection-fun "" pred t))
+
+  (assert-equal 1 (number-of-completion-requests))
   )

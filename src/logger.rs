@@ -60,7 +60,7 @@ pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
 
 const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
-const MAX_LOG_ENTRY_LEN_BYTES: usize = 2000;
+const MAX_LOG_ENTRY_LEN_BYTES: usize = 10000;
 
 struct LogFileInfo {
     log_file_name: String,

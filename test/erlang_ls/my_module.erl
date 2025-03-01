@@ -3,6 +3,7 @@
 -export([my_function/1]).
 
 other_function(Arg) ->
+
     io:format("~p~n", [Arg]).
 
 

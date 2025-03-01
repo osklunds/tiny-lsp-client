@@ -456,6 +456,7 @@ impl Server {
     pub fn initialize(&mut self) -> Option<()> {
         let root_uri = format!("file://{}", self.root_path);
 
+        // todo: consider what to send here, especially for completion
         let initialize_params = json!({
             "processId": process::id(),
             "rootUri": root_uri,
