@@ -639,8 +639,9 @@ abc(123);
   )
 
 (tlc-deftest capf-try-completion-test ()
-  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (re-search-forward "other_function" nil nil 2)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal 0 (number-of-completion-requests))
+  (re-search-forward "last_variable")
   (next-line)
 
   (sleep-for 0.5)
@@ -648,8 +649,11 @@ abc(123);
 
   (assert-equal 0 (number-of-completion-requests))
   (assert-equal nil              (funcall tlc-collection-fun "junk"           nil nil))
-  (assert-equal "other_function" (funcall tlc-collection-fun "other_functio"  nil nil))
-  (assert-equal t                (funcall tlc-collection-fun "other_function" nil nil))
+  (assert-equal "my_"            (funcall tlc-collection-fun "my"             nil nil))
+  (assert-equal "my_fun"         (funcall tlc-collection-fun "my_f"           nil nil))
+  (assert-equal "my_function"    (funcall tlc-collection-fun "my_func"        nil nil))
+  (assert-equal "my_function1()" (funcall tlc-collection-fun "my_function1"   nil nil))
+  (assert-equal t                (funcall tlc-collection-fun "my_function1()" nil nil))
   (assert-equal 1 (number-of-completion-requests))
   )
 
