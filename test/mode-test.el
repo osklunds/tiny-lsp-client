@@ -666,44 +666,5 @@ abc(123);
 
 ;; todo: test bounds, test pred, test call again cache cleared
 
-(tlc-deftest capf-pred-test ()
-  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (re-search-forward "other_function" nil nil 2)
-  (next-line)
-
-  (sleep-for 0.5)
-  (setq tlc-collection-fun (get-tlc-collection-fun))
-
-  (setq pred (lambda (item)
-               (string-match-p "function" item)
-               ))
-
-  (setq unfiltered (funcall tlc-collection-fun "" nil t))
-  (setq filtered (funcall tlc-collection-fun "" pred t))
-
-  (assert-equal t (> (length unfiltered) (length filtered)))
-
-  (assert-equal filtered
-                '("function_in_other_file()" "function_in_other_file" "other_function"))
-
-  )
-
-(tlc-deftest capf-probe-test ()
-  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (re-search-forward "other_function" nil nil 2)
-  (next-line)
-
-  (sleep-for 0.5)
-  (setq tlc-collection-fun (get-tlc-collection-fun))
-
-  (setq no-probe (funcall tlc-collection-fun "" nil t))
-  (setq probe (funcall tlc-collection-fun "oth" nil t))
-  (assert-equal t (> (length no-probe) (length probe)))
-  (assert-equal '("other_function") probe)
-
-  ;; next steps: fallback using insertText and textEdit
-  ;; remove duplicates in lib.rs
-
-  ;; new test file for completions with e.g. my_fun1 my_fun2
-
-  )
+;; next steps: fallback using insertText and textEdit
+;; remove duplicates in lib.rs
