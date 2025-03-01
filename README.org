@@ -11,7 +11,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - +phase 2: erlang+
 - phase 3: completions
   - bug: rust-analyzer sometimes returns null as result
-  - bug: bounds and symbol etc, seems problematic for erlang_ls interactive
   - async
   - fast filter ala lsp-bridge
 - phase 4: make public
@@ -43,6 +42,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
       - Use clangd instead of rust-analyzer for rust tests
       - Separate lisp level rust-analyzer tests
       - More unit tests
+    - understands bounds and symbol better for capf
+    - understand commit chars, range, etc from LSP better. Check what lsp-mode and eglot do
 
 * notes
 
