@@ -572,7 +572,9 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
 nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
       (file-name-directory (buffer-file-name))
-    (tlc-find-root-default-function)))
+    (if (string-match-p "clangd" (buffer-file-name))
+        (file-name-directory (buffer-file-name))
+      (tlc-find-root-default-function))))
 
 (cl-defmacro tlc--widen (&rest body)
   `(save-excursion (save-restriction (widen) ,@body)))
