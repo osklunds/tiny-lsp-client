@@ -396,7 +396,9 @@ unsafe fn handle_response(
             let mut completion_list_vec = Vec::new();
 
             let items = match completion_result {
-                CompletionResult::CompletionList(CompletionList { items }) => items,
+                CompletionResult::CompletionList(CompletionList { items }) => {
+                    items
+                }
                 CompletionResult::CompletionItems(items) => items,
             };
 
@@ -424,11 +426,7 @@ unsafe fn handle_response(
             intern(env, "error-response")
         } else {
             // Happens e.g. when rust-analyzer doesn't send any completion result
-            call(
-                env,
-                "list",
-                vec![intern(env, "null-response"), id],
-            )
+            call(env, "list", vec![intern(env, "null-response"), id])
         }
     }
 }
