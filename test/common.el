@@ -20,6 +20,12 @@
     )
   (should (equal exp act)))
 
+(defun assert-nil (act &optional label)
+  (assert-equal nil act label))
+
+(defun assert-non-nil (act &optional label)
+  (assert-equal t (not (not act)) label))
+
 (defun run-shell-command (command &rest components)
   (message "-----------------------------------------------------------------------------")
   (message "Running command '%s'" command)

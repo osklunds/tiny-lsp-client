@@ -615,16 +615,26 @@ abc(123);
     ))
 
 (tlc-deftest capf-test-completion-test ()
-  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (re-search-forward "other_function" nil nil 2)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal 0 (number-of-completion-requests))
+  (re-search-forward "last_variable")
   (next-line)
 
   (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   (assert-equal 0 (number-of-completion-requests))
-  (assert-equal nil (funcall tlc-collection-fun "other_functio"  nil 'lambda))
-  (assert-equal t   (funcall tlc-collection-fun "other_function" nil 'lambda))
+  (assert-equal nil (funcall tlc-collection-fun "my_fun"    nil 'lambda))
+  (assert-equal t   (funcall tlc-collection-fun "my_fun1()" nil 'lambda))
+
+  (setq pred (lambda (item)
+               (not (string-match-p "1" item))
+               ))
+  ;; Note, as soon as pred passed, what used to be a match is no longer a match
+  (assert-non-nil (funcall tlc-collection-fun "my_fun1()" nil  'lambda))
+  (assert-nil     (funcall tlc-collection-fun "my_fun1()" pred 'lambda))
+  (assert-non-nil (funcall tlc-collection-fun "my_var2" pred 'lambda) "my_var2")
+
   (assert-equal 1 (number-of-completion-requests))
   )
 

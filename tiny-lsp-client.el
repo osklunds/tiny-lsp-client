@@ -424,36 +424,25 @@ path. When an existing LSP server is connected to, this hook is not run."
          (cached-response 'none)
          (response-fun (lambda ()
                          (if (listp cached-response) cached-response
-                           (setq cached-response
-                                 (tlc--sync-request
-                                  "textDocument/completion"
-                                  (list file line character))))))
-         )
-    (list
-     (or (car bounds) (point))
-     (or (cdr bounds) (point))
-     ;; consider use complete-with-action like lsp-mode does
-     (lambda (probe pred action)
-       (pcase action
-         ('metadata (progn
-                      '(metadata . nil)))
-         ('nil (progn
-                 ;; todo: eglot doesn't pass pred here. Why?
-                 (try-completion probe (funcall response-fun))))
-         ('t (progn
-               (all-completions
-                ""
-                (funcall response-fun)
-                (lambda (item)
-                  (and (or (null pred) (funcall pred item))
-                       (string-prefix-p probe item completion-ignore-case))))))
-         ('lambda (progn
-                    ;; todo: eglot doesn't pass pred here. Why?
-                    (test-completion probe (funcall response-fun))))
-         (_ (progn
-              nil))
-         ))
-     )))
+(setq cached-response
+      (tlc--sync-request
+       "textDocument/completion"
+       (list file line character))))))
+            )
+            (list
+             (or (car bounds) (point))
+             (or (cdr bounds) (point))
+             ;; consider use complete-with-action like lsp-mode does
+             (lambda (probe pred action)
+               (cond
+                ((eq action 'metadata) (progn
+                                         '(metadata . nil)))
+
+                ((eq (car-safe action) 'boundaries) nil)
+                (t
+                 (complete-with-action action (funcall response-fun) probe pred))))
+             ))
+  )
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"
@@ -583,8 +572,8 @@ and if that fails, tries using \"git rev-parse --show-toplevel\"."
   "Special root finder used for developing tiny-lsp-client itself. Finds the
 nested projects inside the test directory as separate projects."
   (if (string-match-p "erlang_ls" (buffer-file-name))
-      (file-name-directory (buffer-file-name))
-    (tlc-find-root-default-function)))
+(file-name-directory (buffer-file-name))
+(tlc-find-root-default-function)))
 
 (cl-defmacro tlc--widen (&rest body)
   `(save-excursion (save-restriction (widen) ,@body)))
