@@ -89,7 +89,7 @@ pub enum Result {
 #[serde(untagged)]
 pub enum DefinitionResult {
     LocationList(Vec<Location>),
-    LocationLinkList(Vec<LocationLink>),
+    LocationLinks(Vec<LocationLink>),
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]

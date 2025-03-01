@@ -359,7 +359,7 @@ unsafe fn handle_response(
         {
             let location_list = match definition_result {
                 DefinitionResult::LocationList(location_list) => location_list,
-                DefinitionResult::LocationLinkList(location_link_list) => {
+                DefinitionResult::LocationLinks(location_link_list) => {
                     location_link_list
                         .into_iter()
                         .map(|location_link| location_link.to_location())
