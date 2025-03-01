@@ -553,56 +553,57 @@ abc(123);
   ;; Completions are lazily fetched
   (assert-equal 0 (number-of-completion-requests))
 
-  (setq result1 (funcall tlc-collection-fun "" nil t))
-  ;; After first call, a request is sent
-  (assert-equal 1 (number-of-completion-requests))
+  (setq result1 nil)
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (setq result1 result)
+    ;; After first call, a request is sent
+    (assert-equal 1 (number-of-completion-requests))
 
-  (assert-equal t (>= (length result1) 100))
-  (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
-                 "my_function1" "my_function2" "my_function3" "my_function4"
-                 "my_function5"
-                 "my_var1" "my_var2" "my_var3" "my_var4"
-                 "my_variable1" "my_variable2" "my_variable3" "my_variable4"
-                 "last_variable" "last_function"))
-    (assert-equal t (list-has-string-match-p exp result1) exp))
-  (assert-equal nil (list-has-string-match-p "not_found" result1))
+    (assert-equal t (>= (length result1) 100))
+    (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
+                   "my_function1" "my_function2" "my_function3" "my_function4"
+                   "my_function5"
+                   "my_var1" "my_var2" "my_var3" "my_var4"
+                   "my_variable1" "my_variable2" "my_variable3" "my_variable4"
+                   "last_variable" "last_function"))
+      (assert-equal t (list-has-string-match-p exp result) exp))
+    (assert-equal nil (list-has-string-match-p "not_found" result))
 
-  ;; Results are cached, so no new request due to the above
-  (assert-equal 1 (number-of-completion-requests))
+    ;; Results are cached, so no new request due to the above
+    (assert-equal 1 (number-of-completion-requests)))
 
-  (setq result2 (funcall tlc-collection-fun "" nil t))
-
-  ;; Still 1 thanks to cache, same tlc-collection-fun is being used
-  (assert-equal 1 (number-of-completion-requests))
-  (assert-equal result2 result1)
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    ;; Still 1 thanks to cache, same tlc-collection-fun is being used
+    (assert-equal 1 (number-of-completion-requests))
+    (assert-equal result result1))
 
   ;; With prefix
-  (setq result3 (funcall tlc-collection-fun "my_f" nil t))
-  (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
-                 "my_function1" "my_function2" "my_function3" "my_function4"
-                 "my_function5"))
-    (assert-equal t (list-has-string-match-p exp result3) exp))
-  (assert-equal nil (list-has-string-match-p "my_var1" result3) "with prefix")
+  (let ((result (funcall tlc-collection-fun "my_f" nil t)))
+    (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
+                   "my_function1" "my_function2" "my_function3" "my_function4"
+                   "my_function5"))
+      (assert-equal t (list-has-string-match-p exp result) exp))
+    (assert-equal nil (list-has-string-match-p "my_var1" result) "with prefix"))
 
   ;; With pred
   (setq pred (lambda (item)
                (string-match-p "function" item)
                ))
-  (setq result4 (funcall tlc-collection-fun "" pred t))
-  (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
-                 "my_function5" "last_function"))
-    (assert-equal t (list-has-string-match-p exp result4) exp))
-  (assert-equal nil (list-has-string-match-p "my_var1" result4) "with pred")
+
+  (let ((result (funcall tlc-collection-fun "" pred t)))
+    (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
+                   "my_function5" "last_function"))
+      (assert-equal t (list-has-string-match-p exp result) exp))
+    (assert-equal nil (list-has-string-match-p "my_var1" result) "with pred"))
 
   ;; With prefix and pred
-  (setq pred (lambda (item)
-               (string-match-p "function" item)
-               ))
-  (setq result5 (funcall tlc-collection-fun "my" pred t))
-  (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
-                 "my_function5"))
-    (assert-equal t (list-has-string-match-p exp result5) exp))
-  (assert-equal nil (list-has-string-match-p "last_function" result5) "with prefix and pred")
+  (let ((result (funcall tlc-collection-fun "my" pred t)))
+    (dolist (exp '("my_function1" "my_function2" "my_function3" "my_function4"
+                   "my_function5"))
+      (assert-equal t (list-has-string-match-p exp result) exp))
+    (assert-equal nil
+                  (list-has-string-match-p "last_function" result)
+                  "with prefix and pred"))
   )
 
 (defun get-tlc-collection-fun ()
