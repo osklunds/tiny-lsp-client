@@ -22,4 +22,6 @@ void last_function() {
     long my_variable3 = 1;
     char my_variable4 = 1;
 
+    int last_variable = 2;
+
 }

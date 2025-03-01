@@ -539,11 +539,10 @@ abc(123);
   )
 
 (tlc-deftest capf-all-completions-test ()
-  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal 0 (number-of-completion-requests))
 
-  (re-search-forward "other_function" nil nil 2)
+  (re-search-forward "last_variable")
   (next-line)
 
   ;; Sleep to let clangd have time to start and be able to return more
@@ -555,12 +554,21 @@ abc(123);
   (assert-equal 0 (number-of-completion-requests))
 
   (setq result1 (funcall tlc-collection-fun "" nil t))
+  ;; After first call, a request is sent
   (assert-equal 1 (number-of-completion-requests))
 
   (assert-equal t (>= (length result1) 100))
+  (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
+                 "my_function1" "my_function2" "my_function3" "my_function4"
+                 "my_function5"
+                 "my_var1" "my_var2" "my_var3" "my_var4"
+                 "my_variable1" "my_variable2" "my_variable3" "my_variable4"
+                 "last_variable" "last_function"))
+    (assert-equal t (list-has-string-match-p exp result1) exp))
+  (assert-equal nil (list-has-string-match-p "not_found" result1))
 
-  (assert-equal nil (list-has-string-match-p "junk" result1))
-  (assert-equal t (list-has-string-match-p "other_function" result1))
+  ;; Results are cached, so no new request due to the above
+  (assert-equal 1 (number-of-completion-requests))
 
   ;; todo: test with not "" as string
   (setq result2 (funcall tlc-collection-fun "" nil t))
