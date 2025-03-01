@@ -574,7 +574,9 @@ nested projects inside the test directory as separate projects."
       (file-name-directory (buffer-file-name))
     (if (string-match-p "clangd" (buffer-file-name))
         (file-name-directory (buffer-file-name))
-      (tlc-find-root-default-function))))
+      (if (string-match-p "rust_analyzer" (buffer-file-name))
+          (file-name-parent-directory (file-name-directory (buffer-file-name)))
+        (tlc-find-root-default-function)))))
 
 (cl-defmacro tlc--widen (&rest body)
   `(save-excursion (save-restriction (widen) ,@body)))
