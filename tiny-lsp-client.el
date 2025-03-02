@@ -128,7 +128,8 @@ path. When an existing LSP server is connected to, this hook is not run."
      (t
       (tlc--start-server)
       (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-      (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
+      ;; (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
+      (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
@@ -142,6 +143,7 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
     (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -331,12 +333,14 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
-(defun tlc--sync-request (method arguments)
+(defun tlc--sync-request (method arguments &optional async)
   (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
      ;; normal case - request sent and request-id returned
-     ((integerp return) (tlc--wait-for-response return))
+     ((integerp return) (if async
+                            return
+                          (tlc--wait-for-response return (tlc--root))))
 
      ;; alternative but valid case - server crashed or not started
      ((equal 'no-server return) (progn
@@ -347,17 +351,17 @@ path. When an existing LSP server is connected to, this hook is not run."
      ;; bug case - bad return
      (t (error "bad return")))))
 
-(defun tlc--wait-for-response (request-id)
+(defun tlc--wait-for-response (request-id root-path &optional once)
   ;; todo: consider exponential back-off
-  (sit-for 0.1)
-  (let ((return (tlc--rust-recv-response (tlc--root))))
+  (sit-for 0.01)
+  (let ((return (tlc--rust-recv-response root-path)))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
       (`(ok-response ,id ,params)
        (cond
         ;; alternative but valid case - response to old request
-        ((< id request-id) (tlc--wait-for-response request-id))
+        ((< id request-id) (tlc--wait-for-response request-id root-path))
 
         ;; bug case - response to request id not yet sent
         ((> id request-id) (error "too big id"))
@@ -370,7 +374,8 @@ path. When an existing LSP server is connected to, this hook is not run."
       (`(null-response, id) nil)
 
       ;; normal case - no response yet
-      ('no-response (tlc--wait-for-response request-id))
+      ('no-response (unless once
+                      (tlc--wait-for-response request-id root-path)))
 
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
@@ -424,7 +429,7 @@ path. When an existing LSP server is connected to, this hook is not run."
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
-         (character (cadr pos))
+         (character (cdr pos))
          (cached-response 'none)
          (response-fun (lambda ()
                          (if (listp cached-response) cached-response
@@ -451,6 +456,109 @@ path. When an existing LSP server is connected to, this hook is not run."
      )
     )
   )
+
+;; -----------------------------------------------------------------------------
+;; Async capf
+;; -----------------------------------------------------------------------------
+
+(defvar tlc--async-current-timer nil)
+(defvar tlc--async-reqeust-id nil)
+(defvar tlc--async-cached-candidates nil)
+(defvar tlc--async-cache-start-point nil)
+(defvar tlc--async-cache-symbol nil)
+(defvar tlc--async-root-path nil)
+
+(defun tlc-async-completion-at-point ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cdr pos))
+         )
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (cond
+        ((eq action 'metadata) (progn
+                                 '(metadata . nil)))
+
+        ((eq (car-safe action) 'boundaries) nil)
+        (t
+         (complete-with-action action (tlc--async-collection-fun) probe pred))))
+     :annotation-function
+     (lambda (_item)
+       (concat "tlc async") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
+  )
+
+(defun tlc--async-collection-fun ()
+  (interactive)
+  (cond
+   ;; Can use cache
+   ((tlc--async-can-use-cache-p) tlc--async-cached-candidates)
+
+   ;; Refresh already in progress
+   ((integerp tlc--async-reqeust-id) (tlc--async-refresh-cache-1))
+
+   ;; Need to start a new refresh
+   (t (tlc--async-refresh-cache))))
+
+(defun tlc--async-can-use-cache-p ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (start (or (car bounds) (point)))
+         (end (or (cdr bounds) (point)))
+         (current-symbol (buffer-substring-no-properties start end)))
+    (and tlc--async-cache-symbol
+         tlc--async-cache-start-point
+         (string-prefix-p tlc--async-cache-symbol current-symbol)
+         (eq start tlc--async-cache-start-point))))
+
+(defun tlc--async-refresh-cache ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (start (or (car bounds) (point)))
+         (end (or (cdr bounds) (point)))
+         (current-symbol (buffer-substring-no-properties start end))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (request-id (tlc--sync-request
+                      "textDocument/completion"
+                      (list file line character)
+                      'async)))
+    (when tlc--async-current-timer
+      (cancel-timer tlc--async-current-timer))
+    (setq tlc--async-reqeust-id request-id)
+    (setq tlc--async-cache-start-point start)
+    (setq tlc--async-root-path (tlc--root))
+    (setq tlc--async-cache-symbol (buffer-substring-no-properties start end))
+    (tlc--async-refresh-cache-1)))
+
+(defun tlc--async-refresh-cache-1 ()
+  (let* ((while-result
+          (while-no-input
+            (tlc--wait-for-response tlc--async-reqeust-id tlc--async-root-path))))
+    (cond
+     ((eq while-result t)
+      (message "Interrupted.")
+      (when tlc--async-current-timer
+        (cancel-timer tlc--async-current-timer))
+      (setq tlc--async-current-timer
+            (run-with-idle-timer
+             0 nil 'tlc--async-refresh-cache-1)))
+     (t
+      (message "Got result")
+      (setq tlc--async-reqeust-id nil)
+      (setq tlc--async-current-timer nil)
+      (setq tlc--async-cached-candidates while-result)
+      ))))
+
+;; One bug: after second char typed in company, interrupted spams, and nothing
+;; happens until something is typed again. Also happens with built-in cap
+;; maybe when deleting text and then spamming cap
 
 ;; -----------------------------------------------------------------------------
 ;; Company
