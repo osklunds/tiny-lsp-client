@@ -133,6 +133,15 @@ triggering a request towards the LSP. But built-in capf only does it once. So
 built-in assumes the retrived once are always valid kind of. Maybe performance
 impact. Can consider optimizations.
 
+** async cached interruptible completion
+
+One function for getting completions async in the background. Use run-idle-timer
+and while-no-input.
+
+When triggering, check point and symbol at point. If same start and cached
+symbol is prefix of current symbol, then use cache if exists. Otherwise need to
+calculate new.
+
 * Performance notes
 
 1. Operations inside send/recv threads are essentially free. No GC and no blocking for user. So JSON encode/decode is done there.
