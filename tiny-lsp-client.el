@@ -483,10 +483,17 @@ path. When an existing LSP server is connected to, this hook is not run."
          (cached-response 'none)
          (response-fun (lambda ()
                          (if (listp cached-response) cached-response
-                           (setq cached-response
-                                 (tlc--sync-request
-                                  "textDocument/completion"
-                                  (list file line character))))))
+                           (let ((while-result
+                                  (while-no-input
+                                    (tlc--sync-request
+                                     "textDocument/completion"
+                                     (list file line character)))))
+                             (cond
+                              ;; Interrupted
+                              ((eq while-result t)
+                               nil)
+                              ;; Finished (todo: or C-g, need to think about that)
+                              (t (setq cached-response while-result)))))))
          )
     (list
      (or (car bounds) (point))
