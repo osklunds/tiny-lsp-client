@@ -458,19 +458,20 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun company-async-tlc (command &optional arg &rest _args)
   (interactive (list 'interactive))
-  (pcase command
-    (`prefix "async")
-    (`candidates
-     (cons :async
-           (lambda (callback)
-             (let* ((input arg)
-                    (capf-info (tlc-completion-at-point))
-                    (start (nth 0 capf-info))
-                    (end (nth 1 capf-info))
-                    (collection-fun (nth 2 capf-info))
-                    (probe (buffer-substring-no-properties start end))
-                    (candidates (funcall collection-fun probe nil t)))
-               (funcall callback candidates)))))))
+  (let* (
+         (capf-info (tlc-completion-at-point))
+         (start (nth 0 capf-info))
+         (end (nth 1 capf-info))
+         (collection-fun (nth 2 capf-info))
+         (probe (buffer-substring-no-properties start end))
+         )
+    (pcase command
+      (`prefix probe)
+      (`candidates
+       (cons :async
+             (lambda (callback)
+               (let* ((candidates (funcall collection-fun probe nil t)))
+                 (funcall callback candidates))))))))
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"
