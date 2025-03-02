@@ -349,7 +349,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc--wait-for-response (request-id)
   ;; todo: consider exponential back-off
-  (sleep-for 0.01)
+  (sit-for 0.1)
   (let ((return (tlc--rust-recv-response (tlc--root))))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
