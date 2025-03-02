@@ -366,9 +366,26 @@ path. When an existing LSP server is connected to, this hook is not run."
         ;; normal case - response to current request
         (t                 params)))
 
-      ;; alternative but valid case - the request was OK, but the server
-      ;; has nothing to reply.
-      (`(null-response, id) nil)
+      ;; IMPORTANT TODO: below is copied from ok case. Also for null,
+      ;; need to keep reading. But the code is copy-pasted! Make sure
+      ;; good test coverage before merging. Consider changing in rust side
+      ;; instead and make params nil if null response
+
+      ;; note, due to null returning immediately, it was mich faster to type
+      ;; with async capf. Also, when null resp fixed, and spamming,
+      ;; emacs froze completely.
+
+      ;; normal case - response has arrived
+      (`(null-response ,id)
+       (cond
+        ;; alternative but valid case - response to old request
+        ((< id request-id) (tlc--wait-for-response request-id root-path))
+
+        ;; bug case - response to request id not yet sent
+        ((> id request-id) (error "too big id"))
+
+        ;; normal case - response to current request
+        (t                 nil)))
 
       ;; normal case - no response yet
       ('no-response (unless once
@@ -485,14 +502,18 @@ path. When an existing LSP server is connected to, this hook is not run."
          (cached-response 'none)
          (response-fun (lambda ()
                          (if (listp cached-response) cached-response
-                           (let ((while-result
-                                  (while-no-input
-                                    (tlc--sync-request
-                                     "textDocument/completion"
-                                     (list file line character)))))
+                           (let* ((request-id (tlc--sync-request
+                                               "textDocument/completion"
+                                               (list file line character)
+                                               t))
+                                  (while-result
+                                   (while-no-input
+                                     (tlc--wait-for-response request-id (tlc--root)))
+                                   ))
                              (cond
                               ;; Interrupted
                               ((eq while-result t)
+                               ;; todo: send old result because looked good in company
                                nil)
                               ;; Finished (todo: or C-g, need to think about that)
                               (t (setq cached-response while-result)))))))
