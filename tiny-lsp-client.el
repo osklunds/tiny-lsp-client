@@ -127,9 +127,6 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc-mode -1))
      (t
       (tlc--start-server)
-      (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-      ;; (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
-      (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
@@ -143,7 +140,7 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
     (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
-    (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -399,6 +396,11 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Xref
 ;;------------------------------------------------------------------------------
 
+(defun tlc-use-xref ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
+
 (defun tlc-xref-backend () 'xref-tlc)
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
@@ -423,13 +425,18 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Capf
 ;; -----------------------------------------------------------------------------
 
+(defun tlc-use-sync-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
+
 ;; Inspired by eglot
 (defun tlc-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
-         (character (cdr pos))
+         (character (cadr pos))
          (cached-response 'none)
          (response-fun (lambda ()
                          (if (listp cached-response) cached-response
@@ -458,8 +465,56 @@ path. When an existing LSP server is connected to, this hook is not run."
   )
 
 ;; -----------------------------------------------------------------------------
-;; Async capf
+;; Async Capf
 ;; -----------------------------------------------------------------------------
+
+(defun tlc-use-async-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)))
+
+;; Inspired by eglot
+(defun tlc-async-completion-at-point ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (cached-response 'none)
+         (response-fun (lambda ()
+                         (if (listp cached-response) cached-response
+                           (setq cached-response
+                                 (tlc--sync-request
+                                  "textDocument/completion"
+                                  (list file line character))))))
+         )
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (cond
+        ((eq action 'metadata) (progn
+                                 '(metadata . nil)))
+
+        ((eq (car-safe action) 'boundaries) nil)
+        (t
+         (complete-with-action action (funcall response-fun) probe pred))))
+     :annotation-function
+     (lambda (_item)
+       (concat "async tlc") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
+  )
+
+;; -----------------------------------------------------------------------------
+;; Async cached capf
+;; -----------------------------------------------------------------------------
+
+(defun tlc-use-async-cached-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point nil t)))
 
 (defvar tlc--async-current-timer nil)
 (defvar tlc--async-reqeust-id nil)
@@ -468,12 +523,12 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defvar tlc--async-cache-symbol nil)
 (defvar tlc--async-root-path nil)
 
-(defun tlc-async-completion-at-point ()
+(defun tlc-async-cached-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
-         (character (cdr pos))
+         (character (acdr pos))
          )
     (list
      (or (car bounds) (point))
@@ -488,7 +543,7 @@ path. When an existing LSP server is connected to, this hook is not run."
          (complete-with-action action (tlc--async-collection-fun) probe pred))))
      :annotation-function
      (lambda (_item)
-       (concat "tlc async") ;; temporary, to see that completion comes from tlc
+       (concat "tlc cached async") ;; temporary, to see that completion comes from tlc
        )
      )
     )
