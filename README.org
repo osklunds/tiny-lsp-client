@@ -75,6 +75,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
         while-no-input. And with. And try to skip it for debug purposes
       - Understand how while-no-input, sit-for, and sleep-for interact.
       - Understand how company completes not just from prefix when used with LSP
+      - Understand how lsp-mode and eglot handle async and cached completions
 
 * notes
 
