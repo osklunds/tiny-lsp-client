@@ -161,7 +161,7 @@
                  "textDocument/definition"
                  `(,file-path 11 4)))
 
-  (sleep-for 0.1)
+  (sleep-for 2)
 
   (assert-equal `(response 2 t ((,file-path 5 6)))
                 (tlc--rust-recv-response root-path))
