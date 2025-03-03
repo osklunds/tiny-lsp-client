@@ -349,7 +349,7 @@ path. When an existing LSP server is connected to, this hook is not run."
      ;; bug case - bad return
      (t (error "bad return")))))
 
-(defun tlc--wait-for-response (request-id root-path &optional once)
+(defun tlc--wait-for-response (request-id root-path)
   ;; todo: consider exponential back-off
   (sit-for 0.01)
   (let ((return (tlc--rust-recv-response root-path)))
@@ -372,8 +372,7 @@ path. When an existing LSP server is connected to, this hook is not run."
         (t                 (when has-result params))))
 
       ;; normal case - no response yet
-      ('no-response (unless once
-                      (tlc--wait-for-response request-id root-path)))
+      ('no-response (tlc--wait-for-response request-id root-path))
 
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
