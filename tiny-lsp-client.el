@@ -426,6 +426,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; -----------------------------------------------------------------------------
 
 ;; todo: once the capf funs are working well, reduce the duplicated code
+;; todo: add tests for the other capfs too
 
 (defun tlc-use-sync-capf ()
   (interactive)
