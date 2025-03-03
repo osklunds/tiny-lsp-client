@@ -55,6 +55,14 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - understands bounds and symbol better for capf
     - understand commit chars, range, etc from LSP better. Check what lsp-mode
       and eglot do
+    - completion ideas
+      - if interrupted, send dabbrev
+      - if interrupted, keep calculating and use that as next last result. So
+        like the "cached async" but it keeps on refreashing and doesn't do it
+        just once in the beginning.
+      - for async, measure how much time it takes to do everything except
+        while-no-input. And with. And try to skip it for debug purposes
+      - Understand how while-no-input, sit-for, and sleep-for interact.
 
 * notes
 
