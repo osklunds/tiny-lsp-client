@@ -21,11 +21,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - +phase 1: basics + find definition+
 - +phase 2: erlang+
 - phase 3: completions (ongoing) 
-  - async
-    - allow typing while waiting for response
-    - handle slow servers
-    - company only request once
-  - fast filter ala lsp-bridge
+  - Test with real-world usage to see how smooth it is, and make it smoother
+  - Tests for all capf variants
 - phase 4: make public
   - architecture
   - error strategy
