@@ -492,6 +492,9 @@ path. When an existing LSP server is connected to, this hook is not run."
   (when tlc-mode
     (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)))
 
+;; For company integration, can consider clearing this on start completion
+(defvar tlc--async-last-candidates nil)
+
 ;; Inspired by eglot
 (defun tlc-async-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
@@ -499,9 +502,9 @@ path. When an existing LSP server is connected to, this hook is not run."
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
          (character (cadr pos))
-         (cached-response 'none)
+         (cached-candidates 'none)
          (response-fun (lambda ()
-                         (if (listp cached-response) cached-response
+                         (if (listp cached-candidates) cached-candidates
                            (let* ((request-id (tlc--sync-request
                                                "textDocument/completion"
                                                (list file line character)
@@ -513,10 +516,11 @@ path. When an existing LSP server is connected to, this hook is not run."
                              (cond
                               ;; Interrupted
                               ((eq while-result t)
-                               ;; todo: send old result because looked good in company
-                               nil)
+                               tlc--async-last-candidates)
                               ;; Finished (todo: or C-g, need to think about that)
-                              (t (setq cached-response while-result)))))))
+                              (t
+                               (setq tlc--async-last-candidates while-result)
+                               (setq cached-candidates while-result)))))))
          )
     (list
      (or (car bounds) (point))
