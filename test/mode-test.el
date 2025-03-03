@@ -35,6 +35,9 @@
 (customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
+;; todo: Add proper tests for these
+(add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers

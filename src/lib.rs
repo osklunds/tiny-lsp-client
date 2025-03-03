@@ -388,7 +388,12 @@ unsafe fn handle_response(
             call(
                 env,
                 "list",
-                vec![intern(env, "ok-response"), id, lisp_location_list],
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    lisp_location_list,
+                ],
             )
         } else if let Result::TextDocumentCompletionResult(completion_result) =
             result
@@ -409,10 +414,16 @@ unsafe fn handle_response(
 
             let completion_list = call(env, "list", completion_list_vec);
 
+            // todo: find a way to avoid duplicating the non-null OK responses
             call(
                 env,
                 "list",
-                vec![intern(env, "ok-response"), id, completion_list],
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    completion_list,
+                ],
             )
         } else {
             logger::log_rust_debug!(
@@ -426,7 +437,16 @@ unsafe fn handle_response(
             intern(env, "error-response")
         } else {
             // Happens e.g. when rust-analyzer doesn't send any completion result
-            call(env, "list", vec![intern(env, "null-response"), id])
+            call(
+                env,
+                "list",
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, false),
+                    make_bool(env, false),
+                ],
+            )
         }
     }
 }

@@ -125,7 +125,7 @@
 
   (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
 
-  (assert-equal `(ok-response 1 ((,file-path 4 6)))
+  (assert-equal `(response 1 t ((,file-path 4 6)))
                 (tlc--rust-recv-response root-path)
                 "recv resp first definition")
 
@@ -161,9 +161,9 @@
                  "textDocument/definition"
                  `(,file-path 11 4)))
 
-  (sleep-for 0.1)
+  (sleep-for 2)
 
-  (assert-equal `(ok-response 2 ((,file-path 5 6)))
+  (assert-equal `(response 2 t ((,file-path 5 6)))
                 (tlc--rust-recv-response root-path))
 
   ;; ---------------------------------------------------------------------------
@@ -215,7 +215,7 @@
 
   (sleep-for 2)
 
-  (assert-equal `(ok-response 3 ((,file-path 4 6)))
+  (assert-equal `(response 3 t ((,file-path 4 6)))
                 (tlc--rust-recv-response root-path))
 
   ;; ---------------------------------------------------------------------------

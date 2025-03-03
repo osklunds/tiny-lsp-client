@@ -127,8 +127,6 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc-mode -1))
      (t
       (tlc--start-server)
-      (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-      (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
       (add-hook 'after-revert-hook 'tlc--after-revert-hook nil t)
@@ -142,6 +140,8 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
     (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -332,11 +332,15 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
+  (let ((request-id (tlc--request method arguments)))
+    (tlc--wait-for-response request-id (tlc--root))))
+
+(defun tlc--request (method arguments)
   (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
      ;; normal case - request sent and request-id returned
-     ((integerp return) (tlc--wait-for-response return))
+     ((integerp return) return)
 
      ;; alternative but valid case - server crashed or not started
      ((equal 'no-server return) (progn
@@ -347,30 +351,30 @@ path. When an existing LSP server is connected to, this hook is not run."
      ;; bug case - bad return
      (t (error "bad return")))))
 
-(defun tlc--wait-for-response (request-id)
+(defun tlc--wait-for-response (request-id root-path)
   ;; todo: consider exponential back-off
-  (sleep-for 0.01)
-  (let ((return (tlc--rust-recv-response (tlc--root))))
+  (sit-for 0.01)
+  (let ((return (tlc--rust-recv-response root-path)))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
-      (`(ok-response ,id ,params)
+      (`(response ,id ,has-result ,params)
        (cond
         ;; alternative but valid case - response to old request
-        ((< id request-id) (tlc--wait-for-response request-id))
+        ((< id request-id) (tlc--wait-for-response request-id root-path))
 
         ;; bug case - response to request id not yet sent
         ((> id request-id) (error "too big id"))
 
         ;; normal case - response to current request
-        (t                 params)))
-
-      ;; alternative but valid case - the request was OK, but the server
-      ;; has nothing to reply.
-      (`(null-response, id) nil)
+        ;; todo: for now, has-result=nil is re-interpreted as params=nil which
+        ;; happens to work for textDocument/definition and
+        ;; textDocument/completion but it might not be the case in the future
+        ;; for all respones
+        (t                 (when has-result params))))
 
       ;; normal case - no response yet
-      ('no-response (tlc--wait-for-response request-id))
+      ('no-response (tlc--wait-for-response request-id root-path))
 
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
@@ -394,6 +398,11 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Xref
 ;;------------------------------------------------------------------------------
 
+(defun tlc-use-xref ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
+
 (defun tlc-xref-backend () 'xref-tlc)
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
@@ -405,7 +414,9 @@ path. When an existing LSP server is connected to, this hook is not run."
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
-         (response (tlc--sync-request "textDocument/definition" (list file line character))))
+         (response (tlc--sync-request
+                    "textDocument/definition"
+                    (list file line character))))
     (mapcar (lambda (location)
               (pcase-let ((`(,file-target ,line-start ,character-start) location))
                 (let ((line-target (+ line-start 1)))
@@ -417,6 +428,14 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; -----------------------------------------------------------------------------
 ;; Capf
 ;; -----------------------------------------------------------------------------
+
+;; todo: once the capf funs are working well, reduce the duplicated code
+;; todo: add tests for the other capfs too
+
+(defun tlc-use-sync-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
 ;; Inspired by eglot
 (defun tlc-completion-at-point ()
@@ -451,6 +470,208 @@ path. When an existing LSP server is connected to, this hook is not run."
      )
     )
   )
+
+;; -----------------------------------------------------------------------------
+;; Async Capf
+;; -----------------------------------------------------------------------------
+
+(defun tlc-use-async-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)))
+
+;; For company integration, can consider clearing this on start completion
+(defvar tlc--async-last-candidates nil)
+
+;; note, due to null returning immediately, it was mich faster to type with
+;; async capf. Also, when null resp fixed, and spamming, emacs froze completely.
+
+;; Inspired by eglot
+(defun tlc-async-completion-at-point ()
+  "While the user isn't typing, wait for a response. But as soon as there's any
+  typing, abort, and present the last result. `tlc-async-completion-at-point'
+  works well for fast (0-50ms) LSP servers. There's never any blocking while the
+  user is typing and a result is always shown. Once the user stops, the most
+  accurate result is shown as soon as the LSP server has responded."
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (cached-candidates 'none)
+         (response-fun (lambda ()
+                         (if (listp cached-candidates) cached-candidates
+                           (let* ((request-id (tlc--request
+                                               "textDocument/completion"
+                                               (list file line character)))
+                                  (while-result
+                                   (while-no-input
+                                     (tlc--wait-for-response request-id (tlc--root)))
+                                   ))
+                             (cond
+                              ;; Interrupted
+                              ((eq while-result t)
+                               tlc--async-last-candidates)
+                              ;; Finished (todo: or C-g, need to think about that)
+                              (t
+                               (setq tlc--async-last-candidates while-result)
+                               (setq cached-candidates while-result)))))))
+         )
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (cond
+        ((eq action 'metadata) (progn
+                                 '(metadata . nil)))
+
+        ((eq (car-safe action) 'boundaries) nil)
+        (t
+         (complete-with-action action (funcall response-fun) probe pred))))
+     :annotation-function
+     (lambda (_item)
+       (concat "async tlc") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
+  )
+
+;; -----------------------------------------------------------------------------
+;; Async cached capf
+;; -----------------------------------------------------------------------------
+
+(defun tlc-use-async-cached-capf ()
+  (interactive)
+  (when tlc-mode
+    (add-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point nil t)))
+
+(defvar tlc--async-current-timer nil)
+(defvar tlc--async-reqeust-id nil)
+(defvar tlc--async-cached-candidates nil)
+(defvar tlc--async-cache-start-point nil)
+(defvar tlc--async-cache-symbol nil)
+(defvar tlc--async-root-path nil)
+
+(defun tlc-async-cached-completion-at-point ()
+  "As soon as the user starts typing in a new location, fetch completion
+candidates from the LSP server in the background. Whenever the user is not
+typing, emacs waits for a response. Once a response is received, cache it, and
+re-use whenever the user completes in the same
+area. `tlc-async-cached-completion-at-point' works well when the LSP server is
+slow (1000-2000ms). It works under the assumption that new candidates are the
+same as the once already fetched as long as the prefix of what the user has
+typed stays the same. todo: this can be improved by re-fetching all the time
+and always using the latest result."
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (acdr pos))
+         )
+    (list
+     (or (car bounds) (point))
+     (or (cdr bounds) (point))
+     (lambda (probe pred action)
+       (cond
+        ((eq action 'metadata) (progn
+                                 '(metadata . nil)))
+
+        ((eq (car-safe action) 'boundaries) nil)
+        (t
+         (complete-with-action action (tlc--async-collection-fun) probe pred))))
+     :annotation-function
+     (lambda (_item)
+       (concat "tlc cached async") ;; temporary, to see that completion comes from tlc
+       )
+     )
+    )
+  )
+
+(defun tlc--async-collection-fun ()
+  (interactive)
+  (cond
+   ;; Can use cache
+   ((tlc--async-can-use-cache-p) tlc--async-cached-candidates)
+
+   ;; Refresh already in progress
+   ((integerp tlc--async-reqeust-id) (tlc--async-refresh-cache-1))
+
+   ;; Need to start a new refresh
+   (t (tlc--async-refresh-cache))))
+
+(defun tlc--async-can-use-cache-p ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (start (or (car bounds) (point)))
+         (end (or (cdr bounds) (point)))
+         (current-symbol (buffer-substring-no-properties start end)))
+    (and tlc--async-cache-symbol
+         tlc--async-cache-start-point
+         (string-prefix-p tlc--async-cache-symbol current-symbol)
+         (eq start tlc--async-cache-start-point))))
+
+(defun tlc--async-refresh-cache ()
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (start (or (car bounds) (point)))
+         (end (or (cdr bounds) (point)))
+         (current-symbol (buffer-substring-no-properties start end))
+         (file (tlc--buffer-file-name))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (car pos))
+         (character (cadr pos))
+         (request-id (tlc--sync-request
+                      "textDocument/completion"
+                      (list file line character))))
+    (when tlc--async-current-timer
+      (cancel-timer tlc--async-current-timer))
+    (setq tlc--async-reqeust-id request-id)
+    (setq tlc--async-cache-start-point start)
+    (setq tlc--async-root-path (tlc--root))
+    (setq tlc--async-cache-symbol (buffer-substring-no-properties start end))
+    (tlc--async-refresh-cache-1)))
+
+(defun tlc--async-refresh-cache-1 ()
+  (let* ((while-result
+          (while-no-input
+            (tlc--wait-for-response tlc--async-reqeust-id tlc--async-root-path))))
+    (cond
+     ((eq while-result t)
+      (message "Interrupted.")
+      (when tlc--async-current-timer
+        (cancel-timer tlc--async-current-timer))
+      (setq tlc--async-current-timer
+            (run-with-idle-timer
+             0 nil 'tlc--async-refresh-cache-1)))
+     (t
+      (message "Got result")
+      (setq tlc--async-reqeust-id nil)
+      (setq tlc--async-current-timer nil)
+      (setq tlc--async-cached-candidates while-result)
+      ))))
+
+;; One bug: after second char typed in company, interrupted spams, and nothing
+;; happens until something is typed again. Also happens with built-in cap
+;; maybe when deleting text and then spamming cap
+
+;; -----------------------------------------------------------------------------
+;; Company
+;; -----------------------------------------------------------------------------
+
+(defun company-async-tlc (command &optional arg &rest _args)
+  (interactive (list 'interactive))
+  (let* (
+         (capf-info (tlc-completion-at-point))
+         (start (nth 0 capf-info))
+         (end (nth 1 capf-info))
+         (collection-fun (nth 2 capf-info))
+         (probe (buffer-substring-no-properties start end))
+         )
+    (pcase command
+      (`prefix probe)
+      (`candidates
+       (cons :async
+             (lambda (callback)
+               (let* ((candidates (funcall collection-fun probe nil t)))
+                 (funcall callback candidates))))))))
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"

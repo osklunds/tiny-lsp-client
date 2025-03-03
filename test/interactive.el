@@ -45,10 +45,11 @@
 (add-hook 'rust-mode-hook 'tlc-mode)
 
 (define-key prog-mode-map (kbd "M-p") 'completion-at-point)
+(define-key prog-mode-map (kbd "M-o") 'tlc--async-collection-fun)
 
-;; (find-file "test/clangd/main.cpp")
-(find-file "test/erlang_ls/my_module.erl")
+(find-file "test/clangd/main.cpp")
+;; (find-file "test/erlang_ls/my_module.erl")
 
-;; (re-search-forward "other_function" nil nil 2)
-(re-search-forward "other_function" nil nil 1)
+(re-search-forward "other_function" nil nil 2)
+;; (re-search-forward "other_function" nil nil 1)
 (next-line)

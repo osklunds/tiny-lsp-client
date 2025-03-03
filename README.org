@@ -1,6 +1,17 @@
 
 * tiny-lsp-client
 
+** Configuration
+
+All of ~tiny-lsp-client~'s features are off by default, to be as onubtrusive as possible. To enable jump-to-definition (as a ~xref~ backend) and completion (as a ~completion-at-point~ function), do e.g. the following:
+
+#+begin_src emacs-lisp
+(add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-async-capf)
+#+end_src
+
+You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you only want xref for some major modes.
+
 * todos:
 
 dir with test projects/repos
@@ -10,11 +21,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - +phase 1: basics + find definition+
 - +phase 2: erlang+
 - phase 3: completions (ongoing) 
-  - async
-    - allow typing while waiting for response
-    - handle slow servers
-    - company only request once
-  - fast filter ala lsp-bridge
+  - Test with real-world usage to see how smooth it is, and make it smoother
+  - Tests for all capf variants
 - phase 4: make public
   - architecture
   - error strategy
@@ -24,8 +32,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
 - Bugs
   - Higher priority
     - unicode support in URIs, need percentage encoding
-    - unicode/utf8/utf16 position offset not working. Be non-compliant and onyl
-      support the convenient one
+    - unicode/utf8/utf16 position offset not working. Add tests for precision,
+      i.e., go to definition at the very end and very beginning of symbols.
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of
@@ -55,6 +63,16 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - understands bounds and symbol better for capf
     - understand commit chars, range, etc from LSP better. Check what lsp-mode
       and eglot do
+    - completion ideas
+      - if interrupted, send dabbrev
+      - if interrupted, keep calculating and use that as next last result. So
+        like the "cached async" but it keeps on refreashing and doesn't do it
+        just once in the beginning.
+      - for async, measure how much time it takes to do everything except
+        while-no-input. And with. And try to skip it for debug purposes
+      - Understand how while-no-input, sit-for, and sleep-for interact.
+      - Understand how company completes not just from prefix when used with LSP
+      - Understand how lsp-mode and eglot handle async and cached completions
 
 * notes
 
@@ -132,6 +150,15 @@ It seems like company calls the capf function for every keystroke, and thus
 triggering a request towards the LSP. But built-in capf only does it once. So
 built-in assumes the retrived once are always valid kind of. Maybe performance
 impact. Can consider optimizations.
+
+** async cached interruptible completion
+
+One function for getting completions async in the background. Use run-idle-timer
+and while-no-input.
+
+When triggering, check point and symbol at point. If same start and cached
+symbol is prefix of current symbol, then use cache if exists. Otherwise need to
+calculate new.
 
 * Performance notes
 

@@ -276,6 +276,21 @@ impl Server {
                     } else {
                         break;
                     }
+
+                    // For testing purposes, the below can be used to simulate
+                    // a slow server.
+                    // let new_stdout_tx = stdout_tx.clone();
+
+                    // thread::spawn(move || {
+                    //     match response.result {
+                    //         Some(Result::TextDocumentCompletionResult(_)) => {
+                    //             std::thread::sleep(Duration::from_millis(2000))
+                    //         }
+                    //         _ => (),
+                    //     }
+
+                    //     if let Ok(()) = new_stdout_tx.send(response) {}
+                    // });
                 }
 
                 if logger::is_log_enabled!(LOG_IO) {
