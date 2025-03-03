@@ -355,7 +355,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
-      (`(ok-response ,id ,params)
+      (`(response ,id ,has-result ,params)
        (cond
         ;; alternative but valid case - response to old request
         ((< id request-id) (tlc--wait-for-response request-id root-path))
@@ -364,7 +364,11 @@ path. When an existing LSP server is connected to, this hook is not run."
         ((> id request-id) (error "too big id"))
 
         ;; normal case - response to current request
-        (t                 params)))
+        ;; todo: for now, has-result=nil is re-interpreted as params=nil which
+        ;; happens to work for textDocument/definition and
+        ;; textDocument/completion but it might not be the case in the future
+        ;; for all respones
+        (t                 (when has-result params))))
 
       ;; IMPORTANT TODO: below is copied from ok case. Also for null,
       ;; need to keep reading. But the code is copy-pasted! Make sure
