@@ -140,6 +140,7 @@ path. When an existing LSP server is connected to, this hook is not run."
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
     (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
     (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
