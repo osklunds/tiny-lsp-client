@@ -370,10 +370,6 @@ path. When an existing LSP server is connected to, this hook is not run."
         ;; for all respones
         (t                 (when has-result params))))
 
-      ;; note, due to null returning immediately, it was mich faster to type
-      ;; with async capf. Also, when null resp fixed, and spamming,
-      ;; emacs froze completely.
-
       ;; normal case - no response yet
       ('no-response (unless once
                       (tlc--wait-for-response request-id root-path)))
@@ -481,6 +477,9 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 ;; For company integration, can consider clearing this on start completion
 (defvar tlc--async-last-candidates nil)
+
+;; note, due to null returning immediately, it was mich faster to type with
+;; async capf. Also, when null resp fixed, and spamming, emacs froze completely.
 
 ;; Inspired by eglot
 (defun tlc-async-completion-at-point ()
