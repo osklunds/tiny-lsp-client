@@ -331,14 +331,16 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
-(defun tlc--sync-request (method arguments &optional async)
+(defun tlc--sync-request (method arguments)
+  (let ((request-id (tlc--request method arguments)))
+    (tlc--wait-for-response request-id (tlc--root))))
+
+(defun tlc--request (method arguments)
   (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
      ;; normal case - request sent and request-id returned
-     ((integerp return) (if async
-                            return
-                          (tlc--wait-for-response return (tlc--root))))
+     ((integerp return) return)
 
      ;; alternative but valid case - server crashed or not started
      ((equal 'no-server return) (progn
@@ -412,7 +414,9 @@ path. When an existing LSP server is connected to, this hook is not run."
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
-         (response (tlc--sync-request "textDocument/definition" (list file line character))))
+         (response (tlc--sync-request
+                    "textDocument/definition"
+                    (list file line character))))
     (mapcar (lambda (location)
               (pcase-let ((`(,file-target ,line-start ,character-start) location))
                 (let ((line-target (+ line-start 1)))
@@ -497,10 +501,9 @@ path. When an existing LSP server is connected to, this hook is not run."
          (cached-candidates 'none)
          (response-fun (lambda ()
                          (if (listp cached-candidates) cached-candidates
-                           (let* ((request-id (tlc--sync-request
+                           (let* ((request-id (tlc--request
                                                "textDocument/completion"
-                                               (list file line character)
-                                               t))
+                                               (list file line character)))
                                   (while-result
                                    (while-no-input
                                      (tlc--wait-for-response request-id (tlc--root)))
@@ -617,8 +620,7 @@ and always using the latest result."
          (character (cadr pos))
          (request-id (tlc--sync-request
                       "textDocument/completion"
-                      (list file line character)
-                      'async)))
+                      (list file line character))))
     (when tlc--async-current-timer
       (cancel-timer tlc--async-current-timer))
     (setq tlc--async-reqeust-id request-id)
