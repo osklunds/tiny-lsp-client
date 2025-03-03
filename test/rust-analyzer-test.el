@@ -34,6 +34,8 @@
 (customize-set-variable 'tlc-find-root-function 'tlc-dev-find-root-function)
 
 (add-hook 'rust-mode-hook 'tlc-mode)
+(add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
