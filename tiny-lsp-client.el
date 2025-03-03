@@ -485,6 +485,11 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 ;; Inspired by eglot
 (defun tlc-async-completion-at-point ()
+  "While the user isn't typing, wait for a response. But as soon as there's any
+  typing, abort, and present the last result. `tlc-async-completion-at-point'
+  works well for fast (0-50ms) LSP servers. There's never any blocking while the
+  user is typing and a result is always shown. Once the user stops, the most
+  accurate result is shown as soon as the LSP server has responded."
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
@@ -546,6 +551,15 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defvar tlc--async-root-path nil)
 
 (defun tlc-async-cached-completion-at-point ()
+  "As soon as the user starts typing in a new location, fetch completion
+candidates from the LSP server in the background. Whenever the user is not
+typing, emacs waits for a response. Once a response is received, cache it, and
+re-use whenever the user completes in the same
+area. `tlc-async-cached-completion-at-point' works well when the LSP server is
+slow (1000-2000ms). It works under the assumption that new candidates are the
+same as the once already fetched as long as the prefix of what the user has
+typed stays the same. todo: this can be improved by re-fetching all the time
+and always using the latest result."
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
