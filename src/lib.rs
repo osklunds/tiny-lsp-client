@@ -388,7 +388,12 @@ unsafe fn handle_response(
             call(
                 env,
                 "list",
-                vec![intern(env, "response"), id, make_bool(env, true), lisp_location_list],
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    lisp_location_list,
+                ],
             )
         } else if let Result::TextDocumentCompletionResult(completion_result) =
             result
@@ -413,7 +418,12 @@ unsafe fn handle_response(
             call(
                 env,
                 "list",
-                vec![intern(env, "response"), id, make_bool(env, true), completion_list],
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    completion_list,
+                ],
             )
         } else {
             logger::log_rust_debug!(
@@ -427,7 +437,11 @@ unsafe fn handle_response(
             intern(env, "error-response")
         } else {
             // Happens e.g. when rust-analyzer doesn't send any completion result
-            call(env, "list", vec![intern(env, "response"), id, make_bool(env, false)])
+            call(
+                env,
+                "list",
+                vec![intern(env, "response"), id, make_bool(env, false)],
+            )
         }
     }
 }
