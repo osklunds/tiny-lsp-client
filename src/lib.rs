@@ -440,7 +440,12 @@ unsafe fn handle_response(
             call(
                 env,
                 "list",
-                vec![intern(env, "response"), id, make_bool(env, false)],
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, false),
+                    make_bool(env, false),
+                ],
             )
         }
     }
