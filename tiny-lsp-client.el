@@ -332,11 +332,13 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;;------------------------------------------------------------------------------
 
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--request method arguments)))
+  (let ((request-id (tlc--request method arguments (tlc--root))))
     (tlc--wait-for-response request-id (tlc--root))))
 
-(defun tlc--request (method arguments)
-  (let ((return (tlc--rust-send-request (tlc--root) method arguments)))
+;; tlc--request might be called from unexpected buffers due to async
+;; completion, so can't call (tlc--root) inside, so pass root-path
+(defun tlc--request (method arguments root-path)
+  (let ((return (tlc--rust-send-request root-path method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
      ;; normal case - request sent and request-id returned
@@ -351,6 +353,8 @@ path. When an existing LSP server is connected to, this hook is not run."
      ;; bug case - bad return
      (t (error "bad return")))))
 
+;; tlc--wait-for-response might be called from unexpected buffers due to async
+;; completion, so can't call (tlc--root) inside, so pass root-path
 (defun tlc--wait-for-response (request-id root-path)
   ;; todo: consider exponential back-off
   (sit-for 0.01)
@@ -499,14 +503,16 @@ path. When an existing LSP server is connected to, this hook is not run."
          (line (car pos))
          (character (cadr pos))
          (cached-candidates 'none)
+         (root (tlc--root))
          (response-fun (lambda ()
                          (if (listp cached-candidates) cached-candidates
                            (let* ((request-id (tlc--request
                                                "textDocument/completion"
-                                               (list file line character)))
+                                               (list file line character)
+                                               root))
                                   (while-result
                                    (while-no-input
-                                     (tlc--wait-for-response request-id (tlc--root)))
+                                     (tlc--wait-for-response request-id root))
                                    ))
                              (cond
                               ;; Interrupted
