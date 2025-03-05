@@ -24,6 +24,7 @@
 
 (add-to-list 'load-path default-directory)
 
+(shell-command "cargo build")
 
 ;; Manually require tlc-rust to get debug version, faster to compile that release
 (require 'tlc-rust "target/debug/libtiny_lsp_client.so")
@@ -43,6 +44,9 @@
 (add-hook 'c++-mode-hook 'tlc-mode)
 (add-hook 'erlang-mode-hook 'tlc-mode)
 (add-hook 'rust-mode-hook 'tlc-mode)
+
+(add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
 
 (define-key prog-mode-map (kbd "M-p") 'completion-at-point)
 (define-key prog-mode-map (kbd "M-o") 'tlc--async-collection-fun)
