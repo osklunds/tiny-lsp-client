@@ -35,6 +35,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - unicode/utf8/utf16 position offset not working. Add tests for precision,
       i.e., go to definition at the very end and very beginning of symbols.
     - sometimes core dump when doing async completion
+    - timestamps not clearing the oldest timestamp
   - Lower priority
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of
