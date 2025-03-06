@@ -65,6 +65,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
       - More unit tests
       - test error during xref or capf
       - Some tests are unstable, especially when running all
+    - get inspiration from emacs-module-rs and generalize lisp<->rust conversion
+      to encapsulate unsafe code better
     - understands bounds and symbol better for capf
     - understand commit chars, range, etc from LSP better. Check what lsp-mode
       and eglot do
