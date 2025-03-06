@@ -46,7 +46,9 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - when doing completions in c++ test file, clangd complained about non
       opened document
     - once, when jump to defintion while starting rust analyzer, seemed to get
-      stuck in infinite loop with 0 wait between try recv response
+      stuck in infinite loop with 0 wait between try recv response. Lot's of RAM
+      was being consumed. But it might be fixed once a request timeout is being
+      used.
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
