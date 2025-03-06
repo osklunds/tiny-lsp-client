@@ -6,6 +6,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use crate::logger;
 use std::ffi::CString;
 use std::ptr;
 use std::str;
@@ -127,18 +128,18 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
     env: *mut emacs_env,
     mut func: F,
 ) -> R {
-    // Naive way of retrying if fail. If non local exit is the cause of the
-    // core dump crash when async completion, can consider better ways to
-    // handle this.
+    // Consider better way of handling non local exit than trying again
     loop {
         let result = func();
         let status = (*env).non_local_exit_check.unwrap()(env);
         if status == emacs_funcall_exit_emacs_funcall_exit_return {
             return result;
         } else {
-            // todo: inside init this can be called, then log file
-            // hasn't been set yet
-            // logger::log_rust_debug!("non local exit: {}", status);
+            // logger can only be called once the log file has been initialized,
+            // which is not the case in emacs_module_init for example. But for
+            // now, gamble that no non-local exists until log file has been
+            // created.
+            logger::log_rust_debug!("non local exit: {}", status);
             (*env).non_local_exit_clear.unwrap()(env);
         }
     }
