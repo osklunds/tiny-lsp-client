@@ -127,6 +127,9 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
     env: *mut emacs_env,
     mut func: F,
 ) -> R {
+    // Naive way of retrying if fail. If non local exit is the cause of the
+    // core dump crash when async completion, can consider better ways to
+    // handle this.
     loop {
         let result = func();
         let status = (*env).non_local_exit_check.unwrap()(env);
