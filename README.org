@@ -44,6 +44,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - If no server in current root, stop should set it as default
     - when doing completions in c++ test file, clangd complained about non
       opened document
+    - once, when jump to defintion while starting rust analyzer, seemed to get
+      stuck in infinite loop with 0 wait between try recv response
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
