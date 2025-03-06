@@ -6,7 +6,6 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use crate::logger;
 use std::ffi::CString;
 use std::ptr;
 use std::str;
@@ -16,15 +15,17 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
 
     // First find the length
     let mut len: isize = 0;
-    let result_find_length =
-        copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len);
+    let result_find_length = handle_non_local_exit(env, || {
+        copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
+    });
     assert!(result_find_length);
     assert!(len > 0);
 
     // Then get the actual string
     let mut buf = vec![0; len as usize];
-    let result_get_string =
-        copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len);
+    let result_get_string = handle_non_local_exit(env, || {
+        copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len)
+    });
 
     assert!(result_get_string);
     len -= 1; // remove null-terminator
@@ -38,18 +39,18 @@ pub unsafe fn make_string<S: AsRef<str>>(
     let make_string = (*env).make_string.unwrap();
     let c_string = CString::new(string.as_ref()).unwrap();
     let len = c_string.as_bytes().len() as isize;
-    make_string(env, c_string.as_ptr(), len)
+    handle_non_local_exit(env, || make_string(env, c_string.as_ptr(), len))
 }
 
 pub unsafe fn extract_integer(
     env: *mut emacs_env,
     integer: emacs_value,
 ) -> i64 {
-    (*env).extract_integer.unwrap()(env, integer)
+    handle_non_local_exit(env, || (*env).extract_integer.unwrap()(env, integer))
 }
 
 pub unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
-    (*env).make_integer.unwrap()(env, integer)
+    handle_non_local_exit(env, || (*env).make_integer.unwrap()(env, integer))
 }
 
 pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
@@ -78,16 +79,18 @@ pub unsafe fn export_function(
 ) {
     let make_function = (*env).make_function.unwrap();
 
-    let emacs_fun = make_function(
-        env,
-        min_arity,
-        max_arity,
-        Some(fun),
-        // No docstring, but it's just internal functions and all have
-        // relatively self-explanatory names
-        ptr::null_mut(),
-        ptr::null_mut(),
-    );
+    let emacs_fun = handle_non_local_exit(env, || {
+        make_function(
+            env,
+            min_arity,
+            max_arity,
+            Some(fun),
+            // No docstring, but it's just internal functions and all have
+            // relatively self-explanatory names
+            ptr::null_mut(),
+            ptr::null_mut(),
+        )
+    });
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);
 }
 
@@ -109,7 +112,7 @@ pub unsafe fn call<F: AsRef<str>>(
 
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
     let symbol = CString::new(symbol).unwrap();
-    (*env).intern.unwrap()(env, symbol.as_ptr())
+    handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
 }
 
 pub unsafe fn nth(
