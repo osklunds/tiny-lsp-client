@@ -4,6 +4,10 @@
 (require 'subr-x)
 (require 'xref)
 
+(eval-and-compile
+  (cl-defmacro tlc--widen (&rest body)
+    `(save-excursion (save-restriction (widen) ,@body))))
+
 ;; -----------------------------------------------------------------------------
 ;; Configuration
 ;;------------------------------------------------------------------------------
@@ -814,8 +818,6 @@ nested projects inside the test directory as separate projects."
           (file-name-parent-directory (file-name-directory (buffer-file-name)))
         (tlc-find-root-default-function)))))
 
-(cl-defmacro tlc--widen (&rest body)
-  `(save-excursion (save-restriction (widen) ,@body)))
 
 
 (provide 'tiny-lsp-client)
