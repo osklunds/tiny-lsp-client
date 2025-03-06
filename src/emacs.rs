@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use std::ffi::CString;
 use std::ptr;
 use std::str;
+use crate::logger;
 
 pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     let copy_string_contents = (*env).copy_string_contents.unwrap();
@@ -96,12 +97,20 @@ pub unsafe fn call<F: AsRef<str>>(
     mut args: Vec<emacs_value>,
 ) -> emacs_value {
     let funcall = (*env).funcall.unwrap();
-    funcall(
+    let result = funcall(
         env,
         intern(env, func.as_ref()),
         args.len() as isize,
         args.as_mut_ptr(),
-    )
+    );
+    let status = (*env).non_local_exit_check.unwrap()(env);
+    if status == emacs_funcall_exit_emacs_funcall_exit_return {
+        result
+    } else {
+        logger::log_rust_debug!("non local exit");
+        (*env).non_local_exit_clear.unwrap()(env);
+        call(env, func, args)
+    }
 }
 
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
