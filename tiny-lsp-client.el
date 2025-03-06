@@ -28,7 +28,8 @@
                              (c++-mode . "clangd")
                              )
   "Which server command to use for various major modes."
-  :group 'tiny-lsp-client)
+  :group 'tiny-lsp-client
+  :type 'sexp) ;; todo: better type
 
 (defcustom tlc-find-root-function 'tlc-find-root-default-function
   "Function used for finding the root path of a project."
@@ -197,6 +198,10 @@ path. When an existing LSP server is connected to, this hook is not run."
   (tlc--log "tlc--before-revert-hook called. tlc-mode: %s" tlc-mode)
   (tlc--notify-text-document-did-close))
 
+;; To silence byte-compiler warning. It seems to only exist during revert.
+;; Maybe that's a sign it shouldn't be used?
+(defvar revert-buffer-preserve-modes)
+
 (defun tlc--after-revert-hook ()
   (tlc--log "tlc--after-revert-hook called. tlc-mode: %s. revert-buffer-preserve-modes: %s"
             tlc-mode
@@ -205,6 +210,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   ;; run and didOpen is called from there, and it would result in duplicate
   ;; didOpen calls. See
   ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Reverting.html
+  ;; todo: but it seems all relevant tests passed even without this
   (when revert-buffer-preserve-modes
     (tlc--notify-text-document-did-open)))
 
@@ -417,7 +423,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   (propertize (or (thing-at-point 'symbol) "")
               'identifier-at-point t))
 
-(cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) identifier)
+(cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) _identifier)
   (let* ((file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
@@ -572,12 +578,7 @@ slow (1000-2000ms). It works under the assumption that new candidates are the
 same as the once already fetched as long as the prefix of what the user has
 typed stays the same. todo: this can be improved by re-fetching all the time
 and always using the latest result."
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (file (tlc--buffer-file-name))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (car pos))
-         (character (acdr pos))
-         )
+  (let* ((bounds (bounds-of-thing-at-point 'symbol)))
     (list
      (or (car bounds) (point))
      (or (cdr bounds) (point))
@@ -623,7 +624,6 @@ and always using the latest result."
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (start (or (car bounds) (point)))
          (end (or (cdr bounds) (point)))
-         (current-symbol (buffer-substring-no-properties start end))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
@@ -666,7 +666,7 @@ and always using the latest result."
 ;; Company
 ;; -----------------------------------------------------------------------------
 
-(defun company-async-tlc (command &optional arg &rest _args)
+(defun company-async-tlc (command &optional _arg &rest _args)
   (interactive (list 'interactive))
   (let* (
          (capf-info (tlc-completion-at-point))
