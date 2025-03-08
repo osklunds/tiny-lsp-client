@@ -69,11 +69,12 @@ There is one =Server= object per project, and =lib.rs= stores a map of =(root pa
 
 =tiny-lsp-client.el= is where =tiny=lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
 
-* todos:
+* backlog:
 
 - Features
   - completions
-    - Tests for all capf variants
+    - Tests for async capf
+    - Small cleanup and reduce duplication
   - make public
     - architecture
     - error strategy
@@ -215,19 +216,10 @@ triggering a request towards the LSP. But built-in capf only does it once. So
 built-in assumes the retrived once are always valid kind of. Maybe performance
 impact. Can consider optimizations.
 
-** async cached interruptible completion
-
-One function for getting completions async in the background. Use run-idle-timer
-and while-no-input.
-
-When triggering, check point and symbol at point. If same start and cached
-symbol is prefix of current symbol, then use cache if exists. Otherwise need to
-calculate new.
-
-* Performance notes
+** Performance
 
 1. Operations inside send/recv threads are essentially free. No GC and no blocking for user. So JSON encode/decode is done there.
 2. Operations inside lib.rs are cheap. No GC (except for lisp) and rust is faster than lisp (probably for native compiled lisp too, but would be interesting to compare). However, the user needs to wait.
-3. Operations inside tiny-lsp-client.el and other lisp code is expensive.
+3. Operations inside tiny-lsp-client.el and other lisp code are expensive.
 
 So prioritize to put operations in 1, and then 2, and only 3 if needed. capf filtering has to be done at 3, and this is where lsp-bridge can avoid big costs. Maybe I can call a rust function to filter? Maybe filtering 50K isn't expensive (that's normal work for counsel "rg --files" and also see this SO QA: https://emacs.stackexchange.com/questions/15276/how-do-i-write-a-simple-completion-at-point-functions-function)
