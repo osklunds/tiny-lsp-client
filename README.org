@@ -14,7 +14,7 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
 
 * Design documentation
 
-The diagram below shows the most important aspects of the architecture. I got a lot of inspiration from [[https://github.com/zbelial/lspce][lspce]] and [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] when deciding on this architecture.
+The diagram below shows the most important aspects of the architecture. I got a lot of inspiration from [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] when deciding on this architecture.
 
 [[./doc/arch.svg]]
 
