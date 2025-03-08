@@ -14,45 +14,42 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
 
 * todos:
 
-dir with test projects/repos
-
-for tests, have one .el file per test case. It loads the rust module, runs initialize, starts some LSP server, sends some requests and asserts responses. If fail, either due to crash or enexpected value, maybe then and only then error code is non-0? Can check error code in .sh script. Can have as arg to sh both .el file to run and whether to have gui. gui useful to manually debug, non-gui good for regression testing.
-
-- +phase 1: basics + find definition+
-- +phase 2: erlang+
-- phase 3: completions (ongoing) 
-  - Test with real-world usage to see how smooth it is, and make it smoother
-  - Tests for all capf variants
-- phase 4: make public
-  - architecture
-  - error strategy
-  - logging
-  - test strategy
-  - licenses and attribution
+- Features
+  - completions
+    - Tests for all capf variants
+  - make public
+    - architecture
+    - error strategy
+    - logging
+    - test strategy
+    - licenses and attribution
+  - Completion leftovers
+    - 
+  - Haskell LSP
+  - Java LSP
 - Bugs
   - Higher priority
     - unicode support in URIs, need percentage encoding
     - unicode/utf8/utf16 position offset not working. Add tests for precision,
       i.e., go to definition at the very end and very beginning of symbols.
-    - Under observation, knock on wood, seems to be fixed: sometimes core dump
-      when doing async completion
   - Lower priority
     - make max log entry shorter again
-    - Sometimes duplicate didOpen/didClose
-    - At stop, sometimes get duplicate didOpen due to mode and server out of
-      sync
-    - If no server in current root, stop should set it as default
     - when doing completions in c++ test file, clangd complained about non
       opened document
     - once, when jump to defintion while starting rust analyzer, seemed to get
       stuck in infinite loop with 0 wait between try recv response. Lot's of RAM
       was being consumed. But it might be fixed once a request timeout is being
       used.
+  - Under observation
+    - sometimes core dump when doing async completion
+    - Sometimes duplicate didOpen/didClose
+    - At stop, sometimes get duplicate didOpen due to mode and server out of
+      sync
 - Improvements
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
-    - use try_recv_timeout wht 0.1s in rust, so that no busy wait in lisp, but
+    - use try_recv_timeout with 0.1s in rust, so that no busy wait in lisp, but
       still frequent possibilities to C-g. Can also fix exceed lisp nesting
     - if user answers no to restart server, disable mode
   - Lower priority
@@ -64,8 +61,7 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
     - Clean up server.rs by having smaller functions (like read_header) and
       having a flatter sructure since break can return early.
     - tests
-      - Use clangd instead of rust-analyzer for rust tests
-      - Separate lisp level rust-analyzer tests
+      - Use clangd instead of rust-analyzer for rust unit tests
       - More unit tests
       - test error during xref or capf
       - Some tests are unstable, especially when running all
@@ -84,6 +80,8 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
       - Understand how while-no-input, sit-for, and sleep-for interact.
       - Understand how company completes not just from prefix when used with LSP
       - Understand how lsp-mode and eglot handle async and cached completions
+  - Under observation
+    - Test with real-world usage to see how smooth completion is, and make it smoother
 
 * notes
 
