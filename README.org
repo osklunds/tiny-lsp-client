@@ -14,7 +14,7 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
 
 * Design documentation
 
-[[./doc/architecture.svg]]
+[[./doc/arch.svg]]
 
 * todos:
 
