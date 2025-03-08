@@ -1,7 +1,7 @@
 
 * tiny-lsp-client
 
-** Configuration
+* Configuration
 
 All of ~tiny-lsp-client~'s features are off by default, to be as onubtrusive as possible. To enable jump-to-definition (as a ~xref~ backend) and completion (as a ~completion-at-point~ function), do e.g. the following:
 
@@ -11,6 +11,10 @@ All of ~tiny-lsp-client~'s features are off by default, to be as onubtrusive as 
 #+end_src
 
 You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you only want xref for some major modes.
+
+* Design documentation
+
+[[./doc/architecture.svg]]
 
 * todos:
 
