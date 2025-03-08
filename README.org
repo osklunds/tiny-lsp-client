@@ -1,20 +1,80 @@
 
 * tiny-lsp-client
 
-* Configuration
+=tiny-lsp-client= is an LSP client for Emacs implemented in Rust. I call it tiny
+because it aims to only support a tiny feature set (as of this commit, find
+definition and code completion) and because it aims to have a tiny footprint,
+especially on memory and garbage collection. I created it for fun and because I
+was curious how this would turn out. =tiny-lsp-client= has many limitations,
+such as only supporting stdio LSP servers and not providing that much
+information in completion candidates. However, it works, and I use it as my
+daily driver.
 
-All of ~tiny-lsp-client~'s features are off by default, to be as onubtrusive as possible. To enable jump-to-definition (as a ~xref~ backend) and completion (as a ~completion-at-point~ function), do e.g. the following:
+* Usage
 
-#+begin_src emacs-lisp
+** Installation
+
+Prerequisite: rust and cargo need to be installed.
+
+1. Clone this git repository and add it to your =load-path=.
+2. Navigate to the cloned repo and run =cargo build --release=
+3. =(require 'tiny-lsp-client)=
+
+** Configuration
+
+Add =tlc-mode= to the mode hooks you want, for example:
+
+#+BEGIN_SRC emacs-lisp
+(add-hook 'c++-mode-hook 'tlc-mode)
+(add-hook 'rust-mode-hook 'tlc-mode)
+#+END_SRC
+
+All of =tiny-lsp-client='s features are off by default, to be as unobtrusive as
+possible. To enable jump-to-definition (as a =xref= backend) and completion (as
+a =completion-at-point-functions= function), do the following:
+
+#+BEGIN_SRC emacs-lisp
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
 (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
-#+end_src
+#+END_SRC
 
-You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you only want xref for some major modes.
+Or, suppose you only want =xref= for C++ but =xref= and =capf= for Rust, you can
+do the following:
+
+#+BEGIN_SRC emacs-lisp
+(add-hook 'c++-mode-hook 'tlc-use-xref)
+(add-hook 'rust-mode-hook 'tlc-use-xref)
+(add-hook 'rust-mode-hook 'tlc-use-async-capf)
+#+END_SRC
+
+For more configuration, refer to the =defcustom= options and their documentation
+in =tiny-lsp-client.el=. One =defcustom= worthy of extra highlight is
+=tlc-server-cmds=. =tlc-server-cmds= defines which server command to use for
+various major modes, and it needs customization if your mode and server aren't
+already in the default list. Another note is that some of the =defcustom= change
+variables in Rust, and must therefore be set using =customize-set-variable= and
+not =setq=.
+
+** The "control room"
+
+If there are issues, or you want to check how =tiny-lsp-client= and the LSP
+servers behave under the hood, there are some functions to help with that.
+
+| Function             | Description                                     |
+|----------------------+-------------------------------------------------|
+| =tlc-open-log-file=  | Open tiny-lsp-client's log file                 |
+| =tlc-info=           | Show information about running servers          |
+| =tlc-stop-server=    | Stop an LSP server                              |
+| =tlc-restart-server= | Restart the LSP server of the current root path |
+
+What's logged and where the log is stored is configured through =defcustom=
+variables.
 
 * Design documentation
 
-The diagram below shows the most important aspects of the architecture. I got a lot of inspiration from [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] when deciding on this architecture.
+The diagram below shows the most important aspects of the architecture. I got a
+lot of inspiration from [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] when deciding on
+this architecture.
 
 [[./doc/arch.svg]]
 
