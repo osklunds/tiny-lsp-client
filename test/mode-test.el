@@ -754,6 +754,36 @@ void last_function() {
 
   )
 
+(defun has-had-max-num-of-timestamps-many-times ()
+  (let* ((cmd (format
+               "cat %s | grep \"send thread has '10' timestamps\" | wc -l"
+               log-file-name))
+         (count (string-to-number (shell-command-to-string cmd))))
+    (> count 50)))
+
+(tlc-deftest timestamp-overflow-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-not (has-had-max-num-of-timestamps-many-times))
+
+  ;; Act
+  (dotimes (_ 100)
+    ;; need to call internal functions to be able to test async
+    (tlc--request
+     "textDocument/definition"
+     (list (tlc--buffer-file-name) 0 0)
+     (tlc--root)))
+
+  ;; Assert
+  ;; Doesn't test that the latest were removed, just that the code is triggered.
+  ;; I don't know a good way to test that oldest really is removed without
+  ;; a fake LSP server
+  ;; todo: maybe check the IO - receved (x ms) logs. That last 10 should
+  ;; have numbers
+  (assert (has-had-max-num-of-timestamps-many-times))
+  )
+
 ;; test other servers too
 ;; investigate what company does
 ;; remove duplicates in lib.rs

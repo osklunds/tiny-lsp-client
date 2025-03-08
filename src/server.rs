@@ -16,6 +16,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
+use std::collections::BTreeMap;
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
@@ -68,7 +69,7 @@ impl Server {
         let (stdin_tx, stdin_rx) = mpsc::channel();
         let child_send_thread = Arc::clone(&child);
 
-        let seq_num_timestamps_recv = Arc::new(Mutex::new(Vec::new()));
+        let seq_num_timestamps_recv = Arc::new(Mutex::new(BTreeMap::new()));
         let seq_num_timestamps_send = Arc::clone(&seq_num_timestamps_recv);
 
         // Receiver of messages from application
@@ -114,8 +115,10 @@ impl Server {
                                 let ts = Instant::now();
                                 let mut seq_num_timestamps =
                                     lock(&seq_num_timestamps_send);
-                                seq_num_timestamps.push((id, ts));
-                                seq_num_timestamps.truncate(10);
+                                seq_num_timestamps.insert(id, ts);
+                                while seq_num_timestamps.len() > 10 {
+                                    seq_num_timestamps.pop_first();
+                                }
 
                                 logger::log_rust_debug!(
                                     "send thread has '{}' timestamps: '{:?}'",
@@ -259,13 +262,10 @@ impl Server {
                             seq_num_timestamps.len(),
                             seq_num_timestamps
                         );
-                        let lookup_result = seq_num_timestamps
-                            .iter()
-                            .enumerate()
-                            .find(|(_i, (curr_id, _ts))| *curr_id == id);
-                        if let Some((index, (_id, ts))) = lookup_result {
+
+                        if let Some(ts) = seq_num_timestamps.get(&id) {
                             duration = Some(Some(ts.elapsed().as_millis()));
-                            seq_num_timestamps.swap_remove(index);
+                            seq_num_timestamps.remove(&id);
                         } else {
                             duration = Some(None);
                         }

@@ -36,7 +36,6 @@ for tests, have one .el file per test case. It loads the rust module, runs initi
       i.e., go to definition at the very end and very beginning of symbols.
     - Under observation, knock on wood, seems to be fixed: sometimes core dump
       when doing async completion
-    - timestamps not clearing the oldest timestamp
   - Lower priority
     - make max log entry shorter again
     - Sometimes duplicate didOpen/didClose
