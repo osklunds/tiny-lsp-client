@@ -129,7 +129,19 @@ There is one =Server= object per project, and =lib.rs= stores a map of =(root pa
 
 =tiny-lsp-client.el= is where =tiny=lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
 
-* backlog:
+* Copyright, license and acknowledgments
+
+The license for this repository is GPL v3, as specified by the separate
+=LICENSE= file.
+
+In general I have learned a lot and gotten many ideas and code snippets from
+some other LSP projects: [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]], [[https://www.gnu.org/software/emacs/manual/html_node/eglot/index.html][eglot]], [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and
+[[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]]. A big thank you to them. I have tried to mark in the code
+what I have copied from them (happily under GPL!).
+
+No copyright infringement intended. If you see an issue, I'm more than happy to fix it.
+
+* backlog
 
 - Features
   - completions
