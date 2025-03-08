@@ -23,8 +23,6 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
     - logging
     - test strategy
     - licenses and attribution
-  - Completion leftovers
-    - 
   - Haskell LSP
   - Java LSP
 - Bugs
