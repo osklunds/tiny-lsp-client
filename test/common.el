@@ -20,6 +20,7 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(setq load-prefer-newer t)
 (setq debug-on-error t)
 
 (defun assert-equal (exp act &optional label)
@@ -64,7 +65,7 @@
     (call-interactively 'xref-find-definitions)))
 
 (defun get-tlc-collection-fun ()
-  (pcase (tlc-completion-at-point)
+  (pcase (funcall (car completion-at-point-functions))
     (`(,start ,end ,collection . ,props)
      ;; todo: add tests that check bounds
      collection

@@ -54,7 +54,6 @@
 (add-hook 'c++-mode-hook 'tlc-mode)
 ;; todo: Add proper tests for these
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers
@@ -802,9 +801,10 @@ void last_function() {
   )
 
 (tlc-deftest async-capf-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal 0 (number-of-completion-requests))
-
+  (assert-equal '(tlc-async-completion-at-point t) completion-at-point-functions)
   (re-search-forward "last_variable")
   (next-line)
 
@@ -812,26 +812,61 @@ void last_function() {
   ;; completions
   (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
-
-  ;; Completions are lazily fetched
   (assert-equal 0 (number-of-completion-requests))
 
-  (let ((result (funcall tlc-collection-fun "" nil t)))
-    ;; After first call, a request is sent
-    (assert-equal 1 (number-of-completion-requests))
+  ;; Act
+  (setq result (funcall tlc-collection-fun "" nil t))
 
-    (assert-equal t (>= (length result) 100))
-    (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
-                   "my_function1" "my_function2" "my_function3" "my_function4"
-                   "my_function5"
-                   "my_var1" "my_var2" "my_var3" "my_var4"
-                   "my_variable1" "my_variable2" "my_variable3" "my_variable4"
-                   "last_variable" "last_function"))
-      (assert (cl-member exp result :test 'string-equal) exp))
-    (assert-not (cl-member "junk" result :test 'string-equal))
-    )
+  ;; Assert
+  (assert-equal 1 (number-of-completion-requests))
+
+  (assert-equal t (>= (length result) 100))
+  (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
+                 "my_function1" "my_function2" "my_function3" "my_function4"
+                 "my_function5"
+                 "my_var1" "my_var2" "my_var3" "my_var4"
+                 "my_variable1" "my_variable2" "my_variable3" "my_variable4"
+                 "last_variable" "last_function"))
+    (assert (cl-member exp result :test 'string-equal) exp))
+  (assert-not (cl-member "junk" result :test 'string-equal))
   )
 
-;; test other servers too
-;; investigate what company does
+(tlc-deftest async-capf-interrupted-by-user-input-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-async-completion-at-point t) completion-at-point-functions)
+  (re-search-forward "last_variable")
+  (next-line)
+
+  ;; Sleep to let clangd have time to start and be able to return more
+  ;; completions
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (setq result 'none)
+  (setq tlc--async-last-candidates '("previous candidate"))
+
+  ;; Act
+  ;; Trick from https://stackoverflow.com/a/32972563 used
+  (let ((unread-command-events (listify-key-sequence (kbd "a"))))
+    (setq result (funcall tlc-collection-fun "" nil t)))
+
+  ;; Assert
+  (assert-equal 1 (number-of-completion-requests))
+  (assert-equal '("previous candidate") result "async1")
+
+  ;; The candidates are not cached so different results might be returned.
+  ;; Unclear if this is breaking the intended capf interface. But it works
+  ;; well with company-mode.
+  (setq next-result (funcall tlc-collection-fun "" nil t))
+  (assert (cl-member "last_variable" next-result :test 'string-equal) "async2")
+  (assert-equal 2 (number-of-completion-requests))
+
+  ;; However, once a real result has been obtained, it's cached
+  (assert-equal next-result (funcall tlc-collection-fun "" nil t))
+  (assert-equal 2 (number-of-completion-requests))
+  )
+
 ;; remove duplicates in lib.rs
