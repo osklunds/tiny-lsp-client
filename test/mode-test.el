@@ -52,7 +52,7 @@
 (customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
-;; todo: Add proper tests for these
+;; todo: Add proper tests for tlc-use-*
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
 
 ;; -----------------------------------------------------------------------------
@@ -540,6 +540,7 @@ abc(123);
 
 (tlc-deftest completion-at-point-end-to-end-test ()
   ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -558,7 +559,9 @@ abc(123);
   )
 
 (tlc-deftest capf-all-completions-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
 
   (re-search-forward "last_variable")
@@ -623,7 +626,9 @@ abc(123);
   )
 
 (tlc-deftest capf-test-completion-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -647,7 +652,9 @@ abc(123);
   )
 
 (tlc-deftest capf-try-completion-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -672,7 +679,9 @@ abc(123);
   )
 
 (tlc-deftest capf-cache-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal
    "
 void my_fun1() {}
