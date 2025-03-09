@@ -1,3 +1,22 @@
+// Copyright (C) 2025 Oskar Lundström
+
+// This file is part of tiny-lsp-client.
+
+// tiny-lsp-client is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+
+// tiny-lsp-client is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+// details.
+
+// You should have received a copy of the GNU General Public License along with
+// tiny-lsp-client. If not, see <https://www.gnu.org/licenses/>.
+
+// @credits: This module as a whole is inspired by https://github.com/zbelial/lspce
+
 #[cfg(test)]
 mod tests;
 
@@ -32,13 +51,15 @@ pub struct Server {
 }
 
 impl Server {
+    // @credits: The startup of the child process and worker threads inspired by
+    // LspServer::new https://github.com/zbelial/lspce
     pub fn new(command: &str, root_path: &str) -> Option<Server> {
         let mut child = match Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
-            // When emacs in run in a terminal (using -nw), C-g causes the LSP
+            // When emacs is run in a terminal (using -nw), C-g causes the LSP
             // server child process to stop. It doesn't happen when running GUI
             // emacs.  For lsp-mode, this also doesn't happen, even in termimal.
             // Based on some research, it seems like C-g causes the terminal itself

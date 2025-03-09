@@ -1,3 +1,6 @@
+@credits: Thank you https://github.com/emacs-lsp/lsp-mode for being a great
+reference
+
 
 [Trace - 11:06:26 AM] Sending request 'initialize - (80)'.
 Params: {

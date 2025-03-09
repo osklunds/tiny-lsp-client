@@ -1,5 +1,25 @@
 ;;; tiny-lsp-client.el --- Tiny LSP Client  -*- lexical-binding: t; -*-
 
+;; Copyright (C) 2025 Oskar Lundström
+
+;; This file is part of tiny-lsp-client.
+
+;; tiny-lsp-client is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU General Public License as published by the Free
+;; Software Foundation, either version 3 of the License, or (at your option) any
+;; later version.
+
+;; tiny-lsp-client is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+;; FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
+
+;; You should have received a copy of the GNU General Public License along with
+;; tiny-lsp-client. If not, see <https:;;www.gnu.org/licenses/>.
+
+;; @credits: This file as a whole was inspired a lot by
+;; https://github.com/zbelial/lspce and eglot
+
 (require 'tlc-rust "libtiny_lsp_client.so")
 (require 'subr-x)
 (require 'xref)
@@ -291,7 +311,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (unless revert-buffer-in-progress-p
       (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
-;; Heavily inspired by eglot
+;; @credits: Heavily inspired by eglot
 ;; nil pos means current point
 (defun tlc--pos-to-lsp-pos (&optional pos)
   ;; Need to save restriction and widen to handle e.g. lsp-rename from
@@ -341,6 +361,8 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
+;; @credits: Reqeust/response mechanism inspired by
+;; https://github.com/zbelial/lspce
 (defun tlc--sync-request (method arguments)
   (let ((request-id (tlc--request method arguments (tlc--root))))
     (tlc--wait-for-response request-id (tlc--root))))
@@ -419,6 +441,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc-xref-backend () 'xref-tlc)
 
+;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
   (propertize (or (thing-at-point 'symbol) "")
               'identifier-at-point t))
@@ -451,7 +474,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   (when tlc-mode
     (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
-;; Inspired by eglot
+;; @credits: Inspired by eglot
 (defun tlc-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
@@ -500,7 +523,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; note, due to null returning immediately, it was mich faster to type with
 ;; async capf. Also, when null resp fixed, and spamming, emacs froze completely.
 
-;; Inspired by eglot
+;; @credits: Inspired by eglot
 (defun tlc-async-completion-at-point ()
   "While the user isn't typing, wait for a response. But as soon as there's any
   typing, abort, and present the last result. `tlc-async-completion-at-point'

@@ -1,5 +1,23 @@
-// Heavily inspired by https://github.com/zbelial/lspce
-// and https://ryanfaulhaber.com/posts/first-emacs-module-rust/
+// Copyright (C) 2025 Oskar Lundström
+
+// This file is part of tiny-lsp-client.
+
+// tiny-lsp-client is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+
+// tiny-lsp-client is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+// details.
+
+// You should have received a copy of the GNU General Public License along with
+// tiny-lsp-client. If not, see <https://www.gnu.org/licenses/>.
+
+// @credits: This module as a whole is inspired by
+// https://github.com/zbelial/lspce and
+// https://ryanfaulhaber.com/posts/first-emacs-module-rust/
 
 #[allow(warnings)]
 #[rustfmt::skip]
@@ -540,6 +558,8 @@ unsafe fn log_args<S: AsRef<str>>(
     // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
+    // Idea: pass lambda that is lazily called. So can do a general
+    // optimization without macros
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);

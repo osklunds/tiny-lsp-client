@@ -1,3 +1,23 @@
+// Copyright (C) 2025 Oskar Lundström
+
+// This file is part of tiny-lsp-client.
+
+// tiny-lsp-client is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any
+// later version.
+
+// tiny-lsp-client is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+// details.
+
+// You should have received a copy of the GNU General Public License along with
+// tiny-lsp-client. If not, see <https://www.gnu.org/licenses/>.
+
+// @credits: This module as a whole is inspired by the logger module of
+// https://github.com/zbelial/lspce
+
 #[cfg(test)]
 mod tests;
 
@@ -53,6 +73,8 @@ macro_rules! is_log_enabled {
 }
 pub(crate) use is_log_enabled;
 
+// Note: can't be thread_local like servers, becuase these are accessed
+// from several threads
 pub static LOG_IO: AtomicBool = AtomicBool::new(true);
 pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
@@ -167,9 +189,6 @@ fn create_parent_dirs(file_name: &str) {
     }
 }
 
-// Nothing against Chrono at all, but for this project I wanted to avoid non
-// rust-lang dependencies except serde. But it seems e.g. rust-bindgen has non
-// rust-lang dependencies anyway... Oh well :)
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
     let ms;

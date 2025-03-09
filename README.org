@@ -1,28 +1,156 @@
 
 * tiny-lsp-client
 
+=tiny-lsp-client= is an LSP client for Emacs implemented in Rust. I call it tiny
+because it aims to only support a tiny feature set (as of this commit, find
+definition and code completion) and because it aims to have a tiny footprint,
+especially on memory and garbage collection. I created it for fun and because I
+was curious of how this would turn out. =tiny-lsp-client= has many limitations,
+such as only supporting stdio LSP servers and not providing that much
+information in completion candidates. However, it works, and I use it as my
+daily driver.
+
+* Usage
+
+** Installation
+
+Prerequisite: rust and cargo need to be installed.
+
+1. Clone this git repository and add it to your =load-path=.
+2. Navigate to the cloned repo and run =cargo build --release=
+3. =(require 'tiny-lsp-client)=
+
 ** Configuration
 
-All of ~tiny-lsp-client~'s features are off by default, to be as onubtrusive as possible. To enable jump-to-definition (as a ~xref~ backend) and completion (as a ~completion-at-point~ function), do e.g. the following:
+Add =tlc-mode= to the mode hooks you want, for example:
 
-#+begin_src emacs-lisp
+#+BEGIN_SRC emacs-lisp
+(add-hook 'c++-mode-hook 'tlc-mode)
+(add-hook 'rust-mode-hook 'tlc-mode)
+#+END_SRC
+
+All of =tiny-lsp-client='s features are off by default, to be as unobtrusive as
+possible. To enable jump-to-definition (as a =xref= backend) and completion (as
+a =completion-at-point-functions= function), do the following:
+
+#+BEGIN_SRC emacs-lisp
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
 (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
-#+end_src
+#+END_SRC
 
-You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you only want xref for some major modes.
+Or, suppose you only want =xref= for C++ but =xref= and =capf= for Rust, you can
+do the following:
 
-* todos:
+#+BEGIN_SRC emacs-lisp
+(add-hook 'c++-mode-hook 'tlc-use-xref)
+(add-hook 'rust-mode-hook 'tlc-use-xref)
+(add-hook 'rust-mode-hook 'tlc-use-async-capf)
+#+END_SRC
 
-- Features
+For more configuration, refer to the =defcustom= options and their documentation
+in =tiny-lsp-client.el=. One =defcustom= worthy of extra highlight is
+=tlc-server-cmds=. =tlc-server-cmds= defines which server command to use for
+various major modes, and it needs customization if your mode and server aren't
+already in the default list. Another note is that some of the =defcustom= change
+variables in Rust, and must therefore be set using =customize-set-variable= and
+not =setq=.
+
+** The "control room"
+
+If there are issues, or you want to check how =tiny-lsp-client= and the LSP
+servers behave under the hood, there are some functions to help with that.
+
+| Function             | Description                                     |
+|----------------------+-------------------------------------------------|
+| =tlc-open-log-file=  | Open tiny-lsp-client's log file                 |
+| =tlc-info=           | Show information about running servers          |
+| =tlc-stop-server=    | Stop an LSP server                              |
+| =tlc-restart-server= | Restart the LSP server of the current root path |
+
+What's logged and where the log is stored is configured through =defcustom=
+variables.
+
+* Design documentation
+
+The diagram below shows the most important aspects of the architecture. I got a
+lot of inspiration from [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and [[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]] when deciding on
+this architecture.
+
+[[./doc/arch.svg]]
+
+Starting from the right in the diagram: for each project active, there's one LSP server running. They run as separate child processes. Each LSP server is managed by a =Server= object, defined in =server.rs=. =Server= has one thread for handling =stdin=, one thread for handling =stdout= and two threads in series for handling =stderr=. The =stdin= thread encodes Rust objects representing LSP JSON and the =stdout= thread decodes LSP JSON into Rust objects. In general, LSP JSON contains more fields than what =tiny-lsp-client= makes use of, so the Rust objects are more slim than the full JSON. The =stdin= thread reads the channel from =lib.rs= and encodes and sends the JSON to the LSP server as soon as something is available. The =stdout= thread reads from the LSP server and decodes. If the message is relevant (e.g. ="textDocument/definition" response=), it's sent over the channel to =lib.rs=. If not relevant (e.g. ="textDocument/publishDiagnostics"=) it's dropped.
+
+=lib.rs= is the interface between emacs and Rust. To keep the burden on emacs as low as possible, the interface consists of function calls with lisp objects as parameters and return values, with the bare minimum of data. For example, when sending a ="textDocument/findDefinition"= request, these are the lisp, Rust and JSON values:
+
+#+BEGIN_SRC emacs-lisp
+(tlc--rust-send-request
+  "/some/path/file.rs"
+  "textDocument/definition"
+  `(,file-path 4 10))
+#+END_SRC
+
+#+BEGIN_SRC rust
+send_request(
+    "textDocument/definition".to_string(),
+    Message::Request(
+        RequestParams::DefinitionParams(DefinitionParams {
+            text_document: TextDocumentIdentifier { uri: "/some/path/file.rs" },
+            position: Position {
+                character: 4,
+                line: 10,
+            },
+        }),
+    )
+)
+#+END_SRC
+
+#+BEGIN_SRC json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "textDocument/definition",
+  "params": {
+    "textDocument": {
+      "uri": "file:///some/path/file.rs"
+    },
+    "position": {
+      "line": 4,
+      "character": 10
+    }
+  }
+}
+#+END_SRC
+
+There is one =Server= object per project, and =lib.rs= stores a map of =(root path, Server)=. All functions for sending and receiving LSP JSON messages have root path as one of the parameters.
+
+=lib.rs='s sending of requests and notifications is asynchronous and is done by creating a Rust object representing the JSON and then putting it on the channel to the correct =Server=.
+
+=lib.rs= receives JSON by doing a non-blocking receive call on the channel. If there is a message, it's transformed into a lisp object and returned to emacs. If there's no message, =no-response= is returned. =tiny-lsp-client.el= waits for a response with a busy-wait loop using =sit-for=.
+
+=tiny-lsp-client.el= is where =tiny=lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
+
+* Copyright, license and acknowledgments
+
+The license for this repository is GPL v3, as specified by the separate
+=LICENSE= file.
+
+In general I have learned a lot and gotten many ideas and code snippets from
+some other LSP projects: [[https://github.com/emacs-lsp/lsp-mode][lsp-mode]], [[https://www.gnu.org/software/emacs/manual/html_node/eglot/index.html][eglot]], [[https://github.com/zbelial/lspce][lspce]], [[https://github.com/manateelazycat/lsp-bridge][lsp-bridge]] and
+[[https://github.com/blahgeek/emacs-lsp-booster][emacs-lsp-booster]]. A big thank you to them. I have marked in the code what I
+have copied from them (happily under GPL!).
+
+No copyright infringement intended. If you see an issue, I'm more than happy to fix it.
+
+* Backlog
+
+- New functionality
   - completions
-    - Tests for all capf variants
-  - make public
-    - architecture
+    - Tests for async capf
+    - Small cleanup and reduce duplication
+  - Documentation
     - error strategy
     - logging
     - test strategy
-    - licenses and attribution
   - Haskell LSP
   - Java LSP
 - Bugs
@@ -43,7 +171,7 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of
       sync
-- Improvements
+- Improvements of existing code/functionality
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
@@ -51,6 +179,8 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
       still frequent possibilities to C-g. Can also fix exceed lisp nesting
     - if user answers no to restart server, disable mode
   - Lower priority
+    - thread_local can take a const {} expression. No need to check if None
+      every time
     - in general, ensure no bad args sent to rust. e.g. stop-server with "path"
       because doesn't start with /
     - make (root, lang) key, so that one project with multiple languages can be
@@ -83,6 +213,7 @@ You can also add ~'tlc-use-*~ only to the major-mode hooks you want, if e.g. you
 
 * notes
 
+#+BEGIN_SRC text
 rust-analzyer completion:
 {
   "additionalTextEdits": [],
@@ -152,25 +283,17 @@ erlang_ls completion:
   "kind": 3,
   "label": "binary_to_existing_atom/1"
 },
+#+END_SRC
 
 It seems like company calls the capf function for every keystroke, and thus
 triggering a request towards the LSP. But built-in capf only does it once. So
 built-in assumes the retrived once are always valid kind of. Maybe performance
 impact. Can consider optimizations.
 
-** async cached interruptible completion
-
-One function for getting completions async in the background. Use run-idle-timer
-and while-no-input.
-
-When triggering, check point and symbol at point. If same start and cached
-symbol is prefix of current symbol, then use cache if exists. Otherwise need to
-calculate new.
-
-* Performance notes
+** Performance
 
 1. Operations inside send/recv threads are essentially free. No GC and no blocking for user. So JSON encode/decode is done there.
 2. Operations inside lib.rs are cheap. No GC (except for lisp) and rust is faster than lisp (probably for native compiled lisp too, but would be interesting to compare). However, the user needs to wait.
-3. Operations inside tiny-lsp-client.el and other lisp code is expensive.
+3. Operations inside tiny-lsp-client.el and other lisp code are expensive.
 
 So prioritize to put operations in 1, and then 2, and only 3 if needed. capf filtering has to be done at 3, and this is where lsp-bridge can avoid big costs. Maybe I can call a rust function to filter? Maybe filtering 50K isn't expensive (that's normal work for counsel "rg --files" and also see this SO QA: https://emacs.stackexchange.com/questions/15276/how-do-i-write-a-simple-completion-at-point-functions-function)
