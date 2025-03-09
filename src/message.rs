@@ -1,3 +1,6 @@
+// @credits: This module as a whole is inspired by the msg module of
+// https://github.com/zbelial/lspce
+
 #[cfg(test)]
 mod tests;
 

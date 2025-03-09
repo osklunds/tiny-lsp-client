@@ -1,3 +1,6 @@
+// @credits: This module as a whole is inspired by the logger module of
+// https://github.com/zbelial/lspce
+
 #[cfg(test)]
 mod tests;
 
@@ -53,6 +56,8 @@ macro_rules! is_log_enabled {
 }
 pub(crate) use is_log_enabled;
 
+// Note: can't be thread_local like servers, becuase these are accessed
+// from several threads
 pub static LOG_IO: AtomicBool = AtomicBool::new(true);
 pub static LOG_STDERR: AtomicBool = AtomicBool::new(true);
 pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
@@ -167,9 +172,6 @@ fn create_parent_dirs(file_name: &str) {
     }
 }
 
-// Nothing against Chrono at all, but for this project I wanted to avoid non
-// rust-lang dependencies except serde. But it seems e.g. rust-bindgen has non
-// rust-lang dependencies anyway... Oh well :)
 fn get_timestamp() -> String {
     let mut buffer = [0; 26];
     let ms;

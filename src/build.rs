@@ -1,4 +1,5 @@
-// Copied/modified from https://ryanfaulhaber.com/posts/first-emacs-module-rust/
+// @credits. This module was written with the help of
+// https://ryanfaulhaber.com/posts/first-emacs-module-rust/
 
 extern crate bindgen;
 

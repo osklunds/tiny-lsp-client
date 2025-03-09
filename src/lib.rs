@@ -1,5 +1,6 @@
-// Heavily inspired by https://github.com/zbelial/lspce
-// and https://ryanfaulhaber.com/posts/first-emacs-module-rust/
+// @credits: This module as a whole is inspired by
+// https://github.com/zbelial/lspce and
+// https://ryanfaulhaber.com/posts/first-emacs-module-rust/
 
 #[allow(warnings)]
 #[rustfmt::skip]
@@ -540,6 +541,8 @@ unsafe fn log_args<S: AsRef<str>>(
     // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
+    // Idea: pass lambda that is lazily called. So can do a general
+    // optimization without macros
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
