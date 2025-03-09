@@ -291,7 +291,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (unless revert-buffer-in-progress-p
       (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
-;; Heavily inspired by eglot
+;; @credits: Heavily inspired by eglot
 ;; nil pos means current point
 (defun tlc--pos-to-lsp-pos (&optional pos)
   ;; Need to save restriction and widen to handle e.g. lsp-rename from
@@ -341,6 +341,8 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; Request/response
 ;;------------------------------------------------------------------------------
 
+;; @credits: Reqeust/response mechanism inspired by
+;; https://github.com/zbelial/lspce
 (defun tlc--sync-request (method arguments)
   (let ((request-id (tlc--request method arguments (tlc--root))))
     (tlc--wait-for-response request-id (tlc--root))))
@@ -419,6 +421,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 (defun tlc-xref-backend () 'xref-tlc)
 
+;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
   (propertize (or (thing-at-point 'symbol) "")
               'identifier-at-point t))
@@ -451,7 +454,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   (when tlc-mode
     (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
-;; Inspired by eglot
+;; @credits: Inspired by eglot
 (defun tlc-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
@@ -500,7 +503,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; note, due to null returning immediately, it was mich faster to type with
 ;; async capf. Also, when null resp fixed, and spamming, emacs froze completely.
 
-;; Inspired by eglot
+;; @credits: Inspired by eglot
 (defun tlc-async-completion-at-point ()
   "While the user isn't typing, wait for a response. But as soon as there's any
   typing, abort, and present the last result. `tlc-async-completion-at-point'
