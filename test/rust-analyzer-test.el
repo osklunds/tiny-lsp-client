@@ -232,7 +232,6 @@ fn other_function_hej(arg: u32) -> u32 {
 
 ;; Only been able to trigger this in rust-analyzer
 (tlc-deftest null-result-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "rust_analyzer" "src" "main.rs"))
   (assert-equal 0 (number-of-completion-requests))
 
