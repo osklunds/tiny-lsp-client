@@ -213,6 +213,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 
 * notes
 
+#+BEGIN_SRC text
 rust-analzyer completion:
 {
   "additionalTextEdits": [],
@@ -282,6 +283,7 @@ erlang_ls completion:
   "kind": 3,
   "label": "binary_to_existing_atom/1"
 },
+#+END_SRC
 
 It seems like company calls the capf function for every keystroke, and thus
 triggering a request towards the LSP. But built-in capf only does it once. So
