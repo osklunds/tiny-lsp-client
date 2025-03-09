@@ -141,18 +141,16 @@ have copied from them (happily under GPL!).
 
 No copyright infringement intended. If you see an issue, I'm more than happy to fix it.
 
-* backlog
+* Backlog
 
-- Features
+- New functionality
   - completions
     - Tests for async capf
     - Small cleanup and reduce duplication
-  - make public
-    - architecture
+  - Documentation
     - error strategy
     - logging
     - test strategy
-    - licenses and attribution
   - Haskell LSP
   - Java LSP
 - Bugs
@@ -173,7 +171,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
     - Sometimes duplicate didOpen/didClose
     - At stop, sometimes get duplicate didOpen due to mode and server out of
       sync
-- Improvements
+- Improvements of existing code/functionality
   - Higher priority
     - make erlang_ls etc test dependencies
     - use full sync on didChange as fallback
