@@ -878,4 +878,23 @@ void last_function() {
   (assert-equal 2 (number-of-completion-requests))
   )
 
+(tlc-deftest capf-bounds-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+
+  (re-search-forward "last_variable")
+  (assert-equal 539 (point) "arrange")
+  (backward-char 5)
+  (assert-equal 534 (point) "arrange")
+
+  ;; Act
+  (setq return (tlc-completion-at-point))
+
+  ;; Assert
+  (assert-equal 526 (nth 0 return))
+  (assert-equal 539 (nth 1 return))
+  )
+
 ;; remove duplicates in lib.rs
