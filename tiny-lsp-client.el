@@ -576,7 +576,7 @@ path. When an existing LSP server is connected to, this hook is not run."
   )
 
 ;; -----------------------------------------------------------------------------
-;; Async cached capf
+;; Async cached capf (experimental)
 ;; -----------------------------------------------------------------------------
 
 (defun tlc-use-async-cached-capf ()
@@ -686,7 +686,7 @@ and always using the latest result."
 ;; maybe when deleting text and then spamming cap
 
 ;; -----------------------------------------------------------------------------
-;; Company
+;; Company (experimental)
 ;; -----------------------------------------------------------------------------
 
 (defun company-async-tlc (command &optional _arg &rest _args)
