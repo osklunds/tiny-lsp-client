@@ -50,6 +50,7 @@
 
 (add-hook 'c++-mode-hook 'tlc-mode)
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
@@ -234,7 +235,6 @@ int main() {
   )
 
 (tlc-deftest capf-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal 0 (number-of-completion-requests))
 

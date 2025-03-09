@@ -49,6 +49,7 @@
 
 (add-hook 'erlang-mode-hook 'tlc-mode)
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
+(add-hook 'tlc-mode-hook 'tlc-use-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
@@ -215,7 +216,6 @@ other_function_hej(Arg) ->
   )
 
 (tlc-deftest capf-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
   (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
   (assert-equal 0 (number-of-completion-requests))
 

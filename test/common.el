@@ -117,9 +117,6 @@ this common file. Is used to differentiate log file names.")
   
   (customize-set-variable 'tlc-before-start-server-hook nil)
   (customize-set-variable 'tlc-after-start-server-hook nil)
-
-  (remove-hook 'tlc-mode-hook 'tlc-use-sync-capf)
-  (remove-hook 'tlc-mode-hook 'tlc-use-async-capf)
   )
 
 (defun after-each-test ()

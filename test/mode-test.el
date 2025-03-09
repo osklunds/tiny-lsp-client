@@ -809,38 +809,7 @@ void last_function() {
   (assert (has-had-max-num-of-timestamps-many-times))
   )
 
-(tlc-deftest async-capf-test ()
-  ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
-  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
-  (re-search-forward "last_variable")
-  (next-line)
-
-  ;; Sleep to let clangd have time to start and be able to return more
-  ;; completions
-  (sleep-for 0.5)
-  (setq tlc-collection-fun (get-tlc-collection-fun))
-  (assert-equal 0 (number-of-completion-requests))
-
-  ;; Act
-  (setq result (funcall tlc-collection-fun "" nil t))
-
-  ;; Assert
-  (assert-equal 1 (number-of-completion-requests))
-
-  (assert-equal t (>= (length result) 100))
-  (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
-                 "my_function1" "my_function2" "my_function3" "my_function4"
-                 "my_function5"
-                 "my_var1" "my_var2" "my_var3" "my_var4"
-                 "my_variable1" "my_variable2" "my_variable3" "my_variable4"
-                 "last_variable" "last_function"))
-    (assert (cl-member exp result :test 'string-equal) exp))
-  (assert-not (cl-member "junk" result :test 'string-equal))
-  )
-
-(tlc-deftest async-capf-interrupted-by-user-input-test ()
+(tlc-deftest capf-interrupted-by-user-input-test ()
   ;; Arrange
   (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))

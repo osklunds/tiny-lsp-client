@@ -642,7 +642,7 @@ and always using the latest result."
 (defun company-async-tlc (command &optional _arg &rest _args)
   (interactive (list 'interactive))
   (let* (
-         (capf-info (tlc-sync-completion-at-point))
+         (capf-info (tlc-completion-at-point))
          (start (nth 0 capf-info))
          (end (nth 1 capf-info))
          (collection-fun (nth 2 capf-info))
