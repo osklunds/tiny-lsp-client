@@ -20,6 +20,7 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(setq load-prefer-newer t)
 (setq debug-on-error t)
 
 (defun assert-equal (exp act &optional label)
@@ -64,7 +65,7 @@
     (call-interactively 'xref-find-definitions)))
 
 (defun get-tlc-collection-fun ()
-  (pcase (tlc-completion-at-point)
+  (pcase (funcall (car completion-at-point-functions))
     (`(,start ,end ,collection . ,props)
      ;; todo: add tests that check bounds
      collection
@@ -112,7 +113,11 @@ this common file. Is used to differentiate log file names.")
                        "logs"
                        (format "%s-%s.log" test-file-name test-case-name)))
   (delete-file log-file-name)
-  (customize-set-variable 'tlc-log-file log-file-name))
+  (customize-set-variable 'tlc-log-file log-file-name)
+  
+  (customize-set-variable 'tlc-before-start-server-hook nil)
+  (customize-set-variable 'tlc-after-start-server-hook nil)
+  )
 
 (defun after-each-test ()
   ;; One drawback of running in the same emacs instance with ERT is that
@@ -130,8 +135,6 @@ this common file. Is used to differentiate log file names.")
       ;; Then kill the buffer too so that didOpen is sent if the same file
       ;; is used in many tests
       (kill-buffer buffer))
-    (customize-set-variable 'tlc-before-start-server-hook nil)
-    (customize-set-variable 'tlc-after-start-server-hook nil)
     ))
 
 (cl-defmacro tlc-deftest (name () &rest body)

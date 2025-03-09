@@ -35,7 +35,7 @@ a =completion-at-point-functions= function), do the following:
 
 #+BEGIN_SRC emacs-lisp
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-async-capf)
+(add-hook 'tlc-mode-hook 'tlc-use-capf)
 #+END_SRC
 
 Or, suppose you only want =xref= for C++ but =xref= and =capf= for Rust, you can
@@ -44,7 +44,7 @@ do the following:
 #+BEGIN_SRC emacs-lisp
 (add-hook 'c++-mode-hook 'tlc-use-xref)
 (add-hook 'rust-mode-hook 'tlc-use-xref)
-(add-hook 'rust-mode-hook 'tlc-use-async-capf)
+(add-hook 'rust-mode-hook 'tlc-use-capf)
 #+END_SRC
 
 For more configuration, refer to the =defcustom= options and their documentation
@@ -144,9 +144,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 * Backlog
 
 - New functionality
-  - completions
-    - Tests for async capf
-    - Small cleanup and reduce duplication
   - Documentation
     - error strategy
     - logging

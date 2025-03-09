@@ -52,9 +52,8 @@
 (customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
-;; todo: Add proper tests for these
+;; todo: Add proper tests for tlc-use-*
 (add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers
@@ -541,6 +540,7 @@ abc(123);
 
 (tlc-deftest completion-at-point-end-to-end-test ()
   ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -559,7 +559,9 @@ abc(123);
   )
 
 (tlc-deftest capf-all-completions-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
 
   (re-search-forward "last_variable")
@@ -624,7 +626,9 @@ abc(123);
   )
 
 (tlc-deftest capf-test-completion-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -648,7 +652,9 @@ abc(123);
   )
 
 (tlc-deftest capf-try-completion-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -673,7 +679,9 @@ abc(123);
   )
 
 (tlc-deftest capf-cache-test ()
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal
    "
 void my_fun1() {}
@@ -801,6 +809,61 @@ void last_function() {
   (assert (has-had-max-num-of-timestamps-many-times))
   )
 
-;; test other servers too
-;; investigate what company does
+(tlc-deftest capf-interrupted-by-user-input-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+  (re-search-forward "last_variable")
+  (next-line)
+
+  ;; Sleep to let clangd have time to start and be able to return more
+  ;; completions
+  (sleep-for 0.5)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (setq result 'none)
+  (setq tlc--last-candidates '("previous candidate"))
+
+  ;; Act
+  ;; Trick from https://stackoverflow.com/a/32972563 used
+  (let ((unread-command-events (listify-key-sequence (kbd "a"))))
+    (setq result (funcall tlc-collection-fun "" nil t)))
+
+  ;; Assert
+  (assert-equal 1 (number-of-completion-requests))
+  (assert-equal '("previous candidate") result "async1")
+
+  ;; The candidates are not cached so different results might be returned.
+  ;; Unclear if this is breaking the intended capf interface. But it works
+  ;; well with company-mode.
+  (setq next-result (funcall tlc-collection-fun "" nil t))
+  (assert (cl-member "last_variable" next-result :test 'string-equal) "async2")
+  (assert-equal 2 (number-of-completion-requests))
+
+  ;; However, once a real result has been obtained, it's cached
+  (assert-equal next-result (funcall tlc-collection-fun "" nil t))
+  (assert-equal 2 (number-of-completion-requests))
+  )
+
+(tlc-deftest capf-bounds-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
+  (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
+
+  (re-search-forward "last_variable")
+  (assert-equal 539 (point) "arrange")
+  (backward-char 5)
+  (assert-equal 534 (point) "arrange")
+
+  ;; Act
+  (setq return (tlc-completion-at-point))
+
+  ;; Assert
+  (assert-equal 526 (nth 0 return))
+  (assert-equal 539 (nth 1 return))
+  )
+
 ;; remove duplicates in lib.rs
