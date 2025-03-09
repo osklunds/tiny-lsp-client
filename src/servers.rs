@@ -15,14 +15,15 @@
 // You should have received a copy of the GNU General Public License along with
 // tiny-lsp-client. If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::server::Server;
 
 thread_local! {
-    static SERVERS: RefCell<Option<HashMap<String, Server>>> =
-        RefCell::new(None);
+    static SERVERS: RefCell<HashMap<String, Server>> =
+        RefCell::new(HashMap::new());
 }
 
 pub fn with_servers<F, R>(f: F) -> R
@@ -31,14 +32,7 @@ where
 {
     SERVERS.with_borrow_mut(|servers| {
         // todo: consider performance of always calling retain
-        // unclear why get_or_insert() didn't work
-        if servers.is_none() {
-            *servers = Some(HashMap::new());
-        }
-        servers
-            .as_mut()
-            .unwrap()
-            .retain(|_root_path, server| server.is_working());
-        f(servers.as_mut().unwrap())
+        servers.retain(|_root_path, server| server.is_working());
+        f(servers.borrow_mut())
     })
 }

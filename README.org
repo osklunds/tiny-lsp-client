@@ -179,8 +179,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
       still frequent possibilities to C-g. Can also fix exceed lisp nesting
     - if user answers no to restart server, disable mode
   - Lower priority
-    - thread_local can take a const {} expression. No need to check if None
-      every time
     - in general, ensure no bad args sent to rust. e.g. stop-server with "path"
       because doesn't start with /
     - make (root, lang) key, so that one project with multiple languages can be
