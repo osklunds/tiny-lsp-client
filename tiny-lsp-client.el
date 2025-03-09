@@ -164,7 +164,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-sync-completion-at-point t)
     (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
     (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
@@ -472,10 +472,10 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc-use-sync-capf ()
   (interactive)
   (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
+    (add-hook 'completion-at-point-functions 'tlc-sync-completion-at-point nil t)))
 
 ;; @credits: Inspired by eglot
-(defun tlc-completion-at-point ()
+(defun tlc-sync-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
@@ -692,7 +692,7 @@ and always using the latest result."
 (defun company-async-tlc (command &optional _arg &rest _args)
   (interactive (list 'interactive))
   (let* (
-         (capf-info (tlc-completion-at-point))
+         (capf-info (tlc-sync-completion-at-point))
          (start (nth 0 capf-info))
          (end (nth 1 capf-info))
          (collection-fun (nth 2 capf-info))
