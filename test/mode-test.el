@@ -540,9 +540,9 @@ abc(123);
 
 (tlc-deftest completion-at-point-end-to-end-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
 
   (re-search-forward "other_function" nil nil 2)
@@ -559,9 +559,9 @@ abc(123);
   )
 
 (tlc-deftest capf-all-completions-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
 
   (re-search-forward "last_variable")
@@ -626,9 +626,9 @@ abc(123);
   )
 
 (tlc-deftest capf-test-completion-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -652,9 +652,9 @@ abc(123);
   )
 
 (tlc-deftest capf-try-completion-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
   (re-search-forward "last_variable")
   (next-line)
@@ -679,9 +679,9 @@ abc(123);
   )
 
 (tlc-deftest capf-cache-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal
    "
 void my_fun1() {}
@@ -811,9 +811,9 @@ void last_function() {
 
 (tlc-deftest async-capf-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-async-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (re-search-forward "last_variable")
   (next-line)
 
@@ -842,9 +842,9 @@ void last_function() {
 
 (tlc-deftest async-capf-interrupted-by-user-input-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-async-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-async-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (re-search-forward "last_variable")
   (next-line)
 
@@ -855,7 +855,7 @@ void last_function() {
   (assert-equal 0 (number-of-completion-requests))
 
   (setq result 'none)
-  (setq tlc--async-last-candidates '("previous candidate"))
+  (setq tlc--last-candidates '("previous candidate"))
 
   ;; Act
   ;; Trick from https://stackoverflow.com/a/32972563 used
@@ -880,9 +880,9 @@ void last_function() {
 
 (tlc-deftest capf-bounds-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-sync-capf)
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
-  (assert-equal '(tlc-sync-completion-at-point t) completion-at-point-functions)
+  (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
 
   (re-search-forward "last_variable")
   (assert-equal 539 (point) "arrange")
@@ -890,7 +890,7 @@ void last_function() {
   (assert-equal 534 (point) "arrange")
 
   ;; Act
-  (setq return (tlc-sync-completion-at-point))
+  (setq return (tlc-completion-at-point))
 
   ;; Assert
   (assert-equal 526 (nth 0 return))

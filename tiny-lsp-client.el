@@ -164,8 +164,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (remove-hook 'completion-at-point-functions 'tlc-sync-completion-at-point t)
-    (remove-hook 'completion-at-point-functions 'tlc-async-completion-at-point t)
+    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
     (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
@@ -431,7 +430,7 @@ path. When an existing LSP server is connected to, this hook is not run."
       )))
 
 ;; -----------------------------------------------------------------------------
-;; Xref
+;; xref
 ;;------------------------------------------------------------------------------
 
 (defun tlc-use-xref ()
@@ -463,73 +462,24 @@ path. When an existing LSP server is connected to, this hook is not run."
             response)))
 
 ;; -----------------------------------------------------------------------------
-;; Capf
+;; capf
 ;; -----------------------------------------------------------------------------
 
-;; todo: once the capf funs are working well, reduce the duplicated code
-;; todo: add tests for the other capfs too
-
-(defun tlc-use-sync-capf ()
+(defun tlc-use-capf ()
   (interactive)
   (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-sync-completion-at-point nil t)))
-
-;; @credits: Inspired by eglot
-(defun tlc-sync-completion-at-point ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (file (tlc--buffer-file-name))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (car pos))
-         (character (cadr pos))
-         (cached-response 'none)
-         (response-fun (lambda ()
-                         (if (listp cached-response) cached-response
-                           (setq cached-response
-                                 (tlc--sync-request
-                                  "textDocument/completion"
-                                  (list file line character))))))
-         )
-    (list
-     (or (car bounds) (point))
-     (or (cdr bounds) (point))
-     (lambda (probe pred action)
-       (cond
-        ((eq action 'metadata) (progn
-                                 '(metadata . nil)))
-
-        ((eq (car-safe action) 'boundaries) nil)
-        (t
-         (complete-with-action action (funcall response-fun) probe pred))))
-     :annotation-function
-     (lambda (_item)
-       (concat "tlc") ;; temporary, to see that completion comes from tlc
-       )
-     )
-    )
-  )
-
-;; -----------------------------------------------------------------------------
-;; Async Capf
-;; -----------------------------------------------------------------------------
-
-(defun tlc-use-async-capf ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-async-completion-at-point nil t)))
+    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
 ;; For company integration, can consider clearing this on start completion
-(defvar tlc--async-last-candidates nil)
+(defvar tlc--last-candidates nil)
 
-;; note, due to null returning immediately, it was mich faster to type with
+;; note, due to null returning immediately, it was much faster to type with
 ;; async capf. Also, when null resp fixed, and spamming, emacs froze completely.
 
+;; to simplify, capf is now always async. lsp-mode and eglot are async
+;; in similar ways, so hopefully OK.
 ;; @credits: Inspired by eglot
-(defun tlc-async-completion-at-point ()
-  "While the user isn't typing, wait for a response. But as soon as there's any
-  typing, abort, and present the last result. `tlc-async-completion-at-point'
-  works well for fast (0-50ms) LSP servers. There's never any blocking while the
-  user is typing and a result is always shown. Once the user stops, the most
-  accurate result is shown as soon as the LSP server has responded."
+(defun tlc-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (file (tlc--buffer-file-name))
          (pos (tlc--pos-to-lsp-pos))
@@ -550,10 +500,10 @@ path. When an existing LSP server is connected to, this hook is not run."
                              (cond
                               ;; Interrupted
                               ((eq while-result t)
-                               tlc--async-last-candidates)
+                               tlc--last-candidates)
                               ;; Finished (todo: or C-g, need to think about that)
                               (t
-                               (setq tlc--async-last-candidates while-result)
+                               (setq tlc--last-candidates while-result)
                                (setq cached-candidates while-result)))))))
          )
     (list
@@ -569,7 +519,7 @@ path. When an existing LSP server is connected to, this hook is not run."
          (complete-with-action action (funcall response-fun) probe pred))))
      :annotation-function
      (lambda (_item)
-       (concat "async tlc") ;; temporary, to see that completion comes from tlc
+       (concat "tlc")
        )
      )
     )
