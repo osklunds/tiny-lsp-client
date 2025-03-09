@@ -144,9 +144,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 * Backlog
 
 - New functionality
-  - completions
-    - Tests for async capf
-    - Small cleanup and reduce duplication
   - Documentation
     - error strategy
     - logging
