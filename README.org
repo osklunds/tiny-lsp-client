@@ -155,6 +155,10 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
     - unicode support in URIs, need percentage encoding
     - unicode/utf8/utf16 position offset not working. Add tests for precision,
       i.e., go to definition at the very end and very beginning of symbols.
+      - This bug might not be as serious as I thought, since it only affects
+        column. So unless the line begins with non-ascii, current way is
+        okay. And beginning with non-ascii would only be for variable/function
+        names with non-ascii, which feels pretty rare.
   - Lower priority
     - make max log entry shorter again
     - when doing completions in c++ test file, clangd complained about non
