@@ -758,7 +758,7 @@ and always using the latest result."
 (defun tlc--initial-get-root ()
   "The initial fetch of the root for this buffer. Cache the root since if it
 changes for a buffer, the server needs to be restarted anyway."
-  (setq tlc--cached-root (funcall tlc-find-root-function)))
+  (setq tlc--cached-root (file-truename (funcall tlc-find-root-function))))
 
 (defun tlc--root ()
   "Wrapper for getting the root path of the buffer. Also checks that it's
