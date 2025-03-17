@@ -23,6 +23,7 @@
 (require 'tlc-rust "libtiny_lsp_client.so")
 (require 'subr-x)
 (require 'xref)
+(require 'project)
 
 (eval-and-compile
   (cl-defmacro tlc--widen (&rest body)
@@ -772,13 +773,9 @@ a nil root is OK."
   tlc--cached-root)
 
 (defun tlc-find-root-default-function ()
-  "Default function for find the root path of a buffer. First tries Projectile,
-and if that fails, tries using \"git rev-parse --show-toplevel\"."
-  (if (fboundp 'projectile-project-root)
-      (projectile-project-root)
-    (if-let ((root (string-trim (shell-command-to-string "git rev-parse --show-toplevel"))))
-        (unless (string-match-p "fatal:" root)
-          root))))
+  "Get root directory using project.el."
+  (when-let ((project (project-current)))
+    (project-root project)))
 
 (defun tlc-dev-find-root-function ()
   "Special root finder used for developing tiny-lsp-client itself. Finds the
