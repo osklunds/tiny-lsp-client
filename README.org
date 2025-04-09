@@ -150,57 +150,39 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Bugs
       - Higher priority
             - unicode support in URIs, need percentage encoding
-            - unicode/utf8/utf16 position offset not working. Add tests for precision,
-              i.e., go to definition at the very end and very beginning of symbols.
-                  - This bug might not be as serious as I thought, since it only affects
-                    column. So unless the line begins with non-ascii, current way is
-                    okay. And beginning with non-ascii would only be for variable/function
-                    names with non-ascii, which feels pretty rare.
+            - unicode/utf8/utf16 position offset not working. Add tests for precision, i.e., go to definition at the very end and very beginning of symbols.
+                  - This bug might not be as serious as I thought, since it only affects column. So unless the line begins with non-ascii, current way is okay. And beginning with non-ascii would only be for variable/function names with non-ascii, which feels pretty rare.
       - Lower priority
             - make max log entry shorter again
-            - when doing completions in c++ test file, clangd complained about non
-              opened document
-            - once, when jump to defintion while starting rust analyzer, seemed to get
-              stuck in infinite loop with 0 wait between try recv response. Lot's of RAM
-              was being consumed. But it might be fixed once a request timeout is being
-              used.
+            - when doing completions in c++ test file, clangd complained about non opened document
+            - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
       - Under observation
             - sometimes core dump when doing async completion
             - Sometimes duplicate didOpen/didClose
-            - At stop, sometimes get duplicate didOpen due to mode and server out of
-              sync
+            - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
             - make erlang_ls etc test dependencies
             - use full sync on didChange as fallback
-            - use try_recv_timeout with 0.1s in rust, so that no busy wait in lisp, but
-              still frequent possibilities to C-g. Can also fix exceed lisp nesting
+            - use try_recv_timeout with 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
             - if user answers no to restart server, disable mode
       - Lower priority
-            - in general, ensure no bad args sent to rust. e.g. stop-server with "path"
-              because doesn't start with /
-            - make (root, lang) key, so that one project with multiple languages can be
-              supported.
+            - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
+            - make (root, lang) key, so that one project with multiple languages can be supported.
             - consider caching didChange like eglot
-            - Clean up server.rs by having smaller functions (like read_header) and
-              having a flatter sructure since break can return early.
+            - Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
             - tests
                   - Use clangd instead of rust-analyzer for rust unit tests
                   - More unit tests
                   - test error during xref or capf
                   - Some tests are unstable, especially when running all
-            - get inspiration from emacs-module-rs and generalize lisp<->rust conversion
-              to encapsulate unsafe code better
+            - get inspiration from emacs-module-rs and generalize lisp<->rust conversion to encapsulate unsafe code better
             - understands bounds and symbol better for capf
-            - understand commit chars, range, etc from LSP better. Check what lsp-mode
-              and eglot do
+            - understand commit chars, range, etc from LSP better. Check what lsp-mode and eglot do
             - completion ideas
                   - if interrupted, send dabbrev
-                  - if interrupted, keep calculating and use that as next last result. So
-                    like the "cached async" but it keeps on refreashing and doesn't do it
-                    just once in the beginning.
-                  - for async, measure how much time it takes to do everything except
-                    while-no-input. And with. And try to skip it for debug purposes
+                  - if interrupted, keep calculating and use that as next last result. So like the "cached async" but it keeps on refreashing and doesn't do it just once in the beginning.
+                  - for async, measure how much time it takes to do everything except while-no-input. And with. And try to skip it for debug purposes
                   - Understand how while-no-input, sit-for, and sleep-for interact.
                   - Understand how company completes not just from prefix when used with LSP
                   - Understand how lsp-mode and eglot handle async and cached completions
