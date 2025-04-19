@@ -790,10 +790,10 @@ void last_function() {
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
-  (assert-not (has-had-max-num-of-timestamps-many-times))
+  (assert-not (has-had-max-num-of-timestamps-many-times) "before")
 
   ;; Act
-  (dotimes (_ 100)
+  (dotimes (_ 10000)
     ;; need to call internal functions to be able to test async
     (tlc--request
      "textDocument/definition"
@@ -806,7 +806,7 @@ void last_function() {
   ;; a fake LSP server
   ;; todo: maybe check the IO - receved (x ms) logs. That last 10 should
   ;; have numbers
-  (assert (has-had-max-num-of-timestamps-many-times))
+  (assert (has-had-max-num-of-timestamps-many-times) "after")
   )
 
 (tlc-deftest capf-interrupted-by-user-input-test ()
