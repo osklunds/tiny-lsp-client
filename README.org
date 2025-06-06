@@ -265,6 +265,12 @@ erlang_ls completion:
 
 It seems like company calls the capf function for every keystroke, and thus triggering a request towards the LSP. But built-in capf only does it once. So built-in assumes the retrived once are always valid kind of. Maybe performance impact. Can consider optimizations.
 
+** URI
+
+From clangd to client
+="uri": "file:///usr/include/c%2B%2B/15/iostream"=
+So in messages, need to decode by changing percentage, and encode into json with percentages.
+
 ** Performance
 
 1. Operations inside send/recv threads are essentially free. No GC and no blocking for user. So JSON encode/decode is done there.
