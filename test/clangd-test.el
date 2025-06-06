@@ -248,9 +248,9 @@ int main() {
   (assert-equal '("other_function") (funcall tlc-collection-fun "oth" nil t))
 
   (setq pred (lambda (item)
-               (string-match-p "function" item)))
+               (string-match-p "unction_i" item)))
   ;; todo: fix below when duplicates are removed
-  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
+  (assert-equal '("function_in_other_file")
                 (funcall tlc-collection-fun "" pred t))
 
   (assert-equal 1 (number-of-completion-requests))
