@@ -749,6 +749,12 @@ and always using the latest result."
   (when tlc-log-emacs-debug
     (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
 
+(defun tlc--file-name-to-uri (file-name)
+  (url-hexify-string file-name))
+
+(defun tlc--uri-to-file-name (uri)
+  (decode-coding-string (url-unhex-string uri) 'utf-8))
+
 ;; -----------------------------------------------------------------------------
 ;; Root
 ;; -----------------------------------------------------------------------------

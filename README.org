@@ -78,6 +78,7 @@ The diagram below shows the most important aspects of the architecture. I got a 
  
  
  
+ 
 
 Starting from the right in the diagram: for each project active, there's one LSP server running. They run as separate child processes. Each LSP server is managed by a =Server= object, defined in =server.rs=. =Server= has one thread for handling =stdin=, one thread for handling =stdout= and two threads in series for handling =stderr=. The =stdin= thread encodes Rust objects representing LSP JSON and the =stdout= thread decodes LSP JSON into Rust objects. In general, LSP JSON contains more fields than what =tiny-lsp-client= makes use of, so the Rust objects are more slim than the full JSON. The =stdin= thread reads the channel from =lib.rs= and encodes and sends the JSON to the LSP server as soon as something is available. The =stdout= thread reads from the LSP server and decodes. If the message is relevant (e.g. ="textDocument/definition" response=), it's sent over the channel to =lib.rs=. If not relevant (e.g. ="textDocument/publishDiagnostics"=) it's dropped.
 

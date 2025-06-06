@@ -866,4 +866,17 @@ void last_function() {
   (assert-equal 539 (nth 1 return))
   )
 
+(tlc-deftest file-name-to-uri-test ()
+  (assert-equal "hello" (tlc--file-name-to-uri "hello"))
+  (assert-equal "%2Fusr%2Fc%2B%2B%2Fhello" (tlc--file-name-to-uri "/usr/c++/hello"))
+  (assert-equal "abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5"
+                (tlc--file-name-to-uri "abcåäöあ日")))
+
+(tlc-deftest uri-to-file-name-test ()
+  (assert-equal "hello" (tlc--uri-to-file-name "hello"))
+  (assert-equal "/usr/include/c++/15/iostream"
+                (tlc--uri-to-file-name "/usr/include/c%2B%2B/15/iostream"))
+  (assert-equal "abcåäöあ日"
+                (tlc--uri-to-file-name "abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5")))
+
 ;; remove duplicates in lib.rs
