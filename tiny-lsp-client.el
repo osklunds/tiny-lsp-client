@@ -455,8 +455,9 @@ path. When an existing LSP server is connected to, this hook is not run."
                     "textDocument/definition"
                     (list file line character))))
     (mapcar (lambda (location)
-              (pcase-let ((`(,file-target ,line-start ,character-start) location))
-                (let ((line-target (+ line-start 1)))
+              (pcase-let ((`(,uri-target ,line-start ,character-start) location))
+                (let* ((line-target (+ line-start 1))
+                       (file-target (tlc--uri-to-file-name uri-target)))
                   (xref-make
                    "todo"
                    (xref-make-file-location file-target line-target character-start)))))
