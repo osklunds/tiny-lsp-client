@@ -154,8 +154,10 @@ fn completion_result_completion_items() {
 
 #[test]
 fn uri_test() {
-    let input: &str = "abcå";
-    println!("oskar: {:?}", file_name_to_uri(&input));
+    assert_eq!("hello", file_name_to_uri("hello"));
+    assert_eq!("%2Fusr%2Fc%2B%2B%2Fhello", file_name_to_uri("/usr/c++/hello"));
+    assert_eq!("abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5",
+               file_name_to_uri("abcåäöあ日"));
 }
 
 fn file_name_to_uri(file_name: &str) -> String {
