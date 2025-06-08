@@ -763,10 +763,13 @@ seems to accept URIs that are not encoded properly."
 (defun tlc--file-name-to-uri (file-name)
   ;; todo: understand better. Also, what happens if a directory name contains
   ;; / ?
-  (url-hexify-string file-name url-path-allowed-chars))
+  (concat "file://" (url-hexify-string file-name url-path-allowed-chars)))
 
 (defun tlc--uri-to-file-name (uri)
-  (decode-coding-string (url-unhex-string uri) 'utf-8))
+  (let* ((prefix (substring uri 0 7))
+         (suffix (substring uri 7)))
+    (cl-assert (string= prefix "file://"))
+    (decode-coding-string (url-unhex-string suffix) 'utf-8)))
 
 ;; -----------------------------------------------------------------------------
 ;; Root

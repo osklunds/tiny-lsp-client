@@ -192,9 +192,8 @@ unsafe fn build_text_document_definition(
     request_args: emacs_value,
     _server: &mut Server,
 ) -> RequestParams {
-    let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
-    let uri = file_path_to_uri(file_path);
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
 
     let line = nth(env, 1, request_args);
     let line = extract_integer(env, line) as usize;
@@ -214,9 +213,8 @@ unsafe fn build_text_document_completion(
     request_args: emacs_value,
     _server: &mut Server,
 ) -> RequestParams {
-    let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
-    let uri = file_path_to_uri(file_path);
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
 
     let line = nth(env, 1, request_args);
     let line = extract_integer(env, line) as usize;
@@ -264,9 +262,8 @@ unsafe fn build_text_document_did_open(
     request_args: emacs_value,
     server: &mut Server,
 ) -> NotificationParams {
-    let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
-    let uri = file_path_to_uri(file_path);
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
 
     let file_content = extract_string(env, nth(env, 1, request_args));
 
@@ -285,9 +282,8 @@ unsafe fn build_text_document_did_change(
     request_args: emacs_value,
     server: &mut Server,
 ) -> NotificationParams {
-    let file_path = nth(env, 0, request_args);
-    let file_path = extract_string(env, file_path);
-    let uri = file_path_to_uri(file_path);
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
 
     let content_changes = nth(env, 1, request_args);
     let content_changes_len = call(env, "length", vec![content_changes]);
@@ -336,8 +332,8 @@ unsafe fn build_text_document_did_close(
     request_args: emacs_value,
     _server: &mut Server,
 ) -> NotificationParams {
-    let file_path = nth(env, 0, request_args);
-    let uri = file_path_to_uri(extract_string(env, file_path));
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
 
     NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
         text_document: TextDocumentIdentifier { uri },
@@ -393,7 +389,7 @@ unsafe fn handle_response(
                     env,
                     "list",
                     vec![
-                        make_string(env, uri_to_file_path(uri)),
+                        make_string(env, uri),
                         make_integer(env, range.start.line as i64),
                         make_integer(env, range.start.character as i64),
                     ],
@@ -529,16 +525,6 @@ unsafe extern "C" fn tlc__rust_stop_server(
         server.stop_server();
         Some(intern(env, "ok"))
     })
-}
-
-fn file_path_to_uri<S: AsRef<str>>(file_path: S) -> String {
-    format!("file://{}", file_path.as_ref())
-}
-
-fn uri_to_file_path<S: AsRef<str>>(uri: S) -> String {
-    let (first, last) = uri.as_ref().split_at(7);
-    assert_eq!("file://", first);
-    last.to_string()
 }
 
 unsafe fn log_args<S: AsRef<str>>(

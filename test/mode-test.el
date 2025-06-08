@@ -867,17 +867,17 @@ void last_function() {
   )
 
 (tlc-deftest file-name-to-uri-test ()
-  (assert-equal "hello" (tlc--file-name-to-uri "hello"))
-  (assert-equal "/usr/c++/hello" (tlc--file-name-to-uri "/usr/c++/hello"))
-  (assert-equal "abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5"
+  (assert-equal "file://hello" (tlc--file-name-to-uri "hello"))
+  (assert-equal "file:///usr/c++/hello" (tlc--file-name-to-uri "/usr/c++/hello"))
+  (assert-equal "file://abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5"
                 (tlc--file-name-to-uri "abcåäöあ日")))
 
 (tlc-deftest uri-to-file-name-test ()
-  (assert-equal "hello" (tlc--uri-to-file-name "hello"))
+  (assert-equal "hello" (tlc--uri-to-file-name "file://hello"))
   (assert-equal "/usr/include/c++/15/iostream"
-                (tlc--uri-to-file-name "/usr/include/c%2B%2B/15/iostream"))
+                (tlc--uri-to-file-name "file:///usr/include/c%2B%2B/15/iostream"))
   (assert-equal "abcåäöあ日"
-                (tlc--uri-to-file-name "abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5")))
+                (tlc--uri-to-file-name "file://abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5")))
 
 (tlc-deftest special-char-file-name-test ()
   ;; Arrange
