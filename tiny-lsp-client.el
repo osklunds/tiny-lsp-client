@@ -710,7 +710,7 @@ and always using the latest result."
                      nil
                      'tlc-stop-server
                      (tlc--root-unchecked))))
-  (let* ((root-path (or root-path (tlc--root))))
+  (let* ((root-path (or root-path (tlc--root-unchecked))))
     (unless root-path
       (user-error "No root path specified"))
     (let* ((result (tlc--rust-stop-server root-path)))
