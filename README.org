@@ -159,12 +159,14 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
+            - xref summary
             - Create a docker image that tests can be run in, because many external dependencies like =erlang_ls=, =clangd=, etc. Mount the repo root inside the image so that no need to rebuild image when changing code.
             - use full sync on didChange as fallback
             - use try_recv_timeout with 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
             - if user answers no to restart server, disable mode
       - Lower priority
             - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
+            - consider if utf-16 actions need to be taken for xref, like =eglot= seems to do
             - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
             - make (root, lang) key, so that one project with multiple languages can be supported.
             - consider caching didChange like eglot
