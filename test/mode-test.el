@@ -868,7 +868,7 @@ void last_function() {
 
 (tlc-deftest file-name-to-uri-test ()
   (assert-equal "hello" (tlc--file-name-to-uri "hello"))
-  (assert-equal "%2Fusr%2Fc%2B%2B%2Fhello" (tlc--file-name-to-uri "/usr/c++/hello"))
+  (assert-equal "/usr/c++/hello" (tlc--file-name-to-uri "/usr/c++/hello"))
   (assert-equal "abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5"
                 (tlc--file-name-to-uri "abcåäöあ日")))
 
