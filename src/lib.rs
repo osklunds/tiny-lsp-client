@@ -33,7 +33,6 @@ use crate::message::*;
 use crate::server::Server;
 
 use std::os::raw;
-use std::path::Path;
 use std::str;
 use std::sync::atomic::Ordering;
 
@@ -139,7 +138,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_start_server");
-    let root_path = check_path(extract_string(env, *args.offset(0)));
+    let root_path = extract_string(env, *args.offset(0));
     let server_cmd = extract_string(env, *args.offset(1));
 
     servers::with_servers(|servers| {
@@ -194,7 +193,7 @@ unsafe fn build_text_document_definition(
     _server: &mut Server,
 ) -> RequestParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = check_path(extract_string(env, file_path));
+    let file_path = extract_string(env, file_path);
     let uri = file_path_to_uri(file_path);
 
     let line = nth(env, 1, request_args);
@@ -216,7 +215,7 @@ unsafe fn build_text_document_completion(
     _server: &mut Server,
 ) -> RequestParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = check_path(extract_string(env, file_path));
+    let file_path = extract_string(env, file_path);
     let uri = file_path_to_uri(file_path);
 
     let line = nth(env, 1, request_args);
@@ -266,7 +265,7 @@ unsafe fn build_text_document_did_open(
     server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = check_path(extract_string(env, file_path));
+    let file_path = extract_string(env, file_path);
     let uri = file_path_to_uri(file_path);
 
     let file_content = extract_string(env, nth(env, 1, request_args));
@@ -287,7 +286,7 @@ unsafe fn build_text_document_did_change(
     server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = check_path(extract_string(env, file_path));
+    let file_path = extract_string(env, file_path);
     let uri = file_path_to_uri(file_path);
 
     let content_changes = nth(env, 1, request_args);
@@ -338,8 +337,7 @@ unsafe fn build_text_document_did_close(
     _server: &mut Server,
 ) -> NotificationParams {
     let file_path = nth(env, 0, request_args);
-    let file_path = check_path(extract_string(env, file_path));
-    let uri = file_path_to_uri(file_path);
+    let uri = file_path_to_uri(extract_string(env, file_path));
 
     NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
         text_document: TextDocumentIdentifier { uri },
@@ -395,7 +393,7 @@ unsafe fn handle_response(
                     env,
                     "list",
                     vec![
-                        make_string(env, check_path(uri_to_file_path(uri))),
+                        make_string(env, uri_to_file_path(uri)),
                         make_integer(env, range.start.line as i64),
                         make_integer(env, range.start.character as i64),
                     ],
@@ -484,7 +482,7 @@ unsafe extern "C" fn tlc__rust_set_option(
 
     if symbol == "tlc-log-file" {
         let path = extract_string(env, value);
-        logger::set_log_file_name(check_path(path));
+        logger::set_log_file_name(path);
     } else {
         let value = extract_bool(env, value);
         if symbol == "tlc-log-io" {
@@ -531,12 +529,6 @@ unsafe extern "C" fn tlc__rust_stop_server(
         server.stop_server();
         Some(intern(env, "ok"))
     })
-}
-
-fn check_path<S: AsRef<str>>(file_path: S) -> S {
-    assert!(Path::new(file_path.as_ref()).is_absolute());
-
-    file_path
 }
 
 fn file_path_to_uri<S: AsRef<str>>(file_path: S) -> String {
@@ -587,7 +579,7 @@ unsafe fn handle_call<
 ) -> emacs_value {
     let args_vec = args_pointer_to_args_vec(nargs, args);
 
-    let root_path = check_path(extract_string(env, args_vec[0]));
+    let root_path = extract_string(env, args_vec[0]);
     servers::with_servers(|servers| {
         if let Some(ref mut server) = &mut servers.get_mut(&root_path) {
             if let Some(result) = f(env, args_vec, server) {
