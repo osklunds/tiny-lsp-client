@@ -82,7 +82,7 @@ pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
 
 const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
-const MAX_LOG_ENTRY_LEN_BYTES: usize = 10000;
+const MAX_LOG_ENTRY_LEN_BYTES: usize = 2_000;
 
 struct LogFileInfo {
     log_file_name: String,
@@ -134,7 +134,10 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
-    let truncated = if formatted.len() > MAX_LOG_ENTRY_LEN_BYTES {
+    let truncated = if formatted.len() > MAX_LOG_ENTRY_LEN_BYTES
+        // The response to intialize can be long, but is always of interest
+        && !formatted.contains("\"id\": 0,")
+    {
         format!("{}...TRUNCATED\n", &formatted[0..MAX_LOG_ENTRY_LEN_BYTES])
     } else {
         formatted
