@@ -151,33 +151,3 @@ fn completion_result_completion_items() {
 
     assert_json_decodes_into(json, decoded);
 }
-
-#[test]
-fn uri_test() {
-    assert_eq!("hello", file_name_to_uri("hello"));
-    assert_eq!("%2Fusr%2Fc%2B%2B%2Fhello", file_name_to_uri("/usr/c++/hello"));
-    assert_eq!("abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5",
-               file_name_to_uri("abcåäöあ日"));
-}
-
-fn file_name_to_uri(file_name: &str) -> String {
-    let mut uri = String::new();
-
-    for c in file_name.chars() {
-        if is_unreserved(c) {
-            uri.push(c);
-        } else {
-            let mut buf = [0; 4];
-            let sub_chars = c.encode_utf8(&mut buf);
-            for sub_c in sub_chars.as_bytes() {
-                uri.push_str(&format!("%{sub_c:X}"));
-            }
-        }
-    }
-
-    uri
-}
-
-fn is_unreserved(c: char) -> bool {
-    c.is_ascii_alphanumeric() || c == '-' || c == '.' || c == '_' || c == '~'
-}
