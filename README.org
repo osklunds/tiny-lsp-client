@@ -151,6 +151,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Bugs
       - Higher priority
       - Lower priority
+      - Hard to reproduce
             - when doing completions in c++ test file, clangd complained about non opened document
             - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
       - Under observation
