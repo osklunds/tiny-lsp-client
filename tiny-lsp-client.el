@@ -24,6 +24,7 @@
 (require 'subr-x)
 (require 'xref)
 (require 'project)
+(require 'url-util)
 
 (eval-and-compile
   (cl-defmacro tlc--widen (&rest body)
