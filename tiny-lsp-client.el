@@ -235,12 +235,11 @@ path. When an existing LSP server is connected to, this hook is not run."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  (let* ((file (tlc--buffer-file-name))
-         (revert revert-buffer-in-progress-p)
+  (let* ((revert revert-buffer-in-progress-p)
          (content (tlc--widen
                    (buffer-substring-no-properties (point-min) (point-max)))))
     (tlc--log "didOpen. File: %s Revert in progress: %s."
-              file
+              (tlc--buffer-file-name)
               revert
               )
     ;; todo: Why not if revert in progress? Related to vdiff. If uncommited changes
@@ -252,7 +251,7 @@ path. When an existing LSP server is connected to, this hook is not run."
     ;; todo: could consider to let rust side send if possible, i.e. if file
     ;; exists and is saved
     (tlc--send-notification "textDocument/didOpen"
-                            (list (tlc--buffer-file-name) content)
+                            (list (tlc--buffer-uri) content)
                             )))
 
 (defun tlc--send-notification (method params &optional dont-ask-if-no-server)
@@ -275,7 +274,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 (defun tlc--notify-text-document-did-close ()
   (tlc--send-notification
    "textDocument/didClose"
-   (list (tlc--buffer-file-name))
+   (list (tlc--buffer-uri))
    ;; If there's no server, there's no point in starting one to send didClose.
    'dont-ask-if-no-server))
 
@@ -353,7 +352,7 @@ path. When an existing LSP server is connected to, this hook is not run."
                                              text)
   (tlc--send-notification
    "textDocument/didChange"
-   (list (tlc--buffer-file-name)
+   (list (tlc--buffer-uri)
          `((,start-line ,start-character ,end-line ,end-character ,text))
          )))
 
@@ -447,16 +446,17 @@ path. When an existing LSP server is connected to, this hook is not run."
               'identifier-at-point t))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) _identifier)
-  (let* ((file (tlc--buffer-file-name))
+  (let* ((uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
          (response (tlc--sync-request
                     "textDocument/definition"
-                    (list file line character))))
+                    (list uri line character))))
     (mapcar (lambda (location)
-              (pcase-let ((`(,file-target ,line-start ,character-start) location))
-                (let ((line-target (+ line-start 1)))
+              (pcase-let ((`(,uri-target ,line-start ,character-start) location))
+                (let* ((line-target (+ line-start 1))
+                       (file-target (tlc--uri-to-file-name uri-target)))
                   (xref-make
                    "todo"
                    (xref-make-file-location file-target line-target character-start)))))
@@ -482,7 +482,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; @credits: Inspired by eglot
 (defun tlc-completion-at-point ()
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (file (tlc--buffer-file-name))
+         (uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
          (character (cadr pos))
@@ -492,7 +492,7 @@ path. When an existing LSP server is connected to, this hook is not run."
                          (if (listp cached-candidates) cached-candidates
                            (let* ((request-id (tlc--request
                                                "textDocument/completion"
-                                               (list file line character)
+                                               (list uri line character)
                                                root))
                                   (while-result
                                    (while-no-input
@@ -598,13 +598,13 @@ and always using the latest result."
   (let* ((bounds (bounds-of-thing-at-point 'symbol))
          (start (or (car bounds) (point)))
          (end (or (cdr bounds) (point)))
-         (file (tlc--buffer-file-name))
+         (uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
          (line (car pos))
          (character (cadr pos))
          (request-id (tlc--sync-request
                       "textDocument/completion"
-                      (list file line character))))
+                      (list uri line character))))
     (when tlc--async-current-timer
       (cancel-timer tlc--async-current-timer))
     (setq tlc--async-reqeust-id request-id)
@@ -749,6 +749,28 @@ and always using the latest result."
   (when tlc-log-emacs-debug
     (tlc--rust-log-emacs-debug (apply 'format format-string objects))))
 
+;; An alternative could be to do URI conversion in rust with a special type
+;; to make encoding and decoding centralized. But since emacs has URI
+;; conversion built-in I chose to do it here. Decoding a URI is not trivial
+;; due to variable length UTF8.
+
+(defun tlc--buffer-uri ()
+  "To be used when sending the current buffer file name as a URI to the LSP
+server. Note that it's hard to test this in a good way since at least clangd
+seems to accept URIs that are not encoded properly."
+  (tlc--file-name-to-uri (tlc--buffer-file-name)))
+
+(defun tlc--file-name-to-uri (file-name)
+  ;; todo: understand better. Also, what happens if a directory name contains
+  ;; / ?
+  (concat "file://" (url-hexify-string file-name url-path-allowed-chars)))
+
+(defun tlc--uri-to-file-name (uri)
+  (let* ((prefix (substring uri 0 7))
+         (suffix (substring uri 7)))
+    (cl-assert (string= prefix "file://"))
+    (decode-coding-string (url-unhex-string suffix) 'utf-8)))
+
 ;; -----------------------------------------------------------------------------
 ;; Root
 ;; -----------------------------------------------------------------------------
@@ -789,8 +811,6 @@ nested projects inside the test directory as separate projects."
       (if (string-match-p "rust_analyzer" (buffer-file-name))
           (file-name-parent-directory (file-name-directory (buffer-file-name)))
         (tlc-find-root-default-function)))))
-
-
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here

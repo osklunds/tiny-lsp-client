@@ -109,6 +109,7 @@
   (message "Sending didOpen")
 
   (setq file-path (relative-repo-root "test" "clangd" "main.cpp"))
+  (setq file-uri (concat "file://" file-path))
   (setq content (with-temp-buffer
                   (insert-file-contents file-path)
                   (buffer-string)))
@@ -116,7 +117,7 @@
   (assert-equal 'ok (tlc--rust-send-notification
                      root-path
                      "textDocument/didOpen"
-                     (list file-path content)))
+                     (list file-uri content)))
 
   ;; ---------------------------------------------------------------------------
   ;; definition
@@ -126,15 +127,15 @@
 
   (assert-equal 'no-server
                 (tlc--rust-send-request
-                 "/some/root_path/that/does/not/exist"
+                 "//some/root_path/that/does/not/exist"
                  "textDocument/definition"
-                 `(,file-path 4 10)))
+                 `(,file-uri 4 10)))
 
   (assert-equal 1
                 (tlc--rust-send-request
                  root-path
                  "textDocument/definition"
-                 `(,file-path 10 4)))
+                 `(,file-uri 10 4)))
 
   ;; todo: need to loop even if less clear, becase now is unstable and
   ;; wastefully slow
@@ -142,7 +143,7 @@
 
   (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
 
-  (assert-equal `(response 1 t ((,file-path 4 6)))
+  (assert-equal `(response 1 t ((,file-uri 4 6)))
                 (tlc--rust-recv-response root-path)
                 "recv resp first definition")
 
@@ -158,13 +159,13 @@
                 (tlc--rust-send-notification
                  "/some/root/path/not/found"
                  "textDocument/didChange"
-                 (list file-path '((3 0 3 0 "\n")))))
+                 (list file-uri '((3 0 3 0 "\n")))))
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
                  root-path
                  "textDocument/didChange"
-                 (list file-path '((3 0 3 0 "\n")))))
+                 (list file-uri '((3 0 3 0 "\n")))))
 
   ;; ---------------------------------------------------------------------------
   ;; definition after didChange
@@ -176,11 +177,11 @@
                 (tlc--rust-send-request
                  root-path
                  "textDocument/definition"
-                 `(,file-path 11 4)))
+                 `(,file-uri 11 4)))
 
   (sleep-for 2)
 
-  (assert-equal `(response 2 t ((,file-path 5 6)))
+  (assert-equal `(response 2 t ((,file-uri 5 6)))
                 (tlc--rust-recv-response root-path))
 
   ;; ---------------------------------------------------------------------------
@@ -194,7 +195,7 @@
                 (tlc--rust-send-notification
                  root-path
                  "textDocument/didChange"
-                 `(,file-path ((3 0 4 1 "")))))
+                 `(,file-uri ((3 0 4 1 "")))))
 
   ;; ---------------------------------------------------------------------------
   ;; didClose
@@ -206,7 +207,7 @@
                 (tlc--rust-send-notification
                  root-path
                  "textDocument/didClose"
-                 `(,file-path)))
+                 `(,file-uri)))
 
   ;; ---------------------------------------------------------------------------
   ;; didOpen + definition again
@@ -222,17 +223,17 @@
                 (tlc--rust-send-notification
                  root-path
                  "textDocument/didOpen"
-                 `(,file-path ,content)))
+                 `(,file-uri ,content)))
 
   (assert-equal 3
                 (tlc--rust-send-request
                  root-path
                  "textDocument/definition"
-                 `(,file-path 10 4)))
+                 `(,file-uri 10 4)))
 
   (sleep-for 2)
 
-  (assert-equal `(response 3 t ((,file-path 4 6)))
+  (assert-equal `(response 3 t ((,file-uri 4 6)))
                 (tlc--rust-recv-response root-path))
 
   ;; ---------------------------------------------------------------------------
@@ -247,13 +248,13 @@
                 (tlc--rust-send-notification
                  root-path
                  "textDocument/didOpen"
-                 `(,file-path ,content)))
+                 `(,file-uri ,content)))
 
   (assert-equal 'no-server
                 (tlc--rust-send-request
                  root-path
                  "textDocument/definition"
-                 `(,file-path 4 10)))
+                 `(,file-uri 4 10)))
 
   (assert-equal 'no-server (tlc--rust-recv-response root-path))
 

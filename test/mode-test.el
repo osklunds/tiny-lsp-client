@@ -866,4 +866,39 @@ void last_function() {
   (assert-equal 539 (nth 1 return))
   )
 
+(tlc-deftest file-name-to-uri-test ()
+  (assert-equal "file://hello" (tlc--file-name-to-uri "hello"))
+  (assert-equal "file:///usr/c++/hello" (tlc--file-name-to-uri "/usr/c++/hello"))
+  (assert-equal "file://abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5"
+                (tlc--file-name-to-uri "abcåäöあ日")))
+
+(tlc-deftest uri-to-file-name-test ()
+  (assert-equal "hello" (tlc--uri-to-file-name "file://hello"))
+  (assert-equal "/usr/include/c++/15/iostream"
+                (tlc--uri-to-file-name "file:///usr/include/c%2B%2B/15/iostream"))
+  (assert-equal "abcåäöあ日"
+                (tlc--uri-to-file-name "file://abc%C3%A5%C3%A4%C3%B6%E3%81%82%E6%97%A5")))
+
+(tlc-deftest special-char-file-name-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (re-search-forward "special")
+  (re-search-forward "special")
+  (assert-equal 8 (line-number-at-pos))
+  (assert-equal 11 (current-column))
+
+  ;; Act
+  (non-interactive-xref-find-definitions)
+
+  ;; Assert
+  (assert-equal "special++åäöあ本.cpp" (buffer-name))
+  (assert-equal 2 (line-number-at-pos))
+  (assert-equal 4 (current-column))
+
+  (assert-equal 2 (number-of-did-open) "end")
+  (assert-equal 0 (number-of-did-close)))
+
 ;; remove duplicates in lib.rs
