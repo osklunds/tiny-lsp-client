@@ -148,6 +148,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - test strategy
       - Haskell LSP
       - Java LSP
+      - make (root, lang) key, so that one project with multiple languages can be supported.
 - Bugs
       - Higher priority
       - Lower priority
@@ -169,7 +170,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
             - consider if utf-16 actions need to be taken for xref, like =eglot= seems to do
             - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
-            - make (root, lang) key, so that one project with multiple languages can be supported.
             - consider caching didChange like eglot
             - Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
             - tests
