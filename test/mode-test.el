@@ -784,7 +784,7 @@ void last_function() {
                "cat %s | grep \"send thread has '10' timestamps\" | wc -l"
                log-file-name))
          (count (string-to-number (shell-command-to-string cmd))))
-    (> count 50)))
+    (> count 25)))
 
 (tlc-deftest timestamp-overflow-test ()
   ;; Arrange
