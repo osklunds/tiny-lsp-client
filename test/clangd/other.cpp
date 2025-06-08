@@ -8,10 +8,10 @@ void function_in_other_file() {
     special();
 }
 
-void unicode_こんいちは() {
+void unicode_åäöåäöこんいちは() {
 
 }
 
 void unicode2() {
-    unicode_こんいちは();
+    unicode_åäöåäöこんいちは();
 }

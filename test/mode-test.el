@@ -901,7 +901,7 @@ void last_function() {
   (assert-equal 2 (number-of-did-open) "end")
   (assert-equal 0 (number-of-did-close)))
 
-(tlc-deftest unicode-chars-content ()
+(tlc-deftest unicode-chars-content-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "other.cpp"))
 
@@ -909,7 +909,7 @@ void last_function() {
   (re-search-forward "は")
   (backward-char)
   (assert-equal 16 (line-number-at-pos))
-  (assert-equal 20 (current-column))
+  (assert-equal 26 (current-column))
 
   ;; Act
   (non-interactive-xref-find-definitions)
