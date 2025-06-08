@@ -901,4 +901,22 @@ void last_function() {
   (assert-equal 2 (number-of-did-open) "end")
   (assert-equal 0 (number-of-did-close)))
 
+(tlc-deftest unicode-chars-content ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
+
+  (re-search-forward "unicode" nil nil 3)
+  (re-search-forward "は")
+  (backward-char)
+  (assert-equal 16 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  ;; Act
+  (non-interactive-xref-find-definitions)
+
+  ;; ;; Assert
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 5 (current-column))
+  )
+
 ;; remove duplicates in lib.rs

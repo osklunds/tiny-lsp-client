@@ -319,8 +319,15 @@ path. When an existing LSP server is connected to, this hook is not run."
    (let* ((line (- (line-number-at-pos pos) 1))
           (character (progn (when pos
                               (goto-char pos))
-                            (current-column))))
+                            (tlc--utf-16-linepos))))
      (list line character))))
+
+;; @credits: copied/inspired/then modified from eglot
+(defun tlc--utf-16-linepos ()
+  (/ (- (length (encode-coding-region (pos-bol)
+                                      (min (point) (point-max)) 'utf-16 t))
+        2)
+     2))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
   (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."

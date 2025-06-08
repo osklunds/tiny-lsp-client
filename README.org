@@ -150,8 +150,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
       - Java LSP
 - Bugs
       - Higher priority
-            - unicode/utf8/utf16 position offset not working. Add tests for precision, i.e., go to definition at the very end and very beginning of symbols.
-                  - This bug might not be as serious as I thought, since it only affects column. So unless the line begins with non-ascii, current way is okay. And beginning with non-ascii would only be for variable/function names with non-ascii, which feels pretty rare.
       - Lower priority
             - when doing completions in c++ test file, clangd complained about non opened document
             - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
@@ -166,12 +164,13 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - use try_recv_timeout with 0.1s in rust, so that no busy wait in lisp, but still frequent possibilities to C-g. Can also fix exceed lisp nesting
             - if user answers no to restart server, disable mode
       - Lower priority
+            - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
             - in general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
             - make (root, lang) key, so that one project with multiple languages can be supported.
             - consider caching didChange like eglot
             - Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
             - tests
-                  - Use clangd instead of rust-analyzer for rust unit tests
+                  - Use clangd instead of rust-analyzer inside rust unit tests
                   - More unit tests
                   - test error during xref or capf
                   - Some tests are unstable, especially when running all
