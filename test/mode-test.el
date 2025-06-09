@@ -809,6 +809,8 @@ void last_function() {
   (assert (has-had-max-num-of-timestamps-many-times) "after")
   )
 
+;; This test is a bit hacky and complicated, but when I refactored
+;; tlc--wait-for-response it caught bugs, so it's important.
 (tlc-deftest capf-interrupted-by-user-input-test ()
   ;; Arrange
   (add-hook 'tlc-mode-hook 'tlc-use-capf)
@@ -828,7 +830,8 @@ void last_function() {
 
   ;; Act
   ;; Trick from https://stackoverflow.com/a/32972563 used
-  (let ((unread-command-events (listify-key-sequence (kbd "a"))))
+  (let ((unread-command-events (listify-key-sequence (kbd "a")))
+        (noninteractive nil))
     (setq result (funcall tlc-collection-fun "" nil t)))
 
   ;; Assert
