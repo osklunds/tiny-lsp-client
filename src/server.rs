@@ -24,18 +24,20 @@ use crate::logger;
 use crate::message::*;
 
 use serde_json::json;
+use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::ops::Drop;
 use std::os::unix::process::CommandExt;
 use std::process;
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvError, Sender, TryRecvError};
+use std::sync::mpsc::{
+    self, Receiver, RecvError, RecvTimeoutError, Sender, TryRecvError,
+};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, Instant};
-use std::collections::BTreeMap;
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
@@ -564,10 +566,22 @@ impl Server {
         }
     }
 
+    // timeout: if None, no timeout, return immediately if no response.
+    // Otherwise, don't return until timeout has passed.
     // Outer Option (like the other methods) represents error or not. Inner
     // Option represents wheether a response is available now or not.
-    pub fn try_recv_response(&self) -> Option<Option<Response>> {
-        let res = self.receiver.try_recv();
+    pub fn try_recv_response(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Option<Option<Response>> {
+        let res = if let Some(timeout) = timeout {
+            self.receiver.recv_timeout(timeout).map_err(|e| match e {
+                RecvTimeoutError::Timeout => TryRecvError::Empty,
+                RecvTimeoutError::Disconnected => TryRecvError::Disconnected,
+            })
+        } else {
+            self.receiver.try_recv()
+        };
         if let Ok(response) = res {
             Some(Some(response))
         } else if let Err(TryRecvError::Empty) = res {

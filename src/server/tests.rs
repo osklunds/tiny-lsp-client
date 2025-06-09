@@ -22,11 +22,9 @@ use std::fs;
 fn initialize() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
-    let mut server = Server::new(
-        "rust-analyzer",
-        "/home/oskar/own_repos/tiny-lsp-client",
-    )
-    .unwrap();
+    let mut server =
+        Server::new("rust-analyzer", "/home/oskar/own_repos/tiny-lsp-client")
+            .unwrap();
 
     server.initialize();
 }
@@ -35,11 +33,9 @@ fn initialize() {
 fn did_open_change_close_and_definition() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
-    let mut server = Server::new(
-        "rust-analyzer",
-        "/home/oskar/own_repos/tiny-lsp-client",
-    )
-    .unwrap();
+    let mut server =
+        Server::new("rust-analyzer", "/home/oskar/own_repos/tiny-lsp-client")
+            .unwrap();
     server.initialize();
 
     let uri =
@@ -64,7 +60,12 @@ fn did_open_change_close_and_definition() {
     );
 
     // textDocument/definition
-    assert_eq!(Some(None), server.try_recv_response());
+    // Use both with and without timeout to increase test coverage
+    assert_eq!(Some(None), server.try_recv_response(None));
+    assert_eq!(
+        Some(None),
+        server.try_recv_response(Some(Duration::from_millis(100)))
+    );
     let request_params = DefinitionParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         position: Position {

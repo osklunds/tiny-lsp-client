@@ -393,7 +393,7 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; tlc--wait-for-response might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--root) inside, so pass root-path
 (defun tlc--wait-for-response (request-id root-path)
-  (let ((return (tlc--rust-recv-response root-path)))
+  (let ((return (tlc--rust-recv-response root-path 0)))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived

@@ -35,6 +35,7 @@ use crate::server::Server;
 use std::os::raw;
 use std::str;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -72,8 +73,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        1,
-        1,
+        2,
+        2,
         tlc__rust_recv_response,
         "tlc--rust-recv-response",
     );
@@ -349,8 +350,14 @@ unsafe extern "C" fn tlc__rust_recv_response(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_recv_response");
 
-    handle_call(env, nargs, args, |env, _args, server| {
-        if let Some(recv_result) = server.try_recv_response() {
+    handle_call(env, nargs, args, |env, args, server| {
+        let timeout = extract_integer(env, args[1]);
+        let timeout = if timeout == 0 {
+            None
+        } else {
+            Some(Duration::from_millis(timeout as u64))
+        };
+        if let Some(recv_result) = server.try_recv_response(timeout) {
             let result = match recv_result {
                 Some(response) => handle_response(env, response),
                 None => intern(env, "no-response"),
