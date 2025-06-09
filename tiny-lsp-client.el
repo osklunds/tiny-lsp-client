@@ -427,13 +427,14 @@ as usual."
       ;; normal case - no response yet
       ('no-response
        ;; todo: consider exponential back-off
-       ;; If sit-for returns nil it means user-input arrived, and if also
-       ;; interruptible, return immediately, otherwise continue to wait
-       ;; for a response
-       (let ((x (not (sit-for emacs-timeout 'nodisp))))
-         (if (and x interruptible)
-             'interrupted
-           (funcall continue))))
+       ;; If interruptible, use sit-for so that user-input immediately exits.
+       ;; But if sit-for returns t it means no user-input so continue to loop.
+       ;; If not interruptible, use sleep-for to avoid unecesseary recursion
+       ;; if the user type while waiting for a response.
+       (if (and interruptible (not (sit-for emacs-timeout 'nodisp)))
+           'interrupted
+         (sleep-for emacs-timeout)
+         (funcall continue)))
 
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
