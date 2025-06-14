@@ -156,8 +156,10 @@ can interrupt the capf using `while-no-input'."
      ((not (tlc--buffer-file-name-unchecked))
       (message "tiny-lsp-client can only be used in file buffers.")
       (tlc-mode -1))
+     ((not (tlc--initial-get-root))
+      (message "tiny-lsp-client can only be used in buffers where root can be found.")
+      (tlc-mode -1))
      (t
-      (tlc--initial-get-root)
       (tlc--start-server)
       (add-hook 'kill-buffer-hook 'tlc--kill-buffer-hook nil t)
       (add-hook 'before-revert-hook 'tlc--before-revert-hook nil t)
@@ -820,9 +822,8 @@ seems to accept URIs that are not encoded properly."
   "The initial fetch of the root for this buffer. Cache the root since if it
 changes for a buffer, the server needs to be restarted anyway."
   (setq tlc--cached-root
-        (if-let ((root (funcall tlc-find-root-function)))
-            (file-truename root)
-          default-directory)))
+        (when-let ((root (funcall tlc-find-root-function)))
+          (file-truename root))))
 
 (defun tlc--root ()
   "Wrapper for getting the root path of the buffer. Also checks that it's
