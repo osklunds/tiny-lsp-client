@@ -831,7 +831,8 @@ void last_function() {
   ;; Act
   ;; Trick from https://stackoverflow.com/a/32972563 used
   (let ((unread-command-events (listify-key-sequence (kbd "a")))
-        (noninteractive nil))
+        (noninteractive nil)
+        (tlc-interruptible-capf t))
     (setq result (funcall tlc-collection-fun "" nil t)))
 
   ;; Assert

@@ -130,6 +130,13 @@ path. When an existing LSP server is connected to, this hook is not run."
   :type 'hook
   :group 'tiny-lsp-client)
 
+(defcustom tlc-interruptible-capf nil
+  "Whether `tlc-completion-at-point' should exit at user input. If e.g. corfu
+is used as front end, this can and should be left at nil since corfu itself
+can interrupt the capf using `while-no-input'."
+  :type 'boolean
+  :group 'tiny-lsp-client)
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -431,9 +438,12 @@ as usual."
        ;; But if sit-for returns t it means no user-input so continue to loop.
        ;; If not interruptible, use sleep-for to avoid unecesseary recursion
        ;; if the user type while waiting for a response.
-       (if (and interruptible (not (sit-for emacs-timeout 'nodisp)))
+       (if (and interruptible (not (sit-for emacs-timeout)))
            'interrupted
-         (sleep-for emacs-timeout)
+         ;; Be careful about paranthesis and indentation so that 'interrupted
+         ;; is indeed returned
+         (unless interruptible
+           (sleep-for emacs-timeout))
          (funcall continue)))
 
       ;; alternative but valid case - some error response
@@ -522,11 +532,12 @@ as usual."
                                   (result
                                    ;; Use 0ms rust timeout since for capf want
                                    ;; to interrupt as soon as possible. Use
-                                   ;; 0.01s as emacs timeout because if too
+                                   ;; 0.005s as emacs timeout because if too
                                    ;; long, it means we wait too long before
                                    ;; checking again if a response has arrived.
                                    (tlc--wait-for-response request-id root
-                                                           0 0.01 'interruptible)))
+                                                           0 0.005
+                                                           tlc-interruptible-capf)))
                              (cond
                               ((eq result 'interrupted)
                                tlc--last-candidates)
