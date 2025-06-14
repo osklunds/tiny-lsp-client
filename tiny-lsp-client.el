@@ -137,6 +137,12 @@ can interrupt the capf using `while-no-input'."
   :type 'boolean
   :group 'tiny-lsp-client)
 
+(defcustom tlc-debug-on-error nil
+  "Whether some debug `error' calls should show a stacktrace so that it's more
+obvious that they happen."
+  :type 'boolean
+  :group 'tiny-lsp-client)
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -308,15 +314,15 @@ can interrupt the capf using `while-no-input'."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  (if tlc--change
-      ;; I know this is overly simplified, but when this case happens, I fix it
-      ;; one idea could be send full document since these cases should hopefully
-      ;; be rare
-      (error "tlc--change is not-nil in before-change")
-    ;; if revert in progress, it can happen that didChange is sent before didOpen,
-    ;; when discarding changes in magit
-    (unless revert-buffer-in-progress-p
-      (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
+  (when tlc--change
+    ;; I know this is overly simplified, but when this case happens, I fix it
+    ;; one idea could be send full document since these cases should hopefully
+    ;; be rare
+    (tlc--error "tlc--change is not-nil in before-change"))
+  ;; if revert in progress, it can happen that didChange is sent before didOpen,
+  ;; when discarding changes in magit
+  (unless revert-buffer-in-progress-p
+    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
 
 ;; @credits: Heavily inspired by eglot
 ;; nil pos means current point
@@ -343,6 +349,8 @@ can interrupt the capf using `while-no-input'."
             end
             revert-buffer-in-progress-p
             tlc--change)
+  (unless tlc--change
+    (error "tlc--change is nil in after-change"))
   (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
@@ -811,6 +819,10 @@ seems to accept URIs that are not encoded properly."
          (suffix (substring uri 7)))
     (cl-assert (string= prefix "file://"))
     (decode-coding-string (url-unhex-string suffix) 'utf-8)))
+
+(defun tlc--error (msg)
+  (let ((debug-on-error tlc-debug-on-error))
+    (error msg)))
 
 ;; -----------------------------------------------------------------------------
 ;; Root
