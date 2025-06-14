@@ -130,6 +130,13 @@ path. When an existing LSP server is connected to, this hook is not run."
   :type 'hook
   :group 'tiny-lsp-client)
 
+(defcustom tlc-interruptible-capf nil
+  "Whether `tlc-completion-at-point' should exit at user input. If e.g. corfu
+is used as front end, this can and should be left at nil since corfu itself
+can interrupt the capf using `while-no-input'."
+  :type 'boolean
+  :group 'tiny-lsp-client)
+
 ;; -----------------------------------------------------------------------------
 ;; Minor mode
 ;;------------------------------------------------------------------------------
@@ -370,7 +377,9 @@ path. When an existing LSP server is connected to, this hook is not run."
 ;; https://github.com/zbelial/lspce
 (defun tlc--sync-request (method arguments)
   (let ((request-id (tlc--request method arguments (tlc--root))))
-    (tlc--wait-for-response request-id (tlc--root))))
+    ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but 100ms
+    ;; is still responsive enough to C-g aborts.
+    (tlc--wait-for-response request-id (tlc--root) 100 0 nil)))
 
 ;; tlc--request might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--root) inside, so pass root-path
@@ -392,15 +401,25 @@ path. When an existing LSP server is connected to, this hook is not run."
 
 ;; tlc--wait-for-response might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--root) inside, so pass root-path
-(defun tlc--wait-for-response (request-id root-path)
-  (let ((return (tlc--rust-recv-response root-path)))
+(defun tlc--wait-for-response (request-id root-path rust-timeout
+                                          emacs-timeout interruptible)
+  "Wait for a response to REQUEST-ID from the server managing ROOT-PATH.
+RUST-TIMEOUT is the non-interruptible time between each wait call. The type is
+integer, unit milliseconds. EMACS-TIMEOUT is the interruptible time between each
+wait call, interruptible both by C-g and any user input. The type is float, unit
+seconds. INTERRUPTIBLE means exit on user input. Otherwise, only exists on C-g
+as usual."
+  (let ((return (tlc--rust-recv-response root-path rust-timeout))
+        (continue (lambda ()
+                    (tlc--wait-for-response
+                     request-id root-path rust-timeout emacs-timeout interruptible))))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
       (`(response ,id ,has-result ,params)
        (cond
         ;; alternative but valid case - response to old request
-        ((< id request-id) (tlc--wait-for-response request-id root-path))
+        ((< id request-id) (funcall continue))
 
         ;; bug case - response to request id not yet sent
         ((> id request-id) (error "too big id"))
@@ -415,8 +434,17 @@ path. When an existing LSP server is connected to, this hook is not run."
       ;; normal case - no response yet
       ('no-response
        ;; todo: consider exponential back-off
-       (sit-for 0.01)
-       (tlc--wait-for-response request-id root-path))
+       ;; If interruptible, use sit-for so that user-input immediately exits.
+       ;; But if sit-for returns t it means no user-input so continue to loop.
+       ;; If not interruptible, use sleep-for to avoid unecesseary recursion
+       ;; if the user type while waiting for a response.
+       (if (and interruptible (not (sit-for emacs-timeout)))
+           'interrupted
+         ;; Be careful about paranthesis and indentation so that 'interrupted
+         ;; is indeed returned
+         (unless interruptible
+           (sleep-for emacs-timeout))
+         (funcall continue)))
 
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
@@ -501,18 +529,22 @@ path. When an existing LSP server is connected to, this hook is not run."
                                                "textDocument/completion"
                                                (list uri line character)
                                                root))
-                                  (while-result
-                                   (while-no-input
-                                     (tlc--wait-for-response request-id root))
-                                   ))
+                                  (result
+                                   ;; Use 0ms rust timeout since for capf want
+                                   ;; to interrupt as soon as possible. Use
+                                   ;; 0.005s as emacs timeout because if too
+                                   ;; long, it means we wait too long before
+                                   ;; checking again if a response has arrived.
+                                   (tlc--wait-for-response request-id root
+                                                           0 0.005
+                                                           tlc-interruptible-capf)))
                              (cond
-                              ;; Interrupted
-                              ((eq while-result t)
+                              ((eq result 'interrupted)
                                tlc--last-candidates)
                               ;; Finished (todo: or C-g, need to think about that)
                               (t
-                               (setq tlc--last-candidates while-result)
-                               (setq cached-candidates while-result)))))))
+                               (setq tlc--last-candidates result)
+                               (setq cached-candidates result)))))))
          )
     (list
      (or (car bounds) (point))
