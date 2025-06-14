@@ -141,10 +141,10 @@
   ;; wastefully slow
   (sleep-for 2)
 
-  (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found"))
+  (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found" 100))
 
   (assert-equal `(response 1 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response root-path)
+                (tlc--rust-recv-response root-path 0)
                 "recv resp first definition")
 
   (test-garbage-collect "after textDocument/definition")
@@ -182,7 +182,7 @@
   (sleep-for 2)
 
   (assert-equal `(response 2 t ((,file-uri 5 6)))
-                (tlc--rust-recv-response root-path))
+                (tlc--rust-recv-response root-path 0))
 
   ;; ---------------------------------------------------------------------------
   ;; textDocument/didChange to revert the previous change, so that clangd's
@@ -234,7 +234,7 @@
   (sleep-for 2)
 
   (assert-equal `(response 3 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response root-path))
+                (tlc--rust-recv-response root-path 0))
 
   ;; ---------------------------------------------------------------------------
   ;; Stopping the LSP server
@@ -256,7 +256,7 @@
                  "textDocument/definition"
                  `(,file-uri 4 10)))
 
-  (assert-equal 'no-server (tlc--rust-recv-response root-path))
+  (assert-equal 'no-server (tlc--rust-recv-response root-path 0))
 
   ;; -----------------------------------------------------------------------------
   ;; End
