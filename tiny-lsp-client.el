@@ -495,7 +495,7 @@ as usual."
                 (let* ((line-target (+ line-start 1))
                        (file-target (tlc--uri-to-file-name uri-target)))
                   (xref-make
-                   "todo"
+                   file-target
                    (xref-make-file-location file-target line-target character-start)))))
             response)))
 

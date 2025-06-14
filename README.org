@@ -161,7 +161,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
-            - xref summary
             - use full sync on didChange as fallback
             - if user answers no to restart server, disable mode
       - Lower priority
