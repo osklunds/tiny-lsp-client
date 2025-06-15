@@ -62,9 +62,6 @@
 (add-hook 'erlang-mode-hook 'tlc-mode)
 (add-hook 'rust-mode-hook 'tlc-mode)
 
-(add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-capf)
-
 (define-key prog-mode-map (kbd "M-p") 'completion-at-point)
 (define-key prog-mode-map (kbd "M-o") 'tlc--async-collection-fun)
 

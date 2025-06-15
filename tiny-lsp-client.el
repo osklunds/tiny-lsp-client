@@ -475,11 +475,6 @@ as usual."
 ;; xref
 ;;------------------------------------------------------------------------------
 
-(defun tlc-use-xref ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
-
 (defun tlc-xref-backend () 'xref-tlc)
 
 ;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
@@ -509,11 +504,6 @@ as usual."
 ;; -----------------------------------------------------------------------------
 ;; capf
 ;; -----------------------------------------------------------------------------
-
-(defun tlc-use-capf ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
 ;; For company integration, can consider clearing this on start completion
 (defvar tlc--last-candidates nil)
@@ -579,11 +569,6 @@ as usual."
 ;; -----------------------------------------------------------------------------
 ;; Async cached capf (experimental)
 ;; -----------------------------------------------------------------------------
-
-(defun tlc-use-async-cached-capf ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point nil t)))
 
 (defvar tlc--async-current-timer nil)
 (defvar tlc--async-reqeust-id nil)
