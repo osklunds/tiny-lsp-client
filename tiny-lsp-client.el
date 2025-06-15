@@ -525,52 +525,54 @@ as usual."
 ;; in similar ways, so hopefully OK.
 ;; @credits: Inspired by eglot
 (defun tlc-completion-at-point ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (uri (tlc--buffer-uri))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (car pos))
-         (character (cadr pos))
-         (cached-candidates 'none)
-         (root (tlc--root))
-         (response-fun (lambda ()
-                         (if (listp cached-candidates) cached-candidates
-                           (let* ((request-id (tlc--request
-                                               "textDocument/completion"
-                                               (list uri line character)
-                                               root))
-                                  (result
-                                   ;; Use 0ms rust timeout since for capf want
-                                   ;; to interrupt as soon as possible. Use
-                                   ;; 0.005s as emacs timeout because if too
-                                   ;; long, it means we wait too long before
-                                   ;; checking again if a response has arrived.
-                                   (tlc--wait-for-response request-id root
-                                                           0 0.005
-                                                           tlc-interruptible-capf)))
-                             (cond
-                              ((eq result 'interrupted)
-                               tlc--last-candidates)
-                              ;; Finished (todo: or C-g, need to think about that)
-                              (t
-                               (setq tlc--last-candidates result)
-                               (setq cached-candidates result)))))))
-         )
-    (list
-     (or (car bounds) (point))
-     (or (cdr bounds) (point))
-     (lambda (probe pred action)
-       (cond
-        ((eq action 'metadata) (progn
-                                 '(metadata . nil)))
+  (when tlc-mode
+    (let* ((bounds (bounds-of-thing-at-point 'symbol))
+           (uri (tlc--buffer-uri))
+           (pos (tlc--pos-to-lsp-pos))
+           (line (car pos))
+           (character (cadr pos))
+           (cached-candidates 'none)
+           (root (tlc--root))
+           (response-fun (lambda ()
+                           (if (listp cached-candidates) cached-candidates
+                             (let* ((request-id (tlc--request
+                                                 "textDocument/completion"
+                                                 (list uri line character)
+                                                 root))
+                                    (result
+                                     ;; Use 0ms rust timeout since for capf want
+                                     ;; to interrupt as soon as possible. Use
+                                     ;; 0.005s as emacs timeout because if too
+                                     ;; long, it means we wait too long before
+                                     ;; checking again if a response has arrived.
+                                     (tlc--wait-for-response request-id root
+                                                             0 0.005
+                                                             tlc-interruptible-capf)))
+                               (cond
+                                ((eq result 'interrupted)
+                                 tlc--last-candidates)
+                                ;; Finished (todo: or C-g, need to think about that)
+                                (t
+                                 (setq tlc--last-candidates result)
+                                 (setq cached-candidates result)))))))
+           )
+      (list
+       (or (car bounds) (point))
+       (or (cdr bounds) (point))
+       (lambda (probe pred action)
+         (cond
+          ((eq action 'metadata) (progn
+                                   '(metadata . nil)))
 
-        ((eq (car-safe action) 'boundaries) nil)
-        (t
-         (complete-with-action action (funcall response-fun) probe pred))))
-     :annotation-function
-     (lambda (_item)
-       (concat "tlc")
+          ((eq (car-safe action) 'boundaries) nil)
+          (t
+           (complete-with-action action (funcall response-fun) probe pred))))
+       :annotation-function
+       (lambda (_item)
+         (concat "tlc")
+         )
        )
-     )
+      )
     )
   )
 

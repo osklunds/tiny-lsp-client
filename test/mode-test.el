@@ -955,4 +955,16 @@ void last_function() {
   (assert-equal 18 (current-column))
   )
 
+(tlc-deftest capf-when-tlc-mode-disabled-test ()
+  ;; Arrange
+  (add-hook 'tlc-mode-hook 'tlc-use-capf)
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert (tlc-completion-at-point) "enabled")
+
+  (tlc-mode -1)
+
+  (assert-not (tlc-completion-at-point) "disabled" )
+  )
+
 ;; remove duplicates in lib.rs
