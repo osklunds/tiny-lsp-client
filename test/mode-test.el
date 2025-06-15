@@ -957,4 +957,80 @@ void last_function() {
   (assert-not (tlc-completion-at-point) "disabled" )
   )
 
+(tlc-deftest ask-start-server-yes-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (tlc-stop-server)
+  (assert-equal 0 (length (tlc-info)))
+  (assert tlc-mode)
+
+  ;; Act
+  (should-error
+   (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
+     (non-interactive-xref-find-definitions))
+   :type 'error)
+
+  ;; Assert
+  ;; tlc-mode still enabled
+  (assert tlc-mode)
+  ;; Server running
+  (assert-equal 1 (length (tlc-info)))
+
+  ;; xref works
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
+
+(tlc-deftest ask-start-server-no-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (assert-equal 1 (length (tlc-info)))
+  (tlc-stop-server)
+  (assert-equal 0 (length (tlc-info)))
+  (assert tlc-mode)
+
+  ;; Act
+  (should-error
+   (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) nil)))
+     (non-interactive-xref-find-definitions))
+   :type 'error)
+
+  ;; Assert
+  ;; tlc-mode disabled
+  (assert-not tlc-mode)
+  ;; Server not running
+  (assert-equal 0 (length (tlc-info)))
+  )
+
 ;; remove duplicates in lib.rs

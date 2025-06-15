@@ -778,7 +778,8 @@ and always using the latest result."
 (defun tlc--ask-start-server ()
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
-    (error "No LSP server running")))
+    (tlc-mode -1)
+    (error "You chose not the restart the LSP server. Disabling tlc-mode.")))
 
 (defun tlc--log (format-string &rest objects)
   (when tlc-log-emacs-debug
