@@ -178,9 +178,6 @@ obvious that they happen."
     ;; so only send close if possible.
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
-    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
-    (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
