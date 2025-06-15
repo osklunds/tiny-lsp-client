@@ -30,7 +30,7 @@
     (apply 'file-name-concat repo-root components)))
 
 (load (relative-repo-root "test" "common.el"))
-(setq test-file-name "new-mode-test")
+(setq test-file-name "mode-test")
 
 ;; -----------------------------------------------------------------------------
 ;; Setup before running test cases
