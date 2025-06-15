@@ -487,25 +487,27 @@ as usual."
 
 ;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
-  (propertize (or (thing-at-point 'symbol) "")
-              'identifier-at-point t))
+  (when tlc-mode
+    (propertize (or (thing-at-point 'symbol) "")
+                'identifier-at-point t)))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) _identifier)
-  (let* ((uri (tlc--buffer-uri))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (nth 0 pos))
-         (character (nth 1 pos))
-         (response (tlc--sync-request
-                    "textDocument/definition"
-                    (list uri line character))))
-    (mapcar (lambda (location)
-              (pcase-let ((`(,uri-target ,line-start ,character-start) location))
-                (let* ((line-target (+ line-start 1))
-                       (file-target (tlc--uri-to-file-name uri-target)))
-                  (xref-make
-                   file-target
-                   (xref-make-file-location file-target line-target character-start)))))
-            response)))
+  (when tlc-mode
+    (let* ((uri (tlc--buffer-uri))
+           (pos (tlc--pos-to-lsp-pos))
+           (line (nth 0 pos))
+           (character (nth 1 pos))
+           (response (tlc--sync-request
+                      "textDocument/definition"
+                      (list uri line character))))
+      (mapcar (lambda (location)
+                (pcase-let ((`(,uri-target ,line-start ,character-start) location))
+                  (let* ((line-target (+ line-start 1))
+                         (file-target (tlc--uri-to-file-name uri-target)))
+                    (xref-make
+                     file-target
+                     (xref-make-file-location file-target line-target character-start)))))
+              response))))
 
 ;; -----------------------------------------------------------------------------
 ;; capf
