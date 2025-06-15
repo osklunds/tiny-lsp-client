@@ -923,4 +923,36 @@ void last_function() {
   (assert-equal 5 (current-column))
   )
 
+(tlc-deftest xref-when-tlc-mode-disabled-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (tlc-mode -1)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act
+  (should-error
+   (non-interactive-xref-find-definitions)
+   :type 'cl-no-applicable-method)
+
+  ;; Assert
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+  )
+
 ;; remove duplicates in lib.rs
