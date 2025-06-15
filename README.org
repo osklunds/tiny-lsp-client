@@ -22,20 +22,17 @@ Add =tlc-mode= to the mode hooks you want, for example:
 (add-hook 'rust-mode-hook 'tlc-mode)
 #+END_SRC
 
-All of =tiny-lsp-client='s features are off by default, to be as unobtrusive as possible. To enable jump-to-definition (as a =xref= backend) and completion (as a =completion-at-point-functions= function), do the following:
+=tlc-mode= itself doesn't provide any features (it only provides document synchronization with the LSP server). This is to be as customizable and unobtrusive as possible. Instead, you must yourself enable the features you want, in the way you want. For example, to enable jump-to-definition (as a =xref= backend) and completion (as a =completion-at-point-functions= function) whenever =tlc-mode= is enabled, do the following:
 
 #+BEGIN_SRC emacs-lisp
-(add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-capf)
+(defun my-tlc-features ()
+  (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+  (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t))
+
+(add-hook 'tlc-mode-hook 'my-tlc-features)
 #+END_SRC
 
-Or, suppose you only want =xref= for C++ but =xref= and =capf= for Rust, you can do the following:
-
-#+BEGIN_SRC emacs-lisp
-(add-hook 'c++-mode-hook 'tlc-use-xref)
-(add-hook 'rust-mode-hook 'tlc-use-xref)
-(add-hook 'rust-mode-hook 'tlc-use-capf)
-#+END_SRC
+If you use [[https://github.com/minad/corfu][Corfu]] maybe you want to combine =tlc-completion-at-point= with some other capfs in =cape-capf-super=. Or maybe you only want =xref= for some major modes and =capf= for some other modes. For this reason, =tiny-lsp-client= only provides plain, standardized =tlc-xref-backend= and =tlc-completion-at-point= functions, and leaves it to you how and when to use them.
 
 For more configuration, refer to the =defcustom= options and their documentation in =tiny-lsp-client.el=. One =defcustom= worthy of extra highlight is =tlc-server-cmds=. =tlc-server-cmds= defines which server command to use for various major modes, and it needs customization if your mode and server aren't already in the default list. Another note is that some of the =defcustom= change variables in Rust, and must therefore be set using =customize-set-variable= and not =setq=.
 
