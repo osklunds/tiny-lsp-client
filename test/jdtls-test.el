@@ -94,3 +94,76 @@
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   )
+
+(tlc-deftest edit-test ()
+  (find-src-file-jdtls "App.java")
+
+  (assert-equal "package com.mycompany.app;
+
+/**
+ * Hello world!
+ */
+public class App {
+    public static void other() {
+        System.out.println(\"Hello\");
+    }
+
+    public static void main(String[] args) {
+        other();
+    }
+
+}
+" (current-buffer-string))
+
+  (beginning-of-buffer)
+  (re-search-forward "other")
+  (insert "_")
+  (insert "h")
+  (insert "e")
+  (insert "j")
+  (beginning-of-line)
+  (insert "  ")
+
+  (re-search-forward "other" nil nil 2)
+  (insert "_hej")
+
+  (beginning-of-buffer)
+  (re-search-forward "class App")
+  (end-of-line)
+  (insert "\n")
+
+  (re-search-forward "main")
+  (end-of-line)
+  (insert "\n")
+
+  (assert-equal "package com.mycompany.app;
+
+/**
+ * Hello world!
+ */
+public class App {
+
+      public static void other_hej() {
+        System.out.println(\"Hello\");
+    }
+
+    public static void main(String[] args) {
+
+        other_hej();
+    }
+
+}
+" (current-buffer-string))
+
+  (beginning-of-buffer)
+  (re-search-forward "other_hej" nil nil 2)
+
+  (assert-equal 14 (line-number-at-pos))
+  (assert-equal 17 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 8 (line-number-at-pos))
+  (assert-equal 25 (current-column))
+  )
+
