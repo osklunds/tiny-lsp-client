@@ -793,12 +793,15 @@ void last_function() {
   (assert-not (has-had-max-num-of-timestamps-many-times) "before")
 
   ;; Act
-  (dotimes (_ 10000)
-    ;; need to call internal functions to be able to test async
-    (tlc--request
-     "textDocument/definition"
-     (list (tlc--buffer-file-name) 0 0)
-     (tlc--root)))
+  (let ((done nil))
+    (while (not done)
+      (dotimes (_ 1000)
+        ;; need to call internal functions to be able to test async
+        (tlc--request
+         "textDocument/definition"
+         (list (tlc--buffer-file-name) 0 0)
+         (tlc--root)))
+      (setq done (has-had-max-num-of-timestamps-many-times))))
 
   ;; Assert
   ;; Doesn't test that the latest were removed, just that the code is triggered.
