@@ -178,9 +178,6 @@ obvious that they happen."
     ;; so only send close if possible.
     (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
       (tlc--notify-text-document-did-close))
-    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
-    (remove-hook 'completion-at-point-functions 'tlc-completion-at-point t)
-    (remove-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point t)
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
     (remove-hook 'after-revert-hook 'tlc--after-revert-hook t)
@@ -478,43 +475,35 @@ as usual."
 ;; xref
 ;;------------------------------------------------------------------------------
 
-(defun tlc-use-xref ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)))
-
 (defun tlc-xref-backend () 'xref-tlc)
 
 ;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
-  (propertize (or (thing-at-point 'symbol) "")
-              'identifier-at-point t))
+  (when tlc-mode
+    (propertize (or (thing-at-point 'symbol) "")
+                'identifier-at-point t)))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) _identifier)
-  (let* ((uri (tlc--buffer-uri))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (nth 0 pos))
-         (character (nth 1 pos))
-         (response (tlc--sync-request
-                    "textDocument/definition"
-                    (list uri line character))))
-    (mapcar (lambda (location)
-              (pcase-let ((`(,uri-target ,line-start ,character-start) location))
-                (let* ((line-target (+ line-start 1))
-                       (file-target (tlc--uri-to-file-name uri-target)))
-                  (xref-make
-                   file-target
-                   (xref-make-file-location file-target line-target character-start)))))
-            response)))
+  (when tlc-mode
+    (let* ((uri (tlc--buffer-uri))
+           (pos (tlc--pos-to-lsp-pos))
+           (line (nth 0 pos))
+           (character (nth 1 pos))
+           (response (tlc--sync-request
+                      "textDocument/definition"
+                      (list uri line character))))
+      (mapcar (lambda (location)
+                (pcase-let ((`(,uri-target ,line-start ,character-start) location))
+                  (let* ((line-target (+ line-start 1))
+                         (file-target (tlc--uri-to-file-name uri-target)))
+                    (xref-make
+                     file-target
+                     (xref-make-file-location file-target line-target character-start)))))
+              response))))
 
 ;; -----------------------------------------------------------------------------
 ;; capf
 ;; -----------------------------------------------------------------------------
-
-(defun tlc-use-capf ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)))
 
 ;; For company integration, can consider clearing this on start completion
 (defvar tlc--last-candidates nil)
@@ -526,63 +515,60 @@ as usual."
 ;; in similar ways, so hopefully OK.
 ;; @credits: Inspired by eglot
 (defun tlc-completion-at-point ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (uri (tlc--buffer-uri))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (car pos))
-         (character (cadr pos))
-         (cached-candidates 'none)
-         (root (tlc--root))
-         (response-fun (lambda ()
-                         (if (listp cached-candidates) cached-candidates
-                           (let* ((request-id (tlc--request
-                                               "textDocument/completion"
-                                               (list uri line character)
-                                               root))
-                                  (result
-                                   ;; Use 0ms rust timeout since for capf want
-                                   ;; to interrupt as soon as possible. Use
-                                   ;; 0.005s as emacs timeout because if too
-                                   ;; long, it means we wait too long before
-                                   ;; checking again if a response has arrived.
-                                   (tlc--wait-for-response request-id root
-                                                           0 0.005
-                                                           tlc-interruptible-capf)))
-                             (cond
-                              ((eq result 'interrupted)
-                               tlc--last-candidates)
-                              ;; Finished (todo: or C-g, need to think about that)
-                              (t
-                               (setq tlc--last-candidates result)
-                               (setq cached-candidates result)))))))
-         )
-    (list
-     (or (car bounds) (point))
-     (or (cdr bounds) (point))
-     (lambda (probe pred action)
-       (cond
-        ((eq action 'metadata) (progn
-                                 '(metadata . nil)))
+  (when tlc-mode
+    (let* ((bounds (bounds-of-thing-at-point 'symbol))
+           (uri (tlc--buffer-uri))
+           (pos (tlc--pos-to-lsp-pos))
+           (line (car pos))
+           (character (cadr pos))
+           (cached-candidates 'none)
+           (root (tlc--root))
+           (response-fun (lambda ()
+                           (if (listp cached-candidates) cached-candidates
+                             (let* ((request-id (tlc--request
+                                                 "textDocument/completion"
+                                                 (list uri line character)
+                                                 root))
+                                    (result
+                                     ;; Use 0ms rust timeout since for capf want
+                                     ;; to interrupt as soon as possible. Use
+                                     ;; 0.005s as emacs timeout because if too
+                                     ;; long, it means we wait too long before
+                                     ;; checking again if a response has arrived.
+                                     (tlc--wait-for-response request-id root
+                                                             0 0.005
+                                                             tlc-interruptible-capf)))
+                               (cond
+                                ((eq result 'interrupted)
+                                 tlc--last-candidates)
+                                ;; Finished (todo: or C-g, need to think about that)
+                                (t
+                                 (setq tlc--last-candidates result)
+                                 (setq cached-candidates result)))))))
+           )
+      (list
+       (or (car bounds) (point))
+       (or (cdr bounds) (point))
+       (lambda (probe pred action)
+         (cond
+          ((eq action 'metadata) (progn
+                                   '(metadata . nil)))
 
-        ((eq (car-safe action) 'boundaries) nil)
-        (t
-         (complete-with-action action (funcall response-fun) probe pred))))
-     :annotation-function
-     (lambda (_item)
-       (concat "tlc")
+          ((eq (car-safe action) 'boundaries) nil)
+          (t
+           (complete-with-action action (funcall response-fun) probe pred))))
+       :annotation-function
+       (lambda (_item)
+         (concat "tlc")
+         )
        )
-     )
+      )
     )
   )
 
 ;; -----------------------------------------------------------------------------
 ;; Async cached capf (experimental)
 ;; -----------------------------------------------------------------------------
-
-(defun tlc-use-async-cached-capf ()
-  (interactive)
-  (when tlc-mode
-    (add-hook 'completion-at-point-functions 'tlc-async-cached-completion-at-point nil t)))
 
 (defvar tlc--async-current-timer nil)
 (defvar tlc--async-reqeust-id nil)

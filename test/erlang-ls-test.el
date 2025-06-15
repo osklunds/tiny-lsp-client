@@ -48,8 +48,6 @@
 (customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'erlang-mode-hook 'tlc-mode)
-(add-hook 'tlc-mode-hook 'tlc-use-xref)
-(add-hook 'tlc-mode-hook 'tlc-use-capf)
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases

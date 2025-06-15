@@ -52,8 +52,6 @@
 (customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
-;; todo: Add proper tests for tlc-use-*
-(add-hook 'tlc-mode-hook 'tlc-use-xref)
 
 ;; -----------------------------------------------------------------------------
 ;; Helpers
@@ -133,15 +131,13 @@
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
-  (assert-equal t tlc-mode)
-  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (assert tlc-mode)
 
   ;; Act1
   (tlc-mode -1)
 
   ;; Assert1
-  (assert-equal nil tlc-mode)
-  (assert-equal '(etags--xref-backend) xref-backend-functions)
+  (assert-not tlc-mode)
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 1 (number-of-did-close))
@@ -150,8 +146,7 @@
   (tlc-mode t)
 
   ;; Assert2
-  (assert-equal t tlc-mode)
-  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (assert tlc-mode)
 
   (assert-equal 2 (number-of-did-open))
   (assert-equal 1 (number-of-did-close))
@@ -540,7 +535,6 @@ abc(123);
 
 (tlc-deftest completion-at-point-end-to-end-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -559,7 +553,6 @@ abc(123);
   )
 
 (tlc-deftest capf-all-completions-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -626,7 +619,6 @@ abc(123);
   )
 
 (tlc-deftest capf-test-completion-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -652,7 +644,6 @@ abc(123);
   )
 
 (tlc-deftest capf-try-completion-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal 0 (number-of-completion-requests))
@@ -679,7 +670,6 @@ abc(123);
   )
 
 (tlc-deftest capf-cache-test ()
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (assert-equal
@@ -793,12 +783,15 @@ void last_function() {
   (assert-not (has-had-max-num-of-timestamps-many-times) "before")
 
   ;; Act
-  (dotimes (_ 10000)
-    ;; need to call internal functions to be able to test async
-    (tlc--request
-     "textDocument/definition"
-     (list (tlc--buffer-file-name) 0 0)
-     (tlc--root)))
+  (let ((done nil))
+    (while (not done)
+      (dotimes (_ 1000)
+        ;; need to call internal functions to be able to test async
+        (tlc--request
+         "textDocument/definition"
+         (list (tlc--buffer-file-name) 0 0)
+         (tlc--root)))
+      (setq done (has-had-max-num-of-timestamps-many-times))))
 
   ;; Assert
   ;; Doesn't test that the latest were removed, just that the code is triggered.
@@ -813,7 +806,6 @@ void last_function() {
 ;; tlc--wait-for-response it caught bugs, so it's important.
 (tlc-deftest capf-interrupted-by-user-input-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
   (re-search-forward "last_variable")
@@ -853,7 +845,6 @@ void last_function() {
 
 (tlc-deftest capf-bounds-test ()
   ;; Arrange
-  (add-hook 'tlc-mode-hook 'tlc-use-capf)
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
 
@@ -921,6 +912,49 @@ void last_function() {
   ;; ;; Assert
   (assert-equal 11 (line-number-at-pos))
   (assert-equal 5 (current-column))
+  )
+
+(tlc-deftest xref-when-tlc-mode-disabled-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  (goto-char (point-min))
+  (re-search-forward "other_function" nil nil 2)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+  (tlc-mode -1)
+  (assert-equal '(tlc-xref-backend t) xref-backend-functions)
+
+  ;; Act
+  (should-error
+   (non-interactive-xref-find-definitions)
+   :type 'cl-no-applicable-method)
+
+  ;; Assert
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+  )
+
+(tlc-deftest capf-when-tlc-mode-disabled-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert (tlc-completion-at-point) "enabled")
+
+  (tlc-mode -1)
+
+  (assert-not (tlc-completion-at-point) "disabled" )
   )
 
 ;; remove duplicates in lib.rs
