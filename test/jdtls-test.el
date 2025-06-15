@@ -69,3 +69,28 @@
   (assert-equal 1 (number-of-did-open) "open after")
   (assert-equal 0 (number-of-did-close) "close after")
   )
+
+(tlc-deftest find-definition-test ()
+  ;; Arrange
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (find-src-file-jdtls "App.java")
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (re-search-forward "other" nil nil 2)
+  (assert-equal 12 (line-number-at-pos))
+  (assert-equal 13 (current-column))
+
+  ;; Act
+  (non-interactive-xref-find-definitions)
+
+  ;; Assert
+  (assert-equal 7 (line-number-at-pos))
+  (assert-equal 23 (current-column))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
