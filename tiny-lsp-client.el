@@ -48,6 +48,7 @@
                              (rust-mode . "rust-analyzer")
                              (erlang-mode . "erlang_ls")
                              (c++-mode . "clangd")
+                             (java-mode . "jdtls")
                              )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client
