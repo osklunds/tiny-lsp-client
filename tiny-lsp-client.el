@@ -845,13 +845,11 @@ a nil root is OK."
 (defun tlc-dev-find-root-function ()
   "Special root finder used for developing tiny-lsp-client itself. Finds the
 nested projects inside the test directory as separate projects."
-  (if (string-match-p "erlang_ls" (buffer-file-name))
-      (file-name-directory (buffer-file-name))
-    (if (string-match-p "clangd" (buffer-file-name))
-        (file-name-directory (buffer-file-name))
-      (if (string-match-p "rust_analyzer" (buffer-file-name))
-          (file-name-parent-directory (file-name-directory (buffer-file-name)))
-        (tlc-find-root-default-function)))))
+  (if (string-match "tiny-lsp-client/test/[^/]+/" default-directory)
+      (let* ((match (match-string 0 default-directory))
+             (prefix (car (split-string default-directory match))))
+        (concat prefix match))
+    (tlc-find-root-default-function)))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
