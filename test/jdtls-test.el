@@ -81,7 +81,7 @@
   (assert-equal 0 (number-of-did-close))
 
   (re-search-forward "other" nil nil 2)
-  (assert-equal 12 (line-number-at-pos))
+  (assert-equal 13 (line-number-at-pos))
   (assert-equal 13 (current-column))
 
   ;; Act
@@ -109,6 +109,7 @@ public class App {
     }
 
     public static void main(String[] args) {
+
         other();
     }
 
@@ -149,6 +150,7 @@ public class App {
 
     public static void main(String[] args) {
 
+
         other_hej();
     }
 
@@ -158,12 +160,31 @@ public class App {
   (beginning-of-buffer)
   (re-search-forward "other_hej" nil nil 2)
 
-  (assert-equal 14 (line-number-at-pos))
+  (assert-equal 15 (line-number-at-pos))
   (assert-equal 17 (current-column))
 
   (non-interactive-xref-find-definitions)
 
   (assert-equal 8 (line-number-at-pos))
   (assert-equal 25 (current-column))
+  )
+
+(tlc-deftest capf-test ()
+  (find-src-file-jdtls "App.java")
+
+  (re-search-forward "other" nil nil 2)
+  (forward-line -1)
+  (assert-equal 12 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+
+  ;; jdtls takes some time to start. Unlike the other tests the looping
+  ;; happens in lisp here, which means the recurse limit is exceeded
+  (sleep-for 3)
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (dolist (exp '("other" "main"))
+      (assert (cl-member exp result :test 'string-equal) exp))
+    )
   )
 
