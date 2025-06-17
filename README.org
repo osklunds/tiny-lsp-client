@@ -144,7 +144,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - logging
             - test strategy
       - Haskell LSP
-      - Java LSP
       - make (root, lang) key, so that one project with multiple languages can be supported.
 - Bugs
       - Higher priority
