@@ -54,7 +54,7 @@ pub struct Server {
 impl Server {
     // @credits: The startup of the child process and worker threads inspired by
     // LspServer::new https://github.com/zbelial/lspce
-    pub fn new(command: &str, root_path: &str) -> Option<Server> {
+    pub fn new(root_path: &str, command: &str) -> Option<Server> {
         let mut child = match Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

@@ -149,7 +149,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         } else {
             logger::log_rust_debug!("Need to start new");
         }
-        match Server::new(&server_key.server_cmd, &server_key.root_path) {
+        match Server::new(&server_key.root_path, &server_key.server_cmd) {
             Some(mut server) => match server.initialize() {
                 Some(()) => {
                     servers.insert(server_key, server);

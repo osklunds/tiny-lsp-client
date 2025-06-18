@@ -23,7 +23,7 @@ fn initialize() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
     let mut server =
-        Server::new("rust-analyzer", "/home/oskar/own_repos/tiny-lsp-client")
+        Server::new("/home/oskar/own_repos/tiny-lsp-client", "rust-analyzer")
             .unwrap();
 
     server.initialize();
@@ -33,8 +33,9 @@ fn initialize() {
 fn did_open_change_close_and_definition() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
+    // todo: don't hard code these paths
     let mut server =
-        Server::new("rust-analyzer", "/home/oskar/own_repos/tiny-lsp-client")
+        Server::new("/home/oskar/own_repos/tiny-lsp-client", "rust-analyzer")
             .unwrap();
     server.initialize();
 
