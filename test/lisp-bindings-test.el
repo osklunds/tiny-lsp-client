@@ -84,7 +84,8 @@
 
   (message "Starting server")
 
-  ;; todo: test path that doesn't exist
+  (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
+
   (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))
 
   (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
