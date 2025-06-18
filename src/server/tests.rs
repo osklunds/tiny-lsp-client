@@ -16,15 +16,18 @@
 // tiny-lsp-client. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use std::env;
 use std::fs;
 
 #[test]
 fn initialize() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
-    let mut server =
-        Server::new("/home/oskar/own_repos/tiny-lsp-client", "rust-analyzer")
-            .unwrap();
+    let mut server = Server::new(
+        &env::current_dir().unwrap().display().to_string(),
+        "rust-analyzer",
+    )
+    .unwrap();
 
     server.initialize();
 }
@@ -33,14 +36,15 @@ fn initialize() {
 fn did_open_change_close_and_definition() {
     logger::set_log_file_name("/tmp/tiny-lsp-client.log");
 
+    let cwd = env::current_dir().unwrap().display().to_string();
+
     // todo: don't hard code these paths
-    let mut server =
-        Server::new("/home/oskar/own_repos/tiny-lsp-client", "rust-analyzer")
-            .unwrap();
+    let mut server = Server::new(&cwd, "rust-analyzer").unwrap();
     server.initialize();
 
-    let uri =
-        "file:///home/oskar/own_repos/tiny-lsp-client/src/dummy.rs".to_string();
+    // todo: skip using dummy.rs, use the one from test/rust_analyzer instead
+    let dummy_file_path = format!("{}/src/dummy.rs", cwd);
+    let uri = format!("file://{}", dummy_file_path);
 
     // textDocument/didOpen
     server.send_notification(
@@ -51,10 +55,7 @@ fn did_open_change_close_and_definition() {
                     uri: uri.clone(),
                     language_id: LANGUAGE_ID.to_string(),
                     version: 0,
-                    text: fs::read_to_string(
-                        "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs",
-                    )
-                    .unwrap(),
+                    text: fs::read_to_string(&dummy_file_path).unwrap(),
                 },
             },
         ),
@@ -230,10 +231,7 @@ fn did_open_change_close_and_definition() {
                     uri: uri.clone(),
                     language_id: LANGUAGE_ID.to_string(),
                     version: 0,
-                    text: fs::read_to_string(
-                        "/home/oskar/own_repos/tiny-lsp-client/src/dummy.rs",
-                    )
-                    .unwrap(),
+                    text: fs::read_to_string(&dummy_file_path).unwrap(),
                 },
             },
         ),
