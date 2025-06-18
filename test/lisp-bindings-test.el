@@ -80,23 +80,24 @@
   ;; ---------------------------------------------------------------------------
 
   (setq root-path (file-truename default-directory))
+  (setq server-cmd "clangd")
 
   (message "Starting server")
 
   (assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
 
-  (assert-equal 'started (tlc--rust-start-server root-path "clangd"))
+  (assert-equal 'started (tlc--rust-start-server root-path server-cmd))
 
   (pcase (tlc--rust-all-server-info)
     (`((,r ,command ,process-id))
      (assert-equal root-path r)
-     (assert-equal "clangd" command)
+     (assert-equal server-cmd command)
      (assert-equal t (integerp process-id))
      )
     (x
      (error "unexpected return: %s" x)))
 
-  (assert-equal 'already-started (tlc--rust-start-server root-path "clangd"))
+  (assert-equal 'already-started (tlc--rust-start-server root-path server-cmd))
 
   (message "Server started")
 
@@ -115,7 +116,7 @@
                   (buffer-string)))
 
   (assert-equal 'ok (tlc--rust-send-notification
-                     root-path
+                     (list root-path server-cmd)
                      "textDocument/didOpen"
                      (list file-uri content)))
 
@@ -127,13 +128,19 @@
 
   (assert-equal 'no-server
                 (tlc--rust-send-request
-                 "//some/root_path/that/does/not/exist"
+                 (list "//some/root_path/that/does/not/exist" server-cmd)
+                 "textDocument/definition"
+                 `(,file-uri 4 10)))
+
+  (assert-equal 'no-server
+                (tlc--rust-send-request
+                 (list root-path "some server cmd not used")
                  "textDocument/definition"
                  `(,file-uri 4 10)))
 
   (assert-equal 1
                 (tlc--rust-send-request
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/definition"
                  `(,file-uri 10 4)))
 
@@ -141,10 +148,14 @@
   ;; wastefully slow
   (sleep-for 2)
 
-  (assert-equal 'no-server (tlc--rust-recv-response "/some/root/path/not/found" 100))
+  (assert-equal 'no-server (tlc--rust-recv-response
+                            (list "/some/root/path/not/found" server-cmd) 100))
+
+  (assert-equal 'no-server (tlc--rust-recv-response
+                            (list root-path "some server cmd") 100))
 
   (assert-equal `(response 1 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response root-path 0)
+                (tlc--rust-recv-response (list root-path server-cmd) 0)
                 "recv resp first definition")
 
   (test-garbage-collect "after textDocument/definition")
@@ -157,13 +168,19 @@
 
   (assert-equal 'no-server
                 (tlc--rust-send-notification
-                 "/some/root/path/not/found"
+                 (list "/some/root/path/not/found" server-cmd)
+                 "textDocument/didChange"
+                 (list file-uri '((3 0 3 0 "\n")))))
+
+  (assert-equal 'no-server
+                (tlc--rust-send-notification
+                 (list root-path "some server cmd")
                  "textDocument/didChange"
                  (list file-uri '((3 0 3 0 "\n")))))
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/didChange"
                  (list file-uri '((3 0 3 0 "\n")))))
 
@@ -175,14 +192,14 @@
 
   (assert-equal 2
                 (tlc--rust-send-request
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/definition"
                  `(,file-uri 11 4)))
 
   (sleep-for 2)
 
   (assert-equal `(response 2 t ((,file-uri 5 6)))
-                (tlc--rust-recv-response root-path 0))
+                (tlc--rust-recv-response (list root-path server-cmd) 0))
 
   ;; ---------------------------------------------------------------------------
   ;; textDocument/didChange to revert the previous change, so that clangd's
@@ -193,7 +210,7 @@
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/didChange"
                  `(,file-uri ((3 0 4 1 "")))))
 
@@ -205,7 +222,7 @@
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/didClose"
                  `(,file-uri)))
 
@@ -221,20 +238,20 @@
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/didOpen"
                  `(,file-uri ,content)))
 
   (assert-equal 3
                 (tlc--rust-send-request
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/definition"
                  `(,file-uri 10 4)))
 
   (sleep-for 2)
 
   (assert-equal `(response 3 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response root-path 0))
+                (tlc--rust-recv-response (list root-path server-cmd) 0))
 
   ;; ---------------------------------------------------------------------------
   ;; Stopping the LSP server
@@ -242,21 +259,21 @@
 
   (message "Stopping server")
 
-  (tlc--rust-stop-server root-path)
+  (tlc--rust-stop-server (list root-path server-cmd))
 
   (assert-equal 'no-server
                 (tlc--rust-send-notification
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/didOpen"
                  `(,file-uri ,content)))
 
   (assert-equal 'no-server
                 (tlc--rust-send-request
-                 root-path
+                 (list root-path server-cmd)
                  "textDocument/definition"
                  `(,file-uri 4 10)))
 
-  (assert-equal 'no-server (tlc--rust-recv-response root-path 0))
+  (assert-equal 'no-server (tlc--rust-recv-response (list root-path server-cmd) 0))
 
   ;; -----------------------------------------------------------------------------
   ;; End

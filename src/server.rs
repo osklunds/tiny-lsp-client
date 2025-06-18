@@ -43,7 +43,6 @@ pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
-    command: String,
     root_path: String,
     sender: Sender<Option<Message>>,
     receiver: Receiver<Response>,
@@ -459,7 +458,6 @@ impl Server {
 
         Some(Server {
             server_process: child,
-            command: command.to_string(),
             root_path: root_path.to_string(),
             sender: stdin_tx,
             receiver: stdout_rx,
@@ -595,10 +593,6 @@ impl Server {
         let version_number = self.next_version_number;
         self.next_version_number += 1;
         version_number
-    }
-
-    pub fn get_command(&self) -> String {
-        self.command.clone()
     }
 
     pub fn get_server_process_id(&self) -> u32 {

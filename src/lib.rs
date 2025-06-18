@@ -115,13 +115,13 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     let mut server_info_list = Vec::new();
 
     servers::with_servers(|servers| {
-        for (root_path, server) in servers.iter() {
+        for ((root_path, server_cmd), server) in servers.iter() {
             let info = call(
                 env,
                 "list",
                 vec![
                     make_string(env, root_path),
-                    make_string(env, server.get_command()),
+                    make_string(env, server_cmd),
                     make_integer(env, server.get_server_process_id() as i64),
                 ],
             );
@@ -143,7 +143,7 @@ unsafe extern "C" fn tlc__rust_start_server(
     let server_cmd = extract_string(env, *args.offset(1));
 
     servers::with_servers(|servers| {
-        if servers.contains_key(&root_path) {
+        if servers.contains_key(&(root_path.clone(), server_cmd.clone())) {
             return intern(env, "already-started");
         } else {
             logger::log_rust_debug!("Need to start new");
@@ -151,7 +151,10 @@ unsafe extern "C" fn tlc__rust_start_server(
         match Server::new(&server_cmd, &root_path) {
             Some(mut server) => match server.initialize() {
                 Some(()) => {
-                    servers.insert(root_path.to_string(), server);
+                    servers.insert(
+                        (root_path.to_string(), server_cmd.to_string()),
+                        server,
+                    );
                     intern(env, "started")
                 }
                 None => intern(env, "start-failed"),
@@ -571,15 +574,17 @@ unsafe fn handle_call<
     f: F,
 ) -> emacs_value {
     let args_vec = args_pointer_to_args_vec(nargs, args);
-
-    let root_path = extract_string(env, args_vec[0]);
+    let (root_path, server_cmd) = get_server_key(env, &args_vec);
     servers::with_servers(|servers| {
-        if let Some(ref mut server) = &mut servers.get_mut(&root_path) {
+        if let Some(ref mut server) =
+            // todo: see if there's a way without clone
+            &mut servers.get_mut(&(root_path.clone(), server_cmd.clone()))
+        {
             if let Some(result) = f(env, args_vec, server) {
                 result
             } else {
                 // This means it failed during handling this call
-                servers.remove(&root_path);
+                servers.remove(&(root_path, server_cmd));
                 intern(env, "no-server")
             }
         } else {
@@ -598,4 +603,13 @@ unsafe fn args_pointer_to_args_vec(
         args_list.push(*args.offset(i));
     }
     args_list
+}
+
+unsafe fn get_server_key(env: *mut emacs_env, args: &[emacs_value]) -> (String, String) {
+    let server_key = args[0];
+    assert!(extract_bool(env, call(env, "listp", vec![server_key])));
+    assert_eq!(extract_integer(env, call(env, "length", vec![server_key])), 2);
+    let root_path = extract_string(env, nth(env, 0, server_key));
+    let server_cmd = extract_string(env, nth(env, 1, server_key));
+    (root_path, server_cmd)
 }
