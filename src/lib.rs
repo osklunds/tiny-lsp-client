@@ -31,6 +31,7 @@ mod servers;
 use crate::emacs::*;
 use crate::message::*;
 use crate::server::Server;
+use crate::servers::ServerKey;
 
 use std::os::raw;
 use std::str;
@@ -57,8 +58,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        2,
-        2,
+        1,
+        1,
         tlc__rust_start_server,
         "tlc--rust-start-server",
     );
@@ -115,13 +116,13 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     let mut server_info_list = Vec::new();
 
     servers::with_servers(|servers| {
-        for ((root_path, server_cmd), server) in servers.iter() {
+        for (server_key, server) in servers.iter() {
             let info = call(
                 env,
                 "list",
                 vec![
-                    make_string(env, root_path),
-                    make_string(env, server_cmd),
+                    make_string(env, &server_key.root_path),
+                    make_string(env, &server_key.server_cmd),
                     make_integer(env, server.get_server_process_id() as i64),
                 ],
             );
@@ -139,22 +140,19 @@ unsafe extern "C" fn tlc__rust_start_server(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_start_server");
-    let root_path = extract_string(env, *args.offset(0));
-    let server_cmd = extract_string(env, *args.offset(1));
+    let args_vec = args_pointer_to_args_vec(nargs, args);
+    let server_key = get_server_key(env, &args_vec);
 
     servers::with_servers(|servers| {
-        if servers.contains_key(&(root_path.clone(), server_cmd.clone())) {
+        if servers.contains_key(&server_key) {
             return intern(env, "already-started");
         } else {
             logger::log_rust_debug!("Need to start new");
         }
-        match Server::new(&server_cmd, &root_path) {
+        match Server::new(&server_key.server_cmd, &server_key.root_path) {
             Some(mut server) => match server.initialize() {
                 Some(()) => {
-                    servers.insert(
-                        (root_path.to_string(), server_cmd.to_string()),
-                        server,
-                    );
+                    servers.insert(server_key, server);
                     intern(env, "started")
                 }
                 None => intern(env, "start-failed"),
@@ -574,17 +572,15 @@ unsafe fn handle_call<
     f: F,
 ) -> emacs_value {
     let args_vec = args_pointer_to_args_vec(nargs, args);
-    let (root_path, server_cmd) = get_server_key(env, &args_vec);
+    let server_key = get_server_key(env, &args_vec);
     servers::with_servers(|servers| {
-        if let Some(ref mut server) =
-            // todo: see if there's a way without clone
-            &mut servers.get_mut(&(root_path.clone(), server_cmd.clone()))
+        if let Some(ref mut server) = &mut servers.get_mut(&server_key)
         {
             if let Some(result) = f(env, args_vec, server) {
                 result
             } else {
                 // This means it failed during handling this call
-                servers.remove(&(root_path, server_cmd));
+                servers.remove(&server_key);
                 intern(env, "no-server")
             }
         } else {
@@ -605,11 +601,23 @@ unsafe fn args_pointer_to_args_vec(
     args_list
 }
 
-unsafe fn get_server_key(env: *mut emacs_env, args: &[emacs_value]) -> (String, String) {
+unsafe fn get_server_key(
+    env: *mut emacs_env,
+    args: &[emacs_value],
+) -> ServerKey {
     let server_key = args[0];
+    // Asserts because if not fulfilled, endless loop is entered, which is
+    // harder to debug. The loop happens due to non-local exit handling in
+    // emacs.rs. Todo: Could consider to have limited retries in that loop.
     assert!(extract_bool(env, call(env, "listp", vec![server_key])));
-    assert_eq!(extract_integer(env, call(env, "length", vec![server_key])), 2);
+    assert_eq!(
+        extract_integer(env, call(env, "length", vec![server_key])),
+        2
+    );
     let root_path = extract_string(env, nth(env, 0, server_key));
     let server_cmd = extract_string(env, nth(env, 1, server_key));
-    (root_path, server_cmd)
+    ServerKey {
+        root_path,
+        server_cmd,
+    }
 }

@@ -84,9 +84,10 @@
 
   (message "Starting server")
 
-  (assert-equal 'start-failed (tlc--rust-start-server root-path "doesnt_exist"))
+  ;; todo: test path that doesn't exist
+  (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))
 
-  (assert-equal 'started (tlc--rust-start-server root-path server-cmd))
+  (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
 
   (pcase (tlc--rust-all-server-info)
     (`((,r ,command ,process-id))
@@ -97,7 +98,7 @@
     (x
      (error "unexpected return: %s" x)))
 
-  (assert-equal 'already-started (tlc--rust-start-server root-path server-cmd))
+  (assert-equal 'already-started (tlc--rust-start-server (list root-path server-cmd)))
 
   (message "Server started")
 
