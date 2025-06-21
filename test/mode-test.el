@@ -475,12 +475,12 @@ abc(123);
   (assert-tlc-info root-path "clangd")
 
   ;; Act
-  (tlc-stop-server)
+  (tlc--stop-server)
 
   ;; To see that spamming doesn't cause issues
-  (tlc-stop-server)
-  (tlc-stop-server)
-  (tlc-stop-server)
+  (tlc--stop-server)
+  (tlc--stop-server)
+  (tlc--stop-server)
 
   ;; Assert
   (assert-equal 0 (length (tlc-info)))
@@ -526,7 +526,7 @@ abc(123);
   (assert-equal 1 num-before-hook-calls)
   (assert-equal 1 num-after-hook-calls)
 
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
 
   ;; Act
@@ -982,7 +982,7 @@ void last_function() {
   (assert-equal 11 (line-number-at-pos))
   (assert-equal 18 (current-column))
 
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
   (assert tlc-mode)
 
@@ -1023,7 +1023,7 @@ void last_function() {
   (assert-equal 18 (current-column))
 
   (assert-equal 1 (length (tlc-info)))
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
   (assert tlc-mode)
 
@@ -1057,7 +1057,7 @@ void last_function() {
   (assert-equal "erlang_ls" (tlc--server-cmd))
   (assert-equal root (tlc--root))
 
-  (setq infos (sort (tlc-info)))
+  (setq infos (tlc-info))
   (message "infos: %s" infos)
   (assert-equal root (nth 0 (nth 0 infos)))
   (assert-equal "clangd" (nth 1 (nth 0 infos)))
@@ -1099,4 +1099,26 @@ void last_function() {
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 6 (current-column))
   )
-;; remove duplicates in lib.rs
+
+(tlc-deftest multi-server-stop-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
+  (assert-equal 2 (length (tlc-info)) "infos")
+
+  (setq root (tlc--root))
+
+  (setq comps (tlc--server-key-completions))
+
+  (assert-equal (format "%s @ clangd" root) (nth 0 comps) "clangd")
+  (assert-equal (format "%s @ erlang_ls" root) (nth 1 comps) "erlang_ls")
+
+  (assert-equal (list "/some/path" "some-cmd")
+                (tlc--completion-to-server-key "/some/path @ some-cmd"))
+
+  (cl-letf (((symbol-function 'completing-read)
+             (lambda (&rest _) (nth 0 comps))))
+    (tlc-stop-server))
+
+  (assert-equal 1 (length (tlc-info)) "infos")
+  (assert-equal "erlang_ls" (nth 1 (nth 0 (tlc-info))))
+  )

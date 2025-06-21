@@ -708,7 +708,7 @@ and always using the latest result."
 (defun tlc-info ()
   "Show information about running servers."
   (interactive)
-  (let ((infos (tlc--rust-all-server-info)))
+  (let ((infos (sort (tlc--rust-all-server-info))))
     (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
       (dolist (info infos)
         (pcase-let ((`(,root-path ,command ,pid) info))
@@ -723,40 +723,57 @@ and always using the latest result."
     )
   )
 
+;; todo: sort in rust
 (defun tlc--all-server-keys ()
   (mapcar (lambda (info)
             (list (nth 0 info) (nth 1 info)))
-          (tlc--rust-all-server-info)))
+          (sort (tlc--rust-all-server-info))))
 
 ;; todo: make sure the passed server-key begings with / to make the rust code
 ;; not crash
-;; todo: Internl tlc--stop-server
-(defun tlc-stop-server (&optional server-key nowarn-not-found)
+(defun tlc-stop-server ()
   "Stop an LSP server."
-  (interactive
-   (list
+  (interactive)
+  (tlc--stop-server
+   (tlc--completion-to-server-key
     (completing-read "Choose server to stop: "
-                     (tlc--all-server-keys)
+                     (tlc--server-key-completions)
                      nil
                      'require-match
                      nil
                      'tlc-stop-server
-                     (tlc--server-key))))
+                     (when-let ((key (tlc--server-key)))
+                       (tlc--server-key-to-completion key))))))
+
+(defun tlc--stop-server (&optional server-key nowarn-not-found)
   (let* ((server-key (or server-key (tlc--server-key))))
     (unless server-key
-      (user-error "No server specified"))
+      (error "No server specified"))
     (let* ((result (tlc--rust-stop-server server-key)))
       (tlc--log "Stop server result: %s for server-key: %s" result server-key)
       (pcase result
         ('ok nil)
         ('no-server (unless nowarn-not-found
                       (message "No server with key '%s' could be found" server-key)))
-        (_ (error "bad result tlc-stop-server %s" result))))))
+        (_ (error "bad result tlc--stop-server %s" result))))))
+
+(defun tlc--server-key-completions ()
+  (mapcar #'tlc--server-key-to-completion (tlc--all-server-keys)))
+
+(defun tlc--server-key-to-completion (key)
+  (format "%s @ %s" (car key) (cadr key)))
+
+(defun tlc--completion-to-server-key (completion)
+  (if (string-match "\\([^@]+\\) @ \\([^@]+\\)" completion)
+      (let ((root (match-string 1 completion))
+            (server-key (match-string 2 completion)))
+        (list root server-key))
+    (error "Could not convert to server key")))
 
 (defun tlc-restart-server ()
   "Restart the LSP server of the current buffer."
   (interactive)
-  (tlc-stop-server nil 'nowarn-not-found)
+  (tlc--stop-server nil 'nowarn-not-found)
   ;; Avoid race where tlc--start-server thinks the server is still alive
   (sleep-for 0.1)
   (tlc--start-server))
