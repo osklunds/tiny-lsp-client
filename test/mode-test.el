@@ -790,7 +790,7 @@ void last_function() {
         (tlc--request
          "textDocument/definition"
          (list (tlc--buffer-file-name) 0 0)
-         (tlc--root)))
+         (tlc--server-key)))
       (setq done (has-had-max-num-of-timestamps-many-times))))
 
   ;; Assert
