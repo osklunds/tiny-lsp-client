@@ -74,7 +74,7 @@
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
   ;; to see that correct root is used by test cases
-  (assert (string-suffix-p "tiny-lsp-client/test/rust_analyzer/" tlc--cached-root))
+  (assert (string-suffix-p "tiny-lsp-client/test/rust_analyzer/" tlc--root))
   )
 
 (tlc-deftest find-definition-test ()
