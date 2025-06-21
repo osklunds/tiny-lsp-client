@@ -53,6 +53,13 @@
 
 (add-hook 'c++-mode-hook 'tlc-mode)
 
+(define-derived-mode erlang-mode prog-mode "Erlang"
+  "Fake erlang-mode for testing.")
+
+(add-to-list 'auto-mode-alist '("\\.erl\\'" . erlang-mode))
+
+(add-hook 'erlang-mode-hook 'tlc-mode)
+
 ;; -----------------------------------------------------------------------------
 ;; Helpers
 ;; -----------------------------------------------------------------------------
@@ -1031,6 +1038,25 @@ void last_function() {
   (assert-not tlc-mode)
   ;; Server not running
   (assert-equal 0 (length (tlc-info)))
+  )
+
+(tlc-deftest multi-server-open-file-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "clangd" (tlc--server-cmd))
+  (setq root-cpp (tlc--root))
+
+  (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
+  (assert-equal 2 (length (tlc-info)) "infos")
+  (assert-equal 2 (number-of-did-open) "open")
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "erlang_ls" (tlc--server-cmd))
+  (assert-equal root-cpp (tlc--root))
+
   )
 
 ;; remove duplicates in lib.rs
