@@ -1047,7 +1047,7 @@ void last_function() {
   (assert-equal 0 (number-of-did-close))
 
   (assert-equal "clangd" (tlc--server-cmd))
-  (setq root-cpp (tlc--root))
+  (setq root (tlc--root))
 
   (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
   (assert-equal 2 (length (tlc-info)) "infos")
@@ -1055,11 +1055,13 @@ void last_function() {
   (assert-equal 0 (number-of-did-close))
 
   (assert-equal "erlang_ls" (tlc--server-cmd))
-  (assert-equal root-cpp (tlc--root))
+  (assert-equal root (tlc--root))
 
   (setq infos (sort (tlc-info)))
   (message "infos: %s" infos)
+  (assert-equal root (nth 0 (nth 0 infos)))
   (assert-equal "clangd" (nth 1 (nth 0 infos)))
+  (assert-equal root (nth 0 (nth 1 infos)))
   (assert-equal "erlang_ls" (nth 1 (nth 1 infos)))
 
   )
