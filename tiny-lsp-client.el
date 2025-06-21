@@ -526,20 +526,20 @@ as usual."
            (line (car pos))
            (character (cadr pos))
            (cached-candidates 'none)
-           (root (tlc--root))
+           (server-key (tlc--server-key))
            (response-fun (lambda ()
                            (if (listp cached-candidates) cached-candidates
                              (let* ((request-id (tlc--request
                                                  "textDocument/completion"
                                                  (list uri line character)
-                                                 root))
+                                                 server-key))
                                     (result
                                      ;; Use 0ms rust timeout since for capf want
                                      ;; to interrupt as soon as possible. Use
                                      ;; 0.005s as emacs timeout because if too
                                      ;; long, it means we wait too long before
                                      ;; checking again if a response has arrived.
-                                     (tlc--wait-for-response request-id root
+                                     (tlc--wait-for-response request-id server-key
                                                              0 0.005
                                                              tlc-interruptible-capf)))
                                (cond
