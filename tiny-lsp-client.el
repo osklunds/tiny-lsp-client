@@ -197,7 +197,7 @@ obvious that they happen."
     )))
 
 (defun tlc--start-server ()
-  (if (cl-member (tlc--server-key) (tlc--all-server-keys) :test 'string-equal)
+  (if (cl-member (tlc--server-key) (tlc--all-server-keys) :test 'equal)
       (message "Connected to already started '%s' in '%s'" (tlc--server-cmd) (tlc--root))
     (tlc--run-hooks 'tlc-before-start-server-hook)
     (let* ((result (tlc--rust-start-server (tlc--server-key))))
@@ -725,8 +725,7 @@ and always using the latest result."
 
 (defun tlc--all-server-keys ()
   (mapcar (lambda (info)
-            (nth 0 info)
-            )
+            (list (nth 0 info) (nth 1 info)))
           (tlc--rust-all-server-info)))
 
 ;; todo: make sure the passed server-key begings with / to make the rust code
