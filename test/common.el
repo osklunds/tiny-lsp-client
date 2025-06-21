@@ -113,6 +113,7 @@
 this common file. Is used to differentiate log file names.")
 
 (defun before-each-test (test-case-name)
+  (message "Running test case: '%s'" test-case-name)
   (assert-equal t (stringp test-file-name) "test-file-name")
   (setq log-file-name (relative-repo-root
                        "test"
