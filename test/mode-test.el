@@ -1057,6 +1057,11 @@ void last_function() {
   (assert-equal "erlang_ls" (tlc--server-cmd))
   (assert-equal root-cpp (tlc--root))
 
+  (setq infos (sort (tlc-info)))
+  (message "infos: %s" infos)
+  (assert-equal "clangd" (nth 1 (nth 0 infos)))
+  (assert-equal "erlang_ls" (nth 1 (nth 1 infos)))
+
   )
 
 ;; remove duplicates in lib.rs
