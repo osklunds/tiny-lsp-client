@@ -154,9 +154,10 @@ obvious that they happen."
   :lighter " tlc-mode"
   :group 'tiny-lsp-client
 
-  ;; Clear cached root so that toggling mode (e.g. through reverting buffer)
-  ;; can be used as a way to change it.
-  (setq tlc--cached-root nil)
+  ;; Clear cached root and server cmd so that toggling mode (e.g. through
+  ;; reverting buffer) can be used as a way to change them.
+  (setq tlc--root nil)
+  (setq tlc--server-cmd nil)
   (cond
    (tlc-mode
     (cond
@@ -164,7 +165,12 @@ obvious that they happen."
       (message "tiny-lsp-client can only be used in file buffers.")
       (tlc-mode -1))
      ((not (tlc--initial-get-root))
-      (message "tiny-lsp-client can only be used in buffers where root can be found.")
+      (message
+       "tiny-lsp-client can only be used in buffers where root can be found.")
+      (tlc-mode -1))
+     ((not (tlc--initial-get-server-cmd))
+      (message
+       "tiny-lsp-client can only be used in buffers where a server-cmd can be found.")
       (tlc-mode -1))
      (t
       (tlc--start-server)
@@ -175,9 +181,12 @@ obvious that they happen."
       (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
       (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t))))
    (t
-    ;; disable can be sent for buffers where enabling is not appropriate,
-    ;; so only send close if possible.
-    (when (and (tlc--initial-get-root) (tlc--buffer-file-name-unchecked))
+    ;; disable can be called for buffers where tlc-mode can't be enabled, i.e.,
+    ;; due to the three conditions above. So only if met try to send close.
+    ;; todo: function that checks the conditions.
+    (when (and (tlc--buffer-file-name-unchecked)
+               (tlc--initial-get-root)
+               (tlc--initial-get-server-cmd))
       (tlc--notify-text-document-did-close))
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
@@ -188,32 +197,26 @@ obvious that they happen."
     )))
 
 (defun tlc--start-server ()
-  (let* ((server-cmd (if-let ((r (alist-get major-mode tlc-server-cmds)))
-                         r
-                       (user-error
-                        "No server command found for major mode: %s"
-                        major-mode))))
-    (if (cl-member (tlc--root) (tlc--all-root-paths) :test 'string-equal)
-        (message "Connected to already started server in '%s'" (tlc--root))
-      (tlc--run-hooks 'tlc-before-start-server-hook)
-      (let* ((result (tlc--rust-start-server (tlc--root) server-cmd)))
-        (tlc--log "Start server result: %s" result)
-        (pcase result
-          ;; normal case
-          ('started (message "Started '%s' in '%s'" server-cmd (tlc--root)))
+  (if (cl-member (tlc--server-key) (tlc--all-server-keys) :test 'string-equal)
+      (message "Connected to already started '%s' in '%s'" (tlc--server-cmd) (tlc--root))
+    (tlc--run-hooks 'tlc-before-start-server-hook)
+    (let* ((result (tlc--rust-start-server (tlc--server-key))))
+      (tlc--log "Start server result: %s" result)
+      (pcase result
+        ;; normal case
+        ('started (message "Started '%s' in '%s'" (tlc--server-cmd) (tlc--root)))
 
-          ;; alternative but valid case
-          ('start-failed (error
-                          "Failed to start '%s' in '%s'. Check log for details."
-                          server-cmd (tlc--root)))
+        ;; alternative but valid case
+        ('start-failed (error
+                        "Failed to start '%s' in '%s'. Check log for details."
+                        (tlc--server-cmd) (tlc--root)))
 
-          ;; bug case
-          (_ (error "bad result tlc--start-server %s" result))
-          )
-        (tlc--run-hooks 'tlc-after-start-server-hook))
-      )
-    (tlc--notify-text-document-did-open)
-    ))
+        ;; bug case
+        (_ (error "bad result tlc--start-server %s" result))
+        )
+      (tlc--run-hooks 'tlc-after-start-server-hook))
+    )
+  (tlc--notify-text-document-did-open))
 
 (defun tlc--run-hooks (hooks)
   "Wrapper around `run-hooks' that runs them with root path as
@@ -268,7 +271,7 @@ obvious that they happen."
 
 (defun tlc--send-notification (method params &optional dont-ask-if-no-server)
   (let ((return (tlc--rust-send-notification
-                 (tlc--root)
+                 (tlc--server-key)
                  method
                  params)))
     (tlc--log "Send notification return: %s" return)
@@ -384,15 +387,15 @@ obvious that they happen."
 ;; @credits: Reqeust/response mechanism inspired by
 ;; https://github.com/zbelial/lspce
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--request method arguments (tlc--root))))
+  (let ((request-id (tlc--request method arguments (tlc--server-key))))
     ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but 100ms
     ;; is still responsive enough to C-g aborts.
-    (tlc--wait-for-response request-id (tlc--root) 100 0 nil)))
+    (tlc--wait-for-response request-id (tlc--server-key) 100 0 nil)))
 
 ;; tlc--request might be called from unexpected buffers due to async
-;; completion, so can't call (tlc--root) inside, so pass root-path
-(defun tlc--request (method arguments root-path)
-  (let ((return (tlc--rust-send-request root-path method arguments)))
+;; completion, so can't call (tlc--server-key) inside, so pass server-key
+(defun tlc--request (method arguments server-key)
+  (let ((return (tlc--rust-send-request server-key method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
      ;; normal case - request sent and request-id returned
@@ -408,19 +411,19 @@ obvious that they happen."
      (t (error "bad return")))))
 
 ;; tlc--wait-for-response might be called from unexpected buffers due to async
-;; completion, so can't call (tlc--root) inside, so pass root-path
-(defun tlc--wait-for-response (request-id root-path rust-timeout
+;; completion, so can't call (tlc--root) inside, so pass server-key
+(defun tlc--wait-for-response (request-id server-key rust-timeout
                                           emacs-timeout interruptible)
-  "Wait for a response to REQUEST-ID from the server managing ROOT-PATH.
+  "Wait for a response to REQUEST-ID from the server managing SERVER-KEY.
 RUST-TIMEOUT is the non-interruptible time between each wait call. The type is
 integer, unit milliseconds. EMACS-TIMEOUT is the interruptible time between each
 wait call, interruptible both by C-g and any user input. The type is float, unit
 seconds. INTERRUPTIBLE means exit on user input. Otherwise, only exists on C-g
 as usual."
-  (let ((return (tlc--rust-recv-response root-path rust-timeout))
+  (let ((return (tlc--rust-recv-response server-key rust-timeout))
         (continue (lambda ()
                     (tlc--wait-for-response
-                     request-id root-path rust-timeout emacs-timeout interruptible))))
+                     request-id server-key rust-timeout emacs-timeout interruptible))))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response has arrived
@@ -720,39 +723,39 @@ and always using the latest result."
     )
   )
 
-(defun tlc--all-root-paths ()
+(defun tlc--all-server-keys ()
   (mapcar (lambda (info)
             (nth 0 info)
             )
           (tlc--rust-all-server-info)))
 
-;; todo: make sure the passed root-path begings with / to make the rust code not
-;; crash
+;; todo: make sure the passed server-key begings with / to make the rust code
+;; not crash
 ;; todo: Internl tlc--stop-server
-(defun tlc-stop-server (&optional root-path nowarn-not-found)
+(defun tlc-stop-server (&optional server-key nowarn-not-found)
   "Stop an LSP server."
   (interactive
    (list
-    (completing-read "Choose root path of server to stop: "
-                     (tlc--all-root-paths)
+    (completing-read "Choose server to stop: "
+                     (tlc--all-server-keys)
                      nil
                      'require-match
                      nil
                      'tlc-stop-server
-                     (tlc--root-unchecked))))
-  (let* ((root-path (or root-path (tlc--root-unchecked))))
-    (unless root-path
-      (user-error "No root path specified"))
-    (let* ((result (tlc--rust-stop-server root-path)))
-      (tlc--log "Stop server result: %s for root-path: %s" result root-path)
+                     (tlc--server-key))))
+  (let* ((server-key (or server-key (tlc--server-key))))
+    (unless server-key
+      (user-error "No server specified"))
+    (let* ((result (tlc--rust-stop-server server-key)))
+      (tlc--log "Stop server result: %s for server-key: %s" result server-key)
       (pcase result
         ('ok nil)
         ('no-server (unless nowarn-not-found
-                      (message "No server at root path '%s' could be found" root-path)))
+                      (message "No server with key '%s' could be found" server-key)))
         (_ (error "bad result tlc-stop-server %s" result))))))
 
 (defun tlc-restart-server ()
-  "Restart the LSP server of the current root path."
+  "Restart the LSP server of the current buffer."
   (interactive)
   (tlc-stop-server nil 'nowarn-not-found)
   ;; Avoid race where tlc--start-server thinks the server is still alive
@@ -813,29 +816,36 @@ seems to accept URIs that are not encoded properly."
     (error msg)))
 
 ;; -----------------------------------------------------------------------------
-;; Root
+;; Server key
 ;; -----------------------------------------------------------------------------
 
-(defvar-local tlc--cached-root nil)
+(defun tlc--server-key ()
+  (list (tlc--root) (tlc--server-cmd)))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Root
+;;;; ---------------------------------------------------------------------------
+
+(defvar-local tlc--root nil)
 
 (defun tlc--initial-get-root ()
   "The initial fetch of the root for this buffer. Cache the root since if it
 changes for a buffer, the server needs to be restarted anyway."
-  (setq tlc--cached-root
+  (setq tlc--root
         (when-let ((root (funcall tlc-find-root-function)))
           (file-truename root))))
 
 (defun tlc--root ()
   "Wrapper for getting the root path of the buffer. Also checks that it's
 non-nil."
-  (let ((root tlc--cached-root))
+  (let ((root tlc--root))
     (cl-assert root)
     root))
 
 (defun tlc--root-unchecked ()
   "Like `tlc--root' but don't check that root is non-nil. Useful for situations
 a nil root is OK."
-  tlc--cached-root)
+  tlc--root)
 
 (defun tlc-find-root-default-function ()
   "Get root directory using project.el."
@@ -850,6 +860,20 @@ nested projects inside the test directory as separate projects."
              (prefix (car (split-string default-directory match))))
         (concat prefix match))
     (tlc-find-root-default-function)))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Server cmd
+;;;; ---------------------------------------------------------------------------
+
+(defvar-local tlc--server-cmd nil)
+
+(defun tlc--initial-get-server-cmd ()
+  (setq tlc--server-cmd (alist-get major-mode tlc-server-cmds)))
+
+(defun tlc--server-cmd ()
+  (let ((server-cmd tlc--server-cmd))
+    (cl-assert server-cmd)
+    server-cmd))
 
 (provide 'tiny-lsp-client)
 ;;; tiny-lsp-client.el ends here
