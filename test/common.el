@@ -140,19 +140,21 @@ this common file. Is used to differentiate log file names.")
   ;; One drawback of running in the same emacs instance with ERT is that
   ;; this clean up in the end is needed.
 
-  ;; Only kill buffers visiting a file
-  (let ((buffers (cl-remove-if-not 'buffer-file-name (buffer-list))))
-    (dolist (buffer buffers)
-      (with-current-buffer buffer
-        ;; First disable tlc-mode so that kill-buffer doesn't trigger
-        ;; didClose
-        (tlc-mode -1)
-        ;; Stop server in a buffer where root path is known
-        (tlc--stop-server nil 'nowarn-not-found))
-      ;; Then kill the buffer too so that didOpen is sent if the same file
-      ;; is used in many tests
-      (kill-buffer buffer))
-    ))
+  (while (tlc-info)
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_ collection &rest _)
+                 (nth 0 collection))))
+      (tlc-stop-server)
+      ;; Avoid race where tlc-info returns the stopping server but
+      ;; then not found in collection
+      (sleep-for 0.1)))
+
+  (dolist (buffer (buffer-list))
+    (tlc-mode -1)
+    ;; If Messages is killed, "Marker not found error" happens
+    (unless (string-match-p "Messages" (with-current-buffer buffer (buffer-name)))
+      (kill-buffer buffer)))
+  )
 
 (cl-defmacro tlc-deftest (name () &rest body)
   (declare (indent defun))

@@ -533,6 +533,8 @@ unsafe extern "C" fn tlc__rust_stop_server(
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_stop_server");
     handle_call(env, nargs, args, |env, _args, server| {
+        // could consider removing from servers, but in case the stopping fails
+        // it's good that the server remains in the list
         server.stop_server();
         Some(intern(env, "ok"))
     })
