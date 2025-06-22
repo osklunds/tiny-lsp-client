@@ -611,7 +611,8 @@ unsafe fn get_server_key(
     let server_key = args[0];
     // Asserts because if not fulfilled, endless loop is entered, which is
     // harder to debug. The loop happens due to non-local exit handling in
-    // emacs.rs. Todo: Could consider to have limited retries in that loop.
+    // emacs.rs.
+    // Todo: Could consider to have limited retries in that loop.
     assert!(extract_bool(env, call(env, "listp", vec![server_key])));
     assert_eq!(
         extract_integer(env, call(env, "length", vec![server_key])),
