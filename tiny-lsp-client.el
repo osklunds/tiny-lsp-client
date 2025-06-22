@@ -188,11 +188,11 @@ obvious that they happen."
 (defun tlc--can-use (&optional print-message-p)
   (let ((conditions
          '((tlc--buffer-file-name-unchecked
-            "tiny-lsp-client can only be used in buffers where a server-cmd can be found.")
+            "tiny-lsp-client can only be used in file buffers.")
            (tlc--initial-get-root
             "tiny-lsp-client can only be used in buffers where root can be found.")
            (tlc--initial-get-server-cmd
-            "tiny-lsp-client can only be used in file buffers.")))
+            "tiny-lsp-client can only be used in buffers where a server-cmd can be found.")))
         (can-use t))
     (while conditions
       (let* ((current (car conditions))
@@ -201,7 +201,7 @@ obvious that they happen."
         (setq conditions (cdr conditions))
         (unless (funcall test)
           (when print-message-p
-            (message "%s" text))
+            (message text))
           (setq conditions nil)
           (setq can-use nil))))
     can-use))

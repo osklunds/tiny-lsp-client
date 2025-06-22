@@ -114,7 +114,7 @@
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
   (assert-equal 'c++-mode major-mode)
-  (assert-equal t tlc-mode)
+  (assert-equal t tlc-mode "mode")
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
   (assert-equal 1 (number-of-did-open))
@@ -1159,7 +1159,7 @@ void last_function() {
   (assert-equal "erlang_ls" (nth 1 (nth 1 (tlc-info))))
   )
 
-(tlc-deftest multiple-files-same-project ()
+(tlc-deftest multiple-files-same-project-test ()
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   (assert-equal 0 (length (tlc-info)))
@@ -1203,3 +1203,37 @@ void last_function() {
   (assert-equal 11 (line-number-at-pos))
   (assert-equal 5 (current-column))
   )
+
+(tlc-deftest cant-use-tlc-mode-test ()
+  (find-file (relative-repo-root "test" "common.el"))
+  (setq msg nil)
+  (cl-letf (((symbol-function 'message) (lambda (m) (setq msg m))))
+    (tlc-mode))
+  (assert-not tlc-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in buffers where a server-cmd can be found."
+   msg)
+  (assert-not (tlc-info))
+
+  (switch-to-buffer (generate-new-buffer "hej.cpp"))
+  (c++-mode)
+  (cl-letf (((symbol-function 'message) (lambda (m &rest _) (setq msg m))))
+    (tlc-mode))
+  (assert-not tlc-mode)
+  (assert-equal major-mode 'c++-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in file buffers."
+   msg)
+
+  (cl-letf (((symbol-function 'message) (lambda (m &rest _) (setq msg m)))
+            (tlc-find-root-function (lambda () nil)))
+    (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+    (tlc-mode))
+
+  (assert-not tlc-mode)
+  (assert-equal major-mode 'c++-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in buffers where root can be found."
+   msg)
+  )
+
