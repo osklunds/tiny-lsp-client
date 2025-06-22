@@ -121,6 +121,7 @@ this common file. Is used to differentiate log file names.")
                        (format "%s-%s.log" test-file-name test-case-name)))
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name)
+  (customize-set-variable 'tlc-find-root-function #'tlc-dev-find-root-function)
   
   (customize-set-variable 'tlc-before-start-server-hook nil)
   (customize-set-variable 'tlc-after-start-server-hook nil)
