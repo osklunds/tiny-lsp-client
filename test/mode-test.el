@@ -1132,27 +1132,36 @@ void last_function() {
 (tlc-deftest multi-server-stop-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
-  (assert-equal 3 (length (tlc-info)) "infos")
-
   (setq root (tlc--root))
 
-  (setq comps (tlc--server-key-completions))
-  (message "oskar: %S" comps)
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (setq root2 (tlc--root))
 
-  (assert-equal (format "%s @ clangd" root) (nth 0 comps) "clangd")
-  (assert-equal (format "%s @ erlang_ls" root) (nth 1 comps) "erlang_ls")
+  (assert-equal 3 (length (tlc-info)) "infos")
+
+  (setq comps (tlc--server-key-completions))
+
+  (assert-equal (format "%s @ clangd" root) (nth 0 comps) "clangd1")
+  (assert-equal (format "%s @ erlang_ls" root) (nth 1 comps) "erlang_ls1")
+  (assert-equal (format "%s @ erlang_ls" root2) (nth 2 comps) "erlang_ls2")
 
   (assert-equal (list "/some/path" "some-cmd")
                 (tlc--completion-to-server-key "/some/path @ some-cmd"))
 
   (cl-letf (((symbol-function 'completing-read)
+             ;; todo: test values here instead
              (lambda (&rest _) (nth 0 comps))))
     (tlc-stop-server))
 
-  (assert-equal 1 (length (tlc-info)) "infos")
+  (assert-equal 2 (length (tlc-info)) "infos")
+  (assert-equal root (nth 0 (nth 0 (tlc-info))))
   (assert-equal "erlang_ls" (nth 1 (nth 0 (tlc-info))))
+
+  (assert-equal root2 (nth 0 (nth 1 (tlc-info))))
+  (assert-equal "erlang_ls" (nth 1 (nth 1 (tlc-info))))
   )
 
+;; todo: test that after stop, server gone from info
 (tlc-deftest multiple-files-same-project ()
 
   )
