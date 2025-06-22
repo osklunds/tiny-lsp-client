@@ -1161,7 +1161,47 @@ void last_function() {
   (assert-equal "erlang_ls" (nth 1 (nth 1 (tlc-info))))
   )
 
-;; todo: test that after stop, server gone from info
 (tlc-deftest multiple-files-same-project ()
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (length (tlc-info)))
 
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq info (tlc-info))
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal info (tlc-info))
+  (assert-equal 1 (length info) "infos")
+
+  (re-search-forward "other_function")
+  (re-search-forward "other_function")
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  ;; After killing a buffer of the same project, info is unchanged
+  ;; and xref still works
+  (kill-buffer)
+  (assert-equal info (tlc-info))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  (re-search-forward "unicode" nil nil 3)
+  (assert-equal 16 (line-number-at-pos))
+  (assert-equal 11 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 5 (current-column))
   )
