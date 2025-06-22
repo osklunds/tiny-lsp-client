@@ -1041,6 +1041,7 @@ void last_function() {
   )
 
 (tlc-deftest multi-server-open-file-test ()
+  ;; Open clangd file
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-equal 1 (length (tlc-info)))
   (assert-equal 1 (number-of-did-open))
@@ -1048,22 +1049,36 @@ void last_function() {
 
   (assert-equal "clangd" (tlc--server-cmd))
   (setq root (tlc--root))
+  (assert (string-suffix-p "test/clangd/" root))
 
-  (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
-  (assert-equal 2 (length (tlc-info)) "infos")
-  (assert-equal 2 (number-of-did-open) "open")
+  ;; Open erlang_ls file in same project
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (assert-equal 2 (length (tlc-info)))
+  (assert-equal 2 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
 
   (assert-equal "erlang_ls" (tlc--server-cmd))
   (assert-equal root (tlc--root))
 
+  ;; Open erlang_ls file in other project
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 3 (length (tlc-info)))
+  (assert-equal 3 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "erlang_ls" (tlc--server-cmd))
+  (setq root2 (tlc--root))
+  (assert-not (string= root root2))
+
   (setq infos (tlc-info))
-  (message "infos: %s" infos)
   (assert-equal root (nth 0 (nth 0 infos)))
   (assert-equal "clangd" (nth 1 (nth 0 infos)))
+
   (assert-equal root (nth 0 (nth 1 infos)))
   (assert-equal "erlang_ls" (nth 1 (nth 1 infos)))
 
+  (assert-equal root2 (nth 0 (nth 2 infos)))
+  (assert-equal "erlang_ls" (nth 1 (nth 2 infos)))
   )
 
 (tlc-deftest multi-server-xref-and-revert-test ()
@@ -1102,12 +1117,13 @@ void last_function() {
 
 (tlc-deftest multi-server-stop-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
-  (assert-equal 2 (length (tlc-info)) "infos")
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (assert-equal 3 (length (tlc-info)) "infos")
 
   (setq root (tlc--root))
 
   (setq comps (tlc--server-key-completions))
+  (message "oskar: %S" comps)
 
   (assert-equal (format "%s @ clangd" root) (nth 0 comps) "clangd")
   (assert-equal (format "%s @ erlang_ls" root) (nth 1 comps) "erlang_ls")
@@ -1121,4 +1137,8 @@ void last_function() {
 
   (assert-equal 1 (length (tlc-info)) "infos")
   (assert-equal "erlang_ls" (nth 1 (nth 0 (tlc-info))))
+  )
+
+(tlc-deftest multiple-files-same-project ()
+
   )

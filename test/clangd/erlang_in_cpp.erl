@@ -1,4 +1,4 @@
--module(my_module).
+-module(erlang_in_cpp).
 
 -export([my_function/1]).
 
