@@ -148,7 +148,7 @@ this common file. Is used to differentiate log file names.")
         ;; didClose
         (tlc-mode -1)
         ;; Stop server in a buffer where root path is known
-        (tlc--stop-server))
+        (tlc--stop-server nil 'nowarn-not-found))
       ;; Then kill the buffer too so that didOpen is sent if the same file
       ;; is used in many tests
       (kill-buffer buffer))
