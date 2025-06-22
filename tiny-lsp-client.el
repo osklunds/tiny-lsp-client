@@ -868,15 +868,6 @@ a nil root is OK."
   (when-let ((project (project-current)))
     (project-root project)))
 
-(defun tlc-dev-find-root-function ()
-  "Special root finder used for developing tiny-lsp-client itself. Finds the
-nested projects inside the test directory as separate projects."
-  (if (string-match "tiny-lsp-client/test/[^/]+/" default-directory)
-      (let* ((match (match-string 0 default-directory))
-             (prefix (car (split-string default-directory match))))
-        (concat prefix match))
-    (tlc-find-root-default-function)))
-
 ;;;; ---------------------------------------------------------------------------
 ;;;; Server cmd
 ;;;; ---------------------------------------------------------------------------
