@@ -1083,14 +1083,15 @@ void last_function() {
 
 (tlc-deftest multi-server-xref-and-revert-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (find-file (relative-repo-root "test" "clangd" "my_module.erl"))
-  (assert-equal 2 (length (tlc-info)) "infos")
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 3 (length (tlc-info)) "infos")
 
   ;; Revert and then later check that the server still works
-  (assert-equal 2 (number-of-did-open))
+  (assert-equal 3 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   (revert-buffer-quick)
-  (assert-equal 3 (number-of-did-open))
+  (assert-equal 4 (number-of-did-open))
   (assert-equal 1 (number-of-did-close))
 
   (re-search-forward "my_function")
@@ -1101,6 +1102,7 @@ void last_function() {
 
   (assert-equal 11 (line-number-at-pos))
   (assert-equal 0 (current-column))
+  (assert-equal "my_module.erl" (buffer-name))
 
   (switch-to-buffer "main.cpp")
 
@@ -1113,6 +1115,18 @@ void last_function() {
 
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 6 (current-column))
+  (assert-equal "main.cpp" (buffer-name))
+
+  (switch-to-buffer "erlang_in_cpp.erl")
+  (re-search-forward "my_function")
+  (assert-equal 3 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+  (assert-equal "erlang_in_cpp.erl" (buffer-name))
   )
 
 (tlc-deftest multi-server-stop-test ()
