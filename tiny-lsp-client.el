@@ -161,16 +161,7 @@ obvious that they happen."
   (cond
    (tlc-mode
     (cond
-     ((not (tlc--buffer-file-name-unchecked))
-      (message "tiny-lsp-client can only be used in file buffers.")
-      (tlc-mode -1))
-     ((not (tlc--initial-get-root))
-      (message
-       "tiny-lsp-client can only be used in buffers where root can be found.")
-      (tlc-mode -1))
-     ((not (tlc--initial-get-server-cmd))
-      (message
-       "tiny-lsp-client can only be used in buffers where a server-cmd can be found.")
+     ((not (tlc--can-use 'print-message))
       (tlc-mode -1))
      (t
       (tlc--start-server)
@@ -181,12 +172,10 @@ obvious that they happen."
       (add-hook 'after-change-functions 'tlc--after-change-hook nil t)
       (add-hook 'change-major-mode-hook 'tlc--change-major-mode-hook nil t))))
    (t
-    ;; disable can be called for buffers where tlc-mode can't be enabled, i.e.,
-    ;; due to the three conditions above. So only if met try to send close.
-    ;; todo: function that checks the conditions.
-    (when (and (tlc--buffer-file-name-unchecked)
-               (tlc--initial-get-root)
-               (tlc--initial-get-server-cmd))
+    ;; disable can be called for buffers where tlc-mode can't be used. So only
+    ;; if met try to send close. Need to send close since mode is disabled and
+    ;; thus file is no longer managed by the LSP client.
+    (when (tlc--can-use)
       (tlc--notify-text-document-did-close))
     (remove-hook 'kill-buffer-hook 'tlc--kill-buffer-hook t)
     (remove-hook 'before-revert-hook 'tlc--before-revert-hook t)
@@ -195,6 +184,27 @@ obvious that they happen."
     (remove-hook 'after-change-functions 'tlc--after-change-hook t)
     (remove-hook 'change-major-mode-hook 'tlc--change-major-mode-hook t)
     )))
+
+(defun tlc--can-use (&optional print-message-p)
+  (let ((conditions
+         '((tlc--buffer-file-name-unchecked
+            "tiny-lsp-client can only be used in buffers where a server-cmd can be found.")
+           (tlc--initial-get-root
+            "tiny-lsp-client can only be used in buffers where root can be found.")
+           (tlc--initial-get-server-cmd
+            "tiny-lsp-client can only be used in file buffers.")))
+        (can-use t))
+    (while conditions
+      (let* ((current (car conditions))
+             (test (car current))
+             (text (cadr current)))
+        (setq conditions (cdr conditions))
+        (unless (funcall test)
+          (when print-message-p
+            (message "%s" text))
+          (setq conditions nil)
+          (setq can-use nil))))
+    can-use))
 
 (defun tlc--start-server ()
   (if (cl-member (tlc--server-key) (tlc--all-server-keys) :test 'equal)
