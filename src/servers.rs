@@ -37,7 +37,7 @@ where
     })
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Ord, PartialOrd)]
 pub struct ServerKey {
     pub root_path: String,
     pub server_cmd: String,

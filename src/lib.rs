@@ -116,6 +116,9 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     let mut server_info_list = Vec::new();
 
     servers::with_servers(|servers| {
+        let mut servers: Vec<_> = servers.iter().collect();
+        servers.sort_by_key(|(&ref server_key, _server)| server_key);
+            
         for (server_key, server) in servers.iter() {
             let info = call(
                 env,

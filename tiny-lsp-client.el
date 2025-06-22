@@ -708,7 +708,7 @@ and always using the latest result."
 (defun tlc-info ()
   "Show information about running servers."
   (interactive)
-  (let ((infos (sort (tlc--rust-all-server-info))))
+  (let ((infos (tlc--rust-all-server-info)))
     (with-help-window (get-buffer-create "*tiny-lsp-client-server-info*")
       (dolist (info infos)
         (pcase-let ((`(,root-path ,command ,pid) info))
@@ -723,11 +723,10 @@ and always using the latest result."
     )
   )
 
-;; todo: sort in rust
 (defun tlc--all-server-keys ()
   (mapcar (lambda (info)
             (list (nth 0 info) (nth 1 info)))
-          (sort (tlc--rust-all-server-info))))
+          (tlc--rust-all-server-info)))
 
 ;; todo: make sure the passed server-key begings with / to make the rust code
 ;; not crash
