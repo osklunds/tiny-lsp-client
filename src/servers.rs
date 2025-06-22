@@ -22,17 +22,23 @@ use std::collections::HashMap;
 use crate::server::Server;
 
 thread_local! {
-    static SERVERS: RefCell<HashMap<String, Server>> =
+    static SERVERS: RefCell<HashMap<ServerKey, Server>> =
         RefCell::new(HashMap::new());
 }
 
 pub fn with_servers<F, R>(f: F) -> R
 where
-    F: FnOnce(&mut HashMap<String, Server>) -> R,
+    F: FnOnce(&mut HashMap<ServerKey, Server>) -> R,
 {
     SERVERS.with_borrow_mut(|servers| {
         // todo: consider performance of always calling retain
         servers.retain(|_root_path, server| server.is_working());
         f(servers.borrow_mut())
     })
+}
+
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Ord, PartialOrd)]
+pub struct ServerKey {
+    pub root_path: String,
+    pub server_cmd: String,
 }

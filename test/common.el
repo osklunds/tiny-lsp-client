@@ -100,6 +100,15 @@
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
 
+(defun tlc-dev-find-root-function ()
+  "Special root finder used for developing tiny-lsp-client itself. Finds the
+nested projects inside the test directory as separate projects."
+  (if (string-match "tiny-lsp-client/test/[^/]+/" default-directory)
+      (let* ((match (match-string 0 default-directory))
+             (prefix (car (split-string default-directory match))))
+        (concat prefix match))
+    (tlc-find-root-default-function)))
+
 ;; -----------------------------------------------------------------------------
 ;; Test case framework
 ;; -----------------------------------------------------------------------------
@@ -113,6 +122,7 @@
 this common file. Is used to differentiate log file names.")
 
 (defun before-each-test (test-case-name)
+  (message "Running test case: '%s'" test-case-name)
   (assert-equal t (stringp test-file-name) "test-file-name")
   (setq log-file-name (relative-repo-root
                        "test"
@@ -120,6 +130,7 @@ this common file. Is used to differentiate log file names.")
                        (format "%s-%s.log" test-file-name test-case-name)))
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name)
+  (customize-set-variable 'tlc-find-root-function #'tlc-dev-find-root-function)
   
   (customize-set-variable 'tlc-before-start-server-hook nil)
   (customize-set-variable 'tlc-after-start-server-hook nil)
@@ -129,19 +140,21 @@ this common file. Is used to differentiate log file names.")
   ;; One drawback of running in the same emacs instance with ERT is that
   ;; this clean up in the end is needed.
 
-  ;; Only kill buffers visiting a file
-  (let ((buffers (cl-remove-if-not 'buffer-file-name (buffer-list))))
-    (dolist (buffer buffers)
-      (with-current-buffer buffer
-        ;; First disable tlc-mode so that kill-buffer doesn't trigger
-        ;; didClose
-        (tlc-mode -1)
-        ;; Stop server in a buffer where root path is known
-        (tlc-stop-server))
-      ;; Then kill the buffer too so that didOpen is sent if the same file
-      ;; is used in many tests
-      (kill-buffer buffer))
-    ))
+  (while (tlc-info)
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_ collection &rest _)
+                 (nth 0 collection))))
+      (tlc-stop-server)
+      ;; Avoid race where tlc-info returns the stopping server but
+      ;; then not found in collection
+      (sleep-for 0.1)))
+
+  (dolist (buffer (buffer-list))
+    (tlc-mode -1)
+    ;; If Messages is killed, "Marker not found error" happens
+    (unless (string-match-p "Messages" (with-current-buffer buffer (buffer-name)))
+      (kill-buffer buffer)))
+  )
 
 (cl-defmacro tlc-deftest (name () &rest body)
   (declare (indent defun))

@@ -53,6 +53,13 @@
 
 (add-hook 'c++-mode-hook 'tlc-mode)
 
+(define-derived-mode erlang-mode prog-mode "Erlang"
+  "Fake erlang-mode for testing.")
+
+(add-to-list 'auto-mode-alist '("\\.erl\\'" . erlang-mode))
+
+(add-hook 'erlang-mode-hook 'tlc-mode)
+
 ;; -----------------------------------------------------------------------------
 ;; Helpers
 ;; -----------------------------------------------------------------------------
@@ -107,7 +114,7 @@
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
   (assert-equal 'c++-mode major-mode)
-  (assert-equal t tlc-mode)
+  (assert-equal t tlc-mode "mode")
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
   (assert-equal 1 (number-of-did-open))
@@ -468,12 +475,12 @@ abc(123);
   (assert-tlc-info root-path "clangd")
 
   ;; Act
-  (tlc-stop-server)
+  (tlc--stop-server)
 
   ;; To see that spamming doesn't cause issues
-  (tlc-stop-server)
-  (tlc-stop-server)
-  (tlc-stop-server)
+  (tlc--stop-server)
+  (tlc--stop-server)
+  (tlc--stop-server)
 
   ;; Assert
   (assert-equal 0 (length (tlc-info)))
@@ -519,7 +526,7 @@ abc(123);
   (assert-equal 1 num-before-hook-calls)
   (assert-equal 1 num-after-hook-calls)
 
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
 
   ;; Act
@@ -790,7 +797,7 @@ void last_function() {
         (tlc--request
          "textDocument/definition"
          (list (tlc--buffer-file-name) 0 0)
-         (tlc--root)))
+         (tlc--server-key)))
       (setq done (has-had-max-num-of-timestamps-many-times))))
 
   ;; Assert
@@ -975,7 +982,7 @@ void last_function() {
   (assert-equal 11 (line-number-at-pos))
   (assert-equal 18 (current-column))
 
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
   (assert tlc-mode)
 
@@ -1016,7 +1023,7 @@ void last_function() {
   (assert-equal 18 (current-column))
 
   (assert-equal 1 (length (tlc-info)))
-  (tlc-stop-server)
+  (tlc--stop-server)
   (assert-equal 0 (length (tlc-info)))
   (assert tlc-mode)
 
@@ -1033,4 +1040,200 @@ void last_function() {
   (assert-equal 0 (length (tlc-info)))
   )
 
-;; remove duplicates in lib.rs
+(tlc-deftest multi-server-open-file-test ()
+  ;; Open clangd file
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (length (tlc-info)))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "clangd" (tlc--server-cmd))
+  (setq root (tlc--root))
+  (assert (string-suffix-p "test/clangd/" root))
+
+  ;; Open erlang_ls file in same project
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (assert-equal 2 (length (tlc-info)))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "erlang_ls" (tlc--server-cmd))
+  (assert-equal root (tlc--root))
+
+  ;; Open erlang_ls file in other project
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 3 (length (tlc-info)))
+  (assert-equal 3 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal "erlang_ls" (tlc--server-cmd))
+  (setq root2 (tlc--root))
+  (assert-not (string= root root2))
+
+  (setq infos (tlc-info))
+  (assert-equal root (nth 0 (nth 0 infos)))
+  (assert-equal "clangd" (nth 1 (nth 0 infos)))
+
+  (assert-equal root (nth 0 (nth 1 infos)))
+  (assert-equal "erlang_ls" (nth 1 (nth 1 infos)))
+
+  (assert-equal root2 (nth 0 (nth 2 infos)))
+  (assert-equal "erlang_ls" (nth 1 (nth 2 infos)))
+  )
+
+(tlc-deftest multi-server-xref-and-revert-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (assert-equal 3 (length (tlc-info)) "infos")
+
+  ;; Revert and then later check that the server still works
+  (assert-equal 3 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (revert-buffer-quick)
+  (assert-equal 4 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  (re-search-forward "my_function")
+  (assert-equal 3 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+  (assert-equal "my_module.erl" (buffer-name))
+
+  (switch-to-buffer "main.cpp")
+
+  (re-search-forward "other_function")
+  (re-search-forward "other_function")
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (assert-equal "main.cpp" (buffer-name))
+
+  (switch-to-buffer "erlang_in_cpp.erl")
+  (re-search-forward "my_function")
+  (assert-equal 3 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+  (assert-equal "erlang_in_cpp.erl" (buffer-name))
+  )
+
+(tlc-deftest multi-server-stop-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (find-file (relative-repo-root "test" "clangd" "erlang_in_cpp.erl"))
+  (setq root (tlc--root))
+
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+  (setq root2 (tlc--root))
+
+  (assert-equal 3 (length (tlc-info)) "infos")
+
+  (assert-equal (list "/some/path" "some-cmd")
+                (tlc--completion-to-server-key "/some/path @ some-cmd"))
+
+  (cl-letf (((symbol-function 'completing-read)
+             (lambda (_ collection _ _ _ _ default)
+               (assert-equal (format "%s @ clangd" root) (nth 0 collection) "clangd1")
+               (assert-equal (format "%s @ erlang_ls" root) (nth 1 collection) "erlang_ls1")
+               (assert-equal (format "%s @ erlang_ls" root2) (nth 2 collection) "erlang_ls2")
+               (assert-equal (format "%s @ erlang_ls" root2) default "default")
+               (nth 0 collection))))
+    (tlc-stop-server))
+
+  (assert-equal 2 (length (tlc-info)) "infos")
+  (assert-equal root (nth 0 (nth 0 (tlc-info))))
+  (assert-equal "erlang_ls" (nth 1 (nth 0 (tlc-info))))
+
+  (assert-equal root2 (nth 0 (nth 1 (tlc-info))))
+  (assert-equal "erlang_ls" (nth 1 (nth 1 (tlc-info))))
+  )
+
+(tlc-deftest multiple-files-same-project-test ()
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (length (tlc-info)))
+
+  (find-file (relative-repo-root "test" "clangd" "other.cpp"))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (setq info (tlc-info))
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-equal info (tlc-info))
+  (assert-equal 1 (length info) "infos")
+
+  (re-search-forward "other_function")
+  (re-search-forward "other_function")
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+
+  ;; After killing a buffer of the same project, info is unchanged
+  ;; and xref still works
+  (kill-buffer)
+  (assert-equal info (tlc-info))
+  (assert-equal 2 (number-of-did-open))
+  (assert-equal 1 (number-of-did-close))
+
+  (re-search-forward "unicode" nil nil 3)
+  (assert-equal 16 (line-number-at-pos))
+  (assert-equal 11 (current-column))
+
+  (non-interactive-xref-find-definitions)
+
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 5 (current-column))
+  )
+
+(tlc-deftest cant-use-tlc-mode-test ()
+  (find-file (relative-repo-root "test" "common.el"))
+  (setq msg nil)
+  (cl-letf (((symbol-function 'message) (lambda (m) (setq msg m))))
+    (tlc-mode))
+  (assert-not tlc-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in buffers where a server-cmd can be found."
+   msg)
+  (assert-not (tlc-info))
+
+  (switch-to-buffer (generate-new-buffer "hej.cpp"))
+  (c++-mode)
+  (cl-letf (((symbol-function 'message) (lambda (m &rest _) (setq msg m))))
+    (tlc-mode))
+  (assert-not tlc-mode)
+  (assert-equal major-mode 'c++-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in file buffers."
+   msg)
+
+  (cl-letf (((symbol-function 'message) (lambda (m &rest _) (setq msg m)))
+            (tlc-find-root-function (lambda () nil)))
+    (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+    (tlc-mode))
+
+  (assert-not tlc-mode)
+  (assert-equal major-mode 'c++-mode)
+  (assert-equal
+   "tiny-lsp-client can only be used in buffers where root can be found."
+   msg)
+  )
+

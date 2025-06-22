@@ -41,9 +41,9 @@ use std::time::{Duration, Instant};
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
+#[derive(Debug)]
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
-    command: String,
     root_path: String,
     sender: Sender<Option<Message>>,
     receiver: Receiver<Response>,
@@ -55,7 +55,7 @@ pub struct Server {
 impl Server {
     // @credits: The startup of the child process and worker threads inspired by
     // LspServer::new https://github.com/zbelial/lspce
-    pub fn new(command: &str, root_path: &str) -> Option<Server> {
+    pub fn new(root_path: &str, command: &str) -> Option<Server> {
         let mut child = match Command::new(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -459,7 +459,6 @@ impl Server {
 
         Some(Server {
             server_process: child,
-            command: command.to_string(),
             root_path: root_path.to_string(),
             sender: stdin_tx,
             receiver: stdout_rx,
@@ -595,10 +594,6 @@ impl Server {
         let version_number = self.next_version_number;
         self.next_version_number += 1;
         version_number
-    }
-
-    pub fn get_command(&self) -> String {
-        self.command.clone()
     }
 
     pub fn get_server_process_id(&self) -> u32 {
