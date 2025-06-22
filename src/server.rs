@@ -41,6 +41,7 @@ use std::time::{Duration, Instant};
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
 
+#[derive(Debug)]
 pub struct Server {
     server_process: Arc<Mutex<Child>>,
     root_path: String,
