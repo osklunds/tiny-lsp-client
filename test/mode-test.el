@@ -1139,18 +1139,16 @@ void last_function() {
 
   (assert-equal 3 (length (tlc-info)) "infos")
 
-  (setq comps (tlc--server-key-completions))
-
-  (assert-equal (format "%s @ clangd" root) (nth 0 comps) "clangd1")
-  (assert-equal (format "%s @ erlang_ls" root) (nth 1 comps) "erlang_ls1")
-  (assert-equal (format "%s @ erlang_ls" root2) (nth 2 comps) "erlang_ls2")
-
   (assert-equal (list "/some/path" "some-cmd")
                 (tlc--completion-to-server-key "/some/path @ some-cmd"))
 
   (cl-letf (((symbol-function 'completing-read)
-             ;; todo: test values here instead
-             (lambda (&rest _) (nth 0 comps))))
+             (lambda (_ collection _ _ _ _ default)
+               (assert-equal (format "%s @ clangd" root) (nth 0 collection) "clangd1")
+               (assert-equal (format "%s @ erlang_ls" root) (nth 1 collection) "erlang_ls1")
+               (assert-equal (format "%s @ erlang_ls" root2) (nth 2 collection) "erlang_ls2")
+               (assert-equal (format "%s @ erlang_ls" root2) default "default")
+               (nth 0 collection))))
     (tlc-stop-server))
 
   (assert-equal 2 (length (tlc-info)) "infos")
