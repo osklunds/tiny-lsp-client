@@ -38,7 +38,6 @@ fn did_open_change_close_and_definition() {
 
     let cwd = env::current_dir().unwrap().display().to_string();
 
-    // todo: don't hard code these paths
     let mut server = Server::new(&cwd, "rust-analyzer").unwrap();
     server.initialize();
 
