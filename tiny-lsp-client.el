@@ -49,6 +49,7 @@
                              (erlang-mode . "erlang_ls")
                              (c++-mode . "clangd")
                              (java-mode . "jdtls")
+                             (haskell-mode . "haskell-language-server-wrapper")
                              )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client
