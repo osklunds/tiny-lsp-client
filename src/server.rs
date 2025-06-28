@@ -61,7 +61,7 @@ impl Server {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
-            .arg("lsp")
+            .arg("--lsp")
             // When emacs is run in a terminal (using -nw), C-g causes the LSP
             // server child process to stop. It doesn't happen when running GUI
             // emacs.  For lsp-mode, this also doesn't happen, even in termimal.
