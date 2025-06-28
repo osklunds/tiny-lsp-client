@@ -49,11 +49,14 @@
                              (erlang-mode . "erlang_ls")
                              (c++-mode . "clangd")
                              (java-mode . "jdtls")
-                             (haskell-mode . "haskell-language-server-wrapper")
+                             (haskell-mode . "haskell-language-server-wrapper --lsp")
                              )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client
   :type 'sexp) ;; todo: better type
+;; Note: convention is space separates argument. lib::get_server_key is on
+;; the critical path and converting lisp list to vec everytime is too
+;; expensive.
 
 (defcustom tlc-find-root-function 'tlc-find-root-default-function
   "Function used for finding the root path of a project."

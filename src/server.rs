@@ -55,13 +55,15 @@ pub struct Server {
 impl Server {
     // @credits: The startup of the child process and worker threads inspired by
     // LspServer::new https://github.com/zbelial/lspce
-    pub fn new(root_path: &str, command: &str) -> Option<Server> {
-        let mut child = match Command::new(command)
+    pub fn new(root_path: &str, server_cmd: &str) -> Option<Server> {
+        let mut split = server_cmd.split(" ");
+        let program = split.next().unwrap();
+        let mut command = Command::new(program);
+        command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(root_path)
-            .arg("--lsp")
             // When emacs is run in a terminal (using -nw), C-g causes the LSP
             // server child process to stop. It doesn't happen when running GUI
             // emacs.  For lsp-mode, this also doesn't happen, even in termimal.
@@ -69,15 +71,19 @@ impl Server {
             // to send SIGINT to emacs and thus emacs' process group too. If the LSP
             // command is wrapped in a bash script that traps SIGINT (maybe SIGTERM
             // too) the LSP server is not stopped.
-            .process_group(0)
-            .spawn()
-        {
+            .process_group(0);
+
+        while let Some(arg) = split.next() {
+            command.arg(arg);
+        }
+
+        let mut child = match command.spawn() {
             Ok(child) => child,
             Err(e) => {
                 logger::log_rust_debug!(
                     "Start child failed. Reason: '{:?}'. Command: '{}'. Root path: '{}'",
                     e,
-                    command,
+                    server_cmd,
                     root_path
                 );
                 return None;
