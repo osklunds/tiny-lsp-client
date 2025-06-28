@@ -95,3 +95,65 @@
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   )
+
+(tlc-deftest edit-test ()
+  (find-file (relative-repo-root "test" "haskell_language_server" "app" "Main.hs"))
+
+  (assert-equal 
+   "module Main where
+
+main :: IO ()
+main = print $ myFunction 1 2
+
+myFunction arg1 arg2 = arg1 + arg2
+
+"
+   (current-buffer-string))
+
+  (beginning-of-buffer)
+  (re-search-forward "myFunction")
+  (insert "_")
+  (insert "h")
+  (insert "e")
+  (insert "j")
+  (previous-line)
+  (end-of-line)
+  (insert "\n")
+
+  (re-search-forward "myFunction" nil nil 2)
+  (insert "_hej")
+  (end-of-line)
+  (previous-line)
+  (insert "\n")
+  (insert "\n")
+
+  (assert-equal 
+   "module Main where
+
+main :: IO ()
+
+main = print $ myFunction_hej 1 2
+
+
+
+myFunction_hej arg1 arg2 = arg1 + arg2
+
+"
+   (current-buffer-string))
+
+  (beginning-of-buffer)
+  (re-search-forward "myFunction")
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 25 (current-column))
+
+  (let ((continue t))
+    (while continue
+      ;; Sometimes no def found
+      (ignore-errors
+        (non-interactive-xref-find-definitions)
+        (setq continue nil))
+      (sleep-for 0.1)))
+
+  (assert-equal 9 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+  )
