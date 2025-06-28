@@ -107,6 +107,8 @@ main = print $ myFunction 1 2
 
 myFunction arg1 arg2 = arg1 + arg2
 
+other = my
+
 "
    (current-buffer-string))
 
@@ -138,6 +140,8 @@ main = print $ myFunction_hej 1 2
 
 myFunction_hej arg1 arg2 = arg1 + arg2
 
+other = my
+
 "
    (current-buffer-string))
 
@@ -156,4 +160,22 @@ myFunction_hej arg1 arg2 = arg1 + arg2
 
   (assert-equal 9 (line-number-at-pos))
   (assert-equal 0 (current-column))
+  )
+
+(tlc-deftest capf-test ()
+  (find-file (relative-repo-root "test" "haskell_language_server" "app" "Main.hs"))
+
+  ;; so that capf doesn't exceed max eval depth
+  ;; todo: don't hardcode this sleep time
+  (sleep-for 5)
+
+  (re-search-forward "my" nil nil 3)
+  (setq tlc-collection-fun (get-tlc-collection-fun))
+  (assert-equal 0 (number-of-completion-requests))
+
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (assert-equal 1 (number-of-completion-requests))
+    (dolist (exp '("myFunction" "myThreadId"))
+      (assert (cl-member exp result :test 'string-equal) exp))
+    )
   )
