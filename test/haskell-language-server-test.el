@@ -71,3 +71,27 @@
   (assert tlc-mode)
   )
 
+(tlc-deftest find-definition-test ()
+  ;; Arrange
+  (assert-equal 0 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (find-file (relative-repo-root "test" "haskell_language_server" "app" "Main.hs"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+
+  (re-search-forward "myFunction")
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 25 (current-column))
+
+  ;; Act
+  (non-interactive-xref-find-definitions)
+
+  ;; Assert
+  (assert-equal 6 (line-number-at-pos))
+  (assert-equal 0 (current-column))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  )
