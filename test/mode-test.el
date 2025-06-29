@@ -1139,7 +1139,7 @@ void last_function() {
                 (tlc--completion-to-server-key "/some/path @ some-cmd"))
 
   (cl-letf (((symbol-function 'completing-read)
-             (lambda (_ collection _ _ _ _ default _)
+             (lambda (_ collection _ _ _ _ default)
                (assert-equal (format "%s @ clangd" root) (nth 0 collection) "clangd1")
                (assert-equal (format "%s @ erlang_ls" root) (nth 1 collection) "erlang_ls1")
                (assert-equal (format "%s @ erlang_ls" root2) (nth 2 collection) "erlang_ls2")
