@@ -337,7 +337,7 @@ obvious that they happen."
         ;; after-change were not called as a balanced pair. So send full
         ;; document to get out of this situation.
         (progn
-          (tlc--log "tlc--before-change-hook called with non-nil tlc--change")
+          (tlc--log "tlc--before-change-hook called with non-nil tlc--change, full change")
           (setq tlc--change nil)
           (tlc--notify-text-document-did-change-full))
       (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
@@ -387,7 +387,7 @@ obvious that they happen."
       ;; If there is no tlc--change it means before-change and
       ;; after-change were not called as a balanced pair. So send full
       ;; document to get out of this situation.
-      (tlc--log "tlc--after-change-hook called with nil tlc--change")
+      (tlc--log "tlc--after-change-hook called with nil tlc--change, full change")
       (tlc--notify-text-document-did-change-full))))
 
 (defun tlc--notify-text-document-did-change (text &optional
