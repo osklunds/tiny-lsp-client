@@ -118,7 +118,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     servers::with_servers(|servers| {
         let mut servers: Vec<_> = servers.iter().collect();
         servers.sort_by_key(|(&ref server_key, _server)| server_key);
-            
+
         for (server_key, server) in servers.iter() {
             let info = call(
                 env,
@@ -299,24 +299,38 @@ unsafe fn build_text_document_did_change(
     for i in 0..content_changes_len {
         let content_change = nth(env, i, content_changes);
 
-        let start_line = nth(env, 0, content_change);
-        let start_character = nth(env, 1, content_change);
-        let end_line = nth(env, 2, content_change);
-        let end_character = nth(env, 3, content_change);
-        let text = nth(env, 4, content_change);
+        let text = extract_string(env, nth(env, 0, content_change));
+        let content_change_len =
+            extract_integer(env, call(env, "length", vec![content_change]));
 
-        let json_content_change = TextDocumentContentChangeEvent {
-            range: Range {
-                start: Position {
-                    line: extract_integer(env, start_line) as usize,
-                    character: extract_integer(env, start_character) as usize,
+        // len 1 means full change, so the other elements don't exist
+        let json_content_change = if content_change_len == 1 {
+            TextDocumentContentChangeEvent::TextDocumentContentChangeEventFull(
+                TextDocumentContentChangeEventFull { text },
+            )
+        } else {
+            let start_line = nth(env, 1, content_change);
+            let start_character = nth(env, 2, content_change);
+            let end_line = nth(env, 3, content_change);
+            let end_character = nth(env, 4, content_change);
+
+            TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                TextDocumentContentChangeEventIncremental {
+                    range: Range {
+                        start: Position {
+                            line: extract_integer(env, start_line) as usize,
+                            character: extract_integer(env, start_character)
+                                as usize,
+                        },
+                        end: Position {
+                            line: extract_integer(env, end_line) as usize,
+                            character: extract_integer(env, end_character)
+                                as usize,
+                        },
+                    },
+                    text,
                 },
-                end: Position {
-                    line: extract_integer(env, end_line) as usize,
-                    character: extract_integer(env, end_character) as usize,
-                },
-            },
-            text: extract_string(env, text),
+            )
         };
         json_content_changes.push(json_content_change);
     }
@@ -579,8 +593,7 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
     let server_key = get_server_key(env, &args_vec);
     servers::with_servers(|servers| {
-        if let Some(ref mut server) = &mut servers.get_mut(&server_key)
-        {
+        if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
             if let Some(result) = f(env, args_vec, server) {
                 result
             } else {

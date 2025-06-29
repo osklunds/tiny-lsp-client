@@ -235,7 +235,21 @@ pub struct VersionedTextDocumentIdentifier {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct TextDocumentContentChangeEvent {
+#[serde(untagged)]
+pub enum TextDocumentContentChangeEvent {
+    TextDocumentContentChangeEventIncremental(
+        TextDocumentContentChangeEventIncremental,
+    ),
+    TextDocumentContentChangeEventFull(TextDocumentContentChangeEventFull),
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct TextDocumentContentChangeEventIncremental {
     pub range: Range,
+    pub text: String,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct TextDocumentContentChangeEventFull {
     pub text: String,
 }

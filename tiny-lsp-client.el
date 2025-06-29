@@ -329,15 +329,18 @@ obvious that they happen."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  (when tlc--change
-    ;; I know this is overly simplified, but when this case happens, I fix it
-    ;; one idea could be send full document since these cases should hopefully
-    ;; be rare
-    (tlc--error "tlc--change is not-nil in before-change"))
-  ;; if revert in progress, it can happen that didChange is sent before didOpen,
+  ;; If revert in progress, it can happen that didChange is sent before didOpen,
   ;; when discarding changes in magit
   (unless revert-buffer-in-progress-p
-    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
+    (if tlc--change
+        ;; If there already is a tlc--change it means before-change and
+        ;; after-change were not called as a balanced pair. So send full
+        ;; document to get out of this situation.
+        (progn
+          (tlc--log "tlc--before-change-hook called with non-nil tlc--change, full change")
+          (setq tlc--change nil)
+          (tlc--notify-text-document-did-change-full))
+      (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
 ;; @credits: Heavily inspired by eglot
 ;; nil pos means current point
@@ -364,35 +367,46 @@ obvious that they happen."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  (unless tlc--change
-    (tlc--error "tlc--change is nil in after-change"))
-  (let* ((start-line      (nth 0 tlc--change))
-         (start-character (nth 1 tlc--change))
-         (end-line        (nth 2 tlc--change))
-         (end-character   (nth 3 tlc--change))
-         (text (tlc--widen
-                (buffer-substring-no-properties beg end)))
-         )
-    (setq tlc--change nil)
-    ;; if revert in progress, it can happen that didChange is sent before didOpen
-    ;; when discarding changes in magit
-    (unless revert-buffer-in-progress-p
-      (tlc--notify-text-document-did-change start-line
-                                            start-character
-                                            end-line
-                                            end-character
-                                            text))))
+  ;; if revert in progress, it can happen that didChange is sent before didOpen
+  ;; when discarding changes in magit
+  (unless revert-buffer-in-progress-p
+    (if tlc--change
+        (let* ((start-line      (nth 0 tlc--change))
+               (start-character (nth 1 tlc--change))
+               (end-line        (nth 2 tlc--change))
+               (end-character   (nth 3 tlc--change))
+               (text (tlc--widen
+                      (buffer-substring-no-properties beg end)))
+               )
+          (setq tlc--change nil)
+          (tlc--notify-text-document-did-change text
+                                                start-line
+                                                start-character
+                                                end-line
+                                                end-character))
+      ;; If there is no tlc--change it means before-change and
+      ;; after-change were not called as a balanced pair. So send full
+      ;; document to get out of this situation.
+      (tlc--log "tlc--after-change-hook called with nil tlc--change, full change")
+      (tlc--notify-text-document-did-change-full))))
 
-(defun tlc--notify-text-document-did-change (start-line
-                                             start-character
-                                             end-line
-                                             end-character
-                                             text)
-  (tlc--send-notification
-   "textDocument/didChange"
-   (list (tlc--buffer-uri)
-         `((,start-line ,start-character ,end-line ,end-character ,text))
-         )))
+(defun tlc--notify-text-document-did-change (text &optional
+                                                  start-line
+                                                  start-character
+                                                  end-line
+                                                  end-character)
+  (let ((content-change (if start-line
+                            `(,text ,start-line ,start-character ,end-line ,end-character)
+                          `(,text))))
+    (tlc--send-notification
+     "textDocument/didChange"
+     (list (tlc--buffer-uri)
+           (list content-change)))))
+
+(defun tlc--notify-text-document-did-change-full ()
+  (tlc--notify-text-document-did-change
+   (tlc--widen
+    (buffer-substring-no-properties (point-min) (point-max)))))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response

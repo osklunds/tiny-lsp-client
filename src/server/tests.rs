@@ -105,19 +105,22 @@ fn did_open_change_close_and_definition() {
                     uri: uri.clone(),
                     version: 3,
                 },
-                content_changes: vec![TextDocumentContentChangeEvent {
-                    range: Range {
-                        start: Position {
-                            line: 6,
-                            character: 0,
-                        },
-                        end: Position {
-                            line: 6,
-                            character: 0,
-                        },
-                    },
-                    text: "\n".to_string(),
-                }],
+                content_changes: vec![
+TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                        TextDocumentContentChangeEventIncremental {
+                            range: Range {
+                                start: Position {
+                                    line: 6,
+                                    character: 0,
+                                },
+                                end: Position {
+                                    line: 6,
+                                    character: 0,
+                                },
+                            },
+                        text: "\n".to_string(),
+                    }),
+                ],
             },
         ),
     );
@@ -190,19 +193,22 @@ fn did_open_change_close_and_definition() {
                     uri: uri.clone(),
                     version: 4,
                 },
-                content_changes: vec![TextDocumentContentChangeEvent {
-                    range: Range {
-                        start: Position {
-                            line: 6,
-                            character: 0,
-                        },
-                        end: Position {
-                            line: 7,
-                            character: 1,
-                        },
-                    },
-                    text: "".to_string(),
-                }],
+                content_changes: vec![
+TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                        TextDocumentContentChangeEventIncremental {
+                            range: Range {
+                                start: Position {
+                                    line: 6,
+                                    character: 0,
+                                },
+                                end: Position {
+                                    line: 7,
+                                    character: 1,
+                                },
+                            },
+                        text: "".to_string(),
+                    }),
+                ],
             },
         ),
     );

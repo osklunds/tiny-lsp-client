@@ -31,25 +31,14 @@
 
 (load (relative-repo-root "test" "common.el"))
 (setq test-file-name "mode-test")
+(common-setup)
 
 ;; -----------------------------------------------------------------------------
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-;; todo: move cargo build to common
-(run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
 (run-shell-command "make" "test" "clangd")
-
-;; Manually require tlc-rust to get debug version
-(require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
-(require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
-
-(customize-set-variable 'tlc-log-io t)
-(customize-set-variable 'tlc-log-stderr t)
-(customize-set-variable 'tlc-log-rust-debug t)
-(customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
 
@@ -236,6 +225,7 @@
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change))
 
   (assert-equal 
    "
@@ -260,8 +250,12 @@ int main() {
   (re-search-forward "other_function")
   ;; Some single-character edits
   (insert "h")
+  (assert-equal 1 (number-of-did-change))
+
   (insert "e")
   (insert "j")
+
+  (assert-equal 3 (number-of-did-change))
 
   (beginning-of-line)
   (re-search-forward "other")
@@ -275,6 +269,8 @@ int main() {
   (end-of-line)
   (insert "\n") ;; and a newline
   (insert "third_function();\n")
+
+  (assert-equal 9 (number-of-did-change))
 
   (previous-line 2)
   (beginning-of-line)
@@ -1237,3 +1233,247 @@ void last_function() {
    msg)
   )
 
+(tlc-deftest tlc-change-not-nil-in-before-change-hook-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-not tlc--change)
+  (tlc--before-change-hook 5 10)
+  (assert tlc--change)
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  ;; Act
+  (tlc--before-change-hook 6 7)
+
+  ;; Assert
+  (assert-not tlc--change)
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest tlc-change-nil-in-after-change-hook-test ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-not tlc--change)
+
+  ;; Act
+  (tlc--after-change-hook 6 7 1)
+
+  ;; Assert
+  (assert-not tlc--change)
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+  (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest tlc-full-change-to-something-else ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  ;; Handle didChange manually in the test case
+  (remove-hook 'before-change-functions 'tlc--before-change-hook t)
+  (remove-hook 'after-change-functions 'tlc--after-change-hook t)
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  (setq new-content
+        "
+#include <iostream>
+
+short hi(int a, int b, int c) {
+    return a + b + c;
+}
+
+int main() {
+    hi(456, 8, 9);
+}
+")
+
+  (delete-region (point-min) (point-max))
+  (assert-equal "" (current-buffer-string))
+  (insert new-content)
+  (assert-equal new-content (current-buffer-string))
+
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  ;; Act
+  ;; Manually change document to something completely different to see that
+  ;; this full replace style works at all.
+  (tlc--notify-text-document-did-change new-content)
+
+  ;; Assert
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+
+  (beginning-of-buffer)
+  (re-search-forward "return a")
+  (forward-char 3)
+  
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 15 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  (re-search-forward "hi")
+  (assert-equal 9 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
+
+(tlc-deftest full-did-change-triggered-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  (setq initial-content
+        "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+")
+  (assert-equal initial-content (current-buffer-string))
+
+  (re-search-forward "short ")
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (setq start (point))
+
+  ;; Note here how downcase-word causes tlc--change to change from nil
+  ;; to non-nil, but buffer is not changed, and no didChange is sent
+  (assert-not tlc--change)
+  (call-interactively 'downcase-word)
+  (assert tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  ;; If called again, full didChange is done
+  (goto-char start)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (call-interactively 'downcase-word)
+  (assert-not tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+
+  ;; Trigger inconsistent state again
+  (goto-char start)
+  (assert-not tlc--change)
+  (call-interactively 'downcase-word)
+  (assert tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+
+  ;; Inconsistent state, now a well-behaved change is done
+  (insert "x")
+  (assert-not tlc--change)
+  (assert-equal 0 (number-of-did-change-incremental))
+  ;; 3, one because of tlc--change not nil in before, then set to nil, and
+  ;; then nil in after
+  (assert-equal 3 (number-of-did-change-full) "hej")
+
+  (assert-equal
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short otherx_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  (re-search-forward "other")
+  (insert "x")
+  (assert-equal
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short otherx_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    otherx_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  ;; But for the second well-behaved incremental is used
+  (assert-not tlc--change)
+  (assert-equal 1 (number-of-did-change-incremental))
+  (assert-equal 3 (number-of-did-change-full) "full")
+
+  ;; In sync after the well-behaved change
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 10 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
