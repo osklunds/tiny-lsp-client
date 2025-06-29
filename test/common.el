@@ -90,11 +90,16 @@
 (defun number-of-did-close ()
   (count-in-log-file "\"method\": \"textDocument/didClose\","))
 
-(defun number-of-did-change ()
+(defun number-of-did-change-both-types ()
   (count-in-log-file "\"method\": \"textDocument/didChange\","))
 
+(defun number-of-did-change ()
+  "In most cases, there should be no full type changes."
+  (assert-equal (number-of-did-change-incremental) (number-of-did-change-both-types))
+  (number-of-did-change-incremental))
+
 (defun number-of-did-change-full ()
-  (- (number-of-did-change) (number-of-did-change-incremental)))
+  (- (number-of-did-change-both-types) (number-of-did-change-incremental)))
 
 (defun number-of-did-change-incremental ()
   ;; todo: make it more unique
