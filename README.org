@@ -143,7 +143,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - error strategy
             - logging
             - test strategy
-      - Haskell LSP
 - Bugs
       - Higher priority
       - Lower priority
