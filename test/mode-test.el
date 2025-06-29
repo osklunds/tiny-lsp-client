@@ -1251,7 +1251,7 @@ void last_function() {
 
 ;; todo: as another white box test, test send full change but something
 ;; entirely different to know that lsp server accepts this format
-(tlc-deftest tlc-change-not-nil-in-before-change-hook ()
+(tlc-deftest tlc-change-not-nil-in-before-change-hook-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -1277,7 +1277,7 @@ void last_function() {
   (assert-equal 0 (number-of-did-close))
   )
 
-(tlc-deftest tlc-change-nil-in-after-change-hook ()
+(tlc-deftest tlc-change-nil-in-after-change-hook-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
@@ -1297,4 +1297,83 @@ void last_function() {
   (assert-equal 1 (number-of-did-change))
   (assert-equal 1 (number-of-did-change-full))
   (assert-equal 0 (number-of-did-close))
+  )
+
+(tlc-deftest tlc-full-change-to-something-else ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  ;; Handle didChange manually in the test case
+  (remove-hook 'before-change-functions 'tlc--before-change-hook t)
+  (remove-hook 'after-change-functions 'tlc--after-change-hook t)
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-full))
+
+  (assert-equal 
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  (setq new-content
+        "
+#include <iostream>
+
+short hi(int a, int b, int c) {
+    return a + b + c;
+}
+
+int main() {
+    hi(456, 8, 9);
+}
+")
+
+  (delete-region (point-min) (point-max))
+  (assert-equal "" (current-buffer-string))
+  (insert new-content)
+  (assert-equal new-content (current-buffer-string))
+
+  (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-full))
+
+  ;; Act
+  ;; Manually change document to something completely different to see that
+  ;; this full replace style works at all.
+  (tlc--notify-text-document-did-change new-content)
+
+  ;; Assert
+  (assert-equal 1 (number-of-did-change))
+  (assert-equal 1 (number-of-did-change-full))
+
+  (beginning-of-buffer)
+  (re-search-forward "return a")
+  (forward-char 3)
+  
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 15 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 20 (current-column))
+
+  (re-search-forward "hi")
+  (assert-equal 9 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 4 (line-number-at-pos))
+  (assert-equal 6 (current-column))
   )
