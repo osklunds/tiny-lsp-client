@@ -172,19 +172,19 @@
                 (tlc--rust-send-notification
                  (list "/some/root/path/not/found" server-cmd)
                  "textDocument/didChange"
-                 (list file-uri '((3 0 3 0 "\n")))))
+                 (list file-uri '(("\n" 3 0 3 0)))))
 
   (assert-equal 'no-server
                 (tlc--rust-send-notification
                  (list root-path "some server cmd")
                  "textDocument/didChange"
-                 (list file-uri '((3 0 3 0 "\n")))))
+                 (list file-uri '(("\n" 3 0 3 0)))))
 
   (assert-equal 'ok
                 (tlc--rust-send-notification
                  (list root-path server-cmd)
                  "textDocument/didChange"
-                 (list file-uri '((3 0 3 0 "\n")))))
+                 (list file-uri '(("\n" 3 0 3 0)))))
 
   ;; ---------------------------------------------------------------------------
   ;; definition after didChange
@@ -214,7 +214,7 @@
                 (tlc--rust-send-notification
                  (list root-path server-cmd)
                  "textDocument/didChange"
-                 `(,file-uri ((3 0 4 1 "")))))
+                 `(,file-uri (("" 3 0 4 1)))))
 
   ;; ---------------------------------------------------------------------------
   ;; didClose
