@@ -1377,3 +1377,121 @@ int main() {
   (assert-equal 4 (line-number-at-pos))
   (assert-equal 6 (current-column))
   )
+
+(tlc-deftest full-did-change-triggered-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  (setq initial-content
+        "
+#include <iostream>
+#include \"other.hpp\"
+
+short other_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+")
+  (assert-equal initial-content (current-buffer-string))
+
+  (re-search-forward "short ")
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (setq start (point))
+
+  ;; Note here how downcase-word causes tlc--change to change from nil
+  ;; to non-nil, but buffer is not changed, and no didChange is sent
+  (assert-not tlc--change)
+  (call-interactively 'downcase-word)
+  (assert tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 0 (number-of-did-change-full))
+
+  ;; If called again, full didChange is done
+  (goto-char start)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  (call-interactively 'downcase-word)
+  (assert-not tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+
+  ;; Trigger inconsistent state again
+  (goto-char start)
+  (assert-not tlc--change)
+  (call-interactively 'downcase-word)
+  (assert tlc--change)
+  (assert-equal initial-content (current-buffer-string))
+  (assert-equal 0 (number-of-did-change-incremental))
+  (assert-equal 1 (number-of-did-change-full))
+
+  ;; Inconsistent state, now a well-behaved change is done
+  (insert "x")
+  (assert-not tlc--change)
+  (assert-equal 0 (number-of-did-change-incremental))
+  ;; 3, one because of tlc--change not nil in before, then set to nil, and
+  ;; then nil in after
+  (assert-equal 3 (number-of-did-change-full) "hej")
+
+  (assert-equal
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short otherx_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    other_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  (re-search-forward "other")
+  (insert "x")
+  (assert-equal
+   "
+#include <iostream>
+#include \"other.hpp\"
+
+short otherx_function(int arg) {
+    std::cout << arg << std::endl;
+    return 1;
+}
+
+int main() {
+    otherx_function(123);
+
+    function_in_other_file();
+}
+"
+   (current-buffer-string))
+
+  ;; But for the second well-behaved incremental is used
+  (assert-not tlc--change)
+  (assert-equal 1 (number-of-did-change-incremental))
+  (assert-equal 3 (number-of-did-change-full) "full")
+
+  ;; In sync after the well-behaved change
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 10 (current-column))
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 6 (current-column))
+  )
