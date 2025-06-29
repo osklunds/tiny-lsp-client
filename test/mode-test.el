@@ -1256,8 +1256,29 @@ void last_function() {
   ;; Act
   (tlc--before-change-hook 6 7)
 
+  ;; Assert
+  (assert-not tlc--change)
   (assert-equal 1 (number-of-did-open))
   (assert-equal 1 (number-of-did-change))
   (assert-equal 0 (number-of-did-close))
   )
 
+(tlc-deftest tlc-change-nil-in-after-change-hook ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-not tlc--change)
+
+  ;; Act
+  (tlc--after-change-hook 6 7 1)
+
+  ;; Assert
+  (assert-not tlc--change)
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-change))
+  (assert-equal 0 (number-of-did-close))
+  )

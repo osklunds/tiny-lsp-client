@@ -366,24 +366,27 @@ obvious that they happen."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  (unless tlc--change
-    (tlc--error "tlc--change is nil in after-change"))
-  (let* ((start-line      (nth 0 tlc--change))
-         (start-character (nth 1 tlc--change))
-         (end-line        (nth 2 tlc--change))
-         (end-character   (nth 3 tlc--change))
-         (text (tlc--widen
-                (buffer-substring-no-properties beg end)))
-         )
-    (setq tlc--change nil)
-    ;; if revert in progress, it can happen that didChange is sent before didOpen
-    ;; when discarding changes in magit
-    (unless revert-buffer-in-progress-p
-      (tlc--notify-text-document-did-change text
-                                            start-line
-                                            start-character
-                                            end-line
-                                            end-character))))
+  ;; if revert in progress, it can happen that didChange is sent before didOpen
+  ;; when discarding changes in magit
+  (unless revert-buffer-in-progress-p
+    (if tlc--change
+        (let* ((start-line      (nth 0 tlc--change))
+               (start-character (nth 1 tlc--change))
+               (end-line        (nth 2 tlc--change))
+               (end-character   (nth 3 tlc--change))
+               (text (tlc--widen
+                      (buffer-substring-no-properties beg end)))
+               )
+          (setq tlc--change nil)
+          (tlc--notify-text-document-did-change text
+                                                start-line
+                                                start-character
+                                                end-line
+                                                end-character))
+      ;; If there is no tlc--change it means before-change and
+      ;; after-change were not called as a balanced pair. So send full
+      ;; document to get out of this situation.
+      (tlc--notify-text-document-did-change-full))))
 
 (defun tlc--notify-text-document-did-change (text &optional
                                                   start-line
