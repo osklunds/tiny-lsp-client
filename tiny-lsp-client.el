@@ -49,10 +49,14 @@
                              (erlang-mode . "erlang_ls")
                              (c++-mode . "clangd")
                              (java-mode . "jdtls")
+                             (haskell-mode . "haskell-language-server-wrapper --lsp")
                              )
   "Which server command to use for various major modes."
   :group 'tiny-lsp-client
   :type 'sexp) ;; todo: better type
+;; Note: convention is space separates argument. lib::get_server_key is on
+;; the critical path and converting lisp list to vec everytime is too
+;; expensive.
 
 (defcustom tlc-find-root-function 'tlc-find-root-default-function
   "Function used for finding the root path of a project."
@@ -361,7 +365,7 @@ obvious that they happen."
             revert-buffer-in-progress-p
             tlc--change)
   (unless tlc--change
-    (error "tlc--change is nil in after-change"))
+    (tlc--error "tlc--change is nil in after-change"))
   (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
@@ -837,8 +841,10 @@ seems to accept URIs that are not encoded properly."
     (decode-coding-string (url-unhex-string suffix) 'utf-8)))
 
 (defun tlc--error (msg)
-  (let ((debug-on-error tlc-debug-on-error))
-    (error msg)))
+  (if tlc-debug-on-error
+      (let ((debug-on-error t))
+        (error msg))
+    (message msg)))
 
 ;; -----------------------------------------------------------------------------
 ;; Server key

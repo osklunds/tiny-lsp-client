@@ -55,8 +55,11 @@ pub struct Server {
 impl Server {
     // @credits: The startup of the child process and worker threads inspired by
     // LspServer::new https://github.com/zbelial/lspce
-    pub fn new(root_path: &str, command: &str) -> Option<Server> {
-        let mut child = match Command::new(command)
+    pub fn new(root_path: &str, server_cmd: &str) -> Option<Server> {
+        let mut split = server_cmd.split(" ");
+        let program = split.next().unwrap();
+        let mut command = Command::new(program);
+        command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -68,15 +71,19 @@ impl Server {
             // to send SIGINT to emacs and thus emacs' process group too. If the LSP
             // command is wrapped in a bash script that traps SIGINT (maybe SIGTERM
             // too) the LSP server is not stopped.
-            .process_group(0)
-            .spawn()
-        {
+            .process_group(0);
+
+        while let Some(arg) = split.next() {
+            command.arg(arg);
+        }
+
+        let mut child = match command.spawn() {
             Ok(child) => child,
             Err(e) => {
                 logger::log_rust_debug!(
                     "Start child failed. Reason: '{:?}'. Command: '{}'. Root path: '{}'",
                     e,
-                    command,
+                    server_cmd,
                     root_path
                 );
                 return None;
@@ -411,28 +418,30 @@ impl Server {
                 // in doing non-blocking yet.
                 let mut result = match stderr_rx.recv() {
                     Ok(r) => Ok(r),
-                    Err(RecvError) => Err(TryRecvError::Disconnected),
+                    Err(RecvError) => Err(RecvTimeoutError::Disconnected),
                 };
                 let mut disconnected = false;
 
                 loop {
                     // When some data has arrived, continue to attempt
-                    // non-blocking reads until it seems no more data will
-                    // arrive.
+                    // reads with timeouts until it seems no more data will
+                    // arrive. A timeout (of 10 ms) was needed for
+                    // haskell-language-server, otherwise the STDERR lines were
+                    // too frequent.
                     match result {
                         Ok(partial) => {
                             buf.extend_from_slice(&partial);
                         }
-                        Err(TryRecvError::Empty) => {
+                        Err(RecvTimeoutError::Timeout) => {
                             break;
                         }
-                        Err(TryRecvError::Disconnected) => {
+                        Err(RecvTimeoutError::Disconnected) => {
                             disconnected = true;
                             break;
                         }
                     }
 
-                    result = stderr_rx.try_recv();
+                    result = stderr_rx.recv_timeout(Duration::from_millis(10));
                 }
 
                 if buf.len() > 0 {

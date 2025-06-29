@@ -143,10 +143,10 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - error strategy
             - logging
             - test strategy
-      - Haskell LSP
 - Bugs
       - Higher priority
       - Lower priority
+            - =haskell-mode='s indentation causes asserts to fail in =tlc-after-change=.
       - Hard to reproduce
             - when doing completions in c++ test file, clangd complained about non opened document
             - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
@@ -157,6 +157,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Improvements of existing code/functionality
       - Higher priority
       - Lower priority
+            - Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
             - Remove duplicate completions in Rust code
             - Create a docker image that tests can be run in, because many external dependencies like =erlang_ls=, =clangd=, etc. Mount the repo root inside the image so that no need to rebuild image when changing code.
             - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
