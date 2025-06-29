@@ -139,10 +139,16 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 * Backlog
 
 - New functionality
-      - Documentation
-            - error strategy
-            - logging
-            - test strategy
+      - Higher priority
+            - Documentation
+                  - error strategy
+                  - logging
+                  - test strategy
+      - Lower priority
+            - For e.g. =jdtls= and =hls= make it possible to jump to library files
+            - Multiple servers per buffer, could be relevant for HTML, CSS and Javascript
+                  - But I can't do this until I know how I want to use it
+                  - Could be that =tlc-server-cmds= should be removed, and general hook per major/minor mode that starts a server
 - Bugs
       - Higher priority
       - Lower priority
