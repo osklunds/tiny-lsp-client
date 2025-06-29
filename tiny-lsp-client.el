@@ -365,7 +365,7 @@ obvious that they happen."
             revert-buffer-in-progress-p
             tlc--change)
   (unless tlc--change
-    (error "tlc--change is nil in after-change"))
+    (tlc--error "tlc--change is nil in after-change"))
   (let* ((start-line      (nth 0 tlc--change))
          (start-character (nth 1 tlc--change))
          (end-line        (nth 2 tlc--change))
