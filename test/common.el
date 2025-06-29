@@ -93,6 +93,13 @@
 (defun number-of-did-change ()
   (count-in-log-file "\"method\": \"textDocument/didChange\","))
 
+(defun number-of-did-change-full ()
+  (- (number-of-did-change) (number-of-did-change-incremental)))
+
+(defun number-of-did-change-incremental ()
+  ;; todo: make it more unique
+  (count-in-log-file "\"range\": {"))
+
 (defun number-of-completion-requests ()
   (count-in-log-file "\"method\": \"textDocument/completion\","))
 

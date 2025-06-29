@@ -237,6 +237,8 @@
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
+  (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-incremental))
 
   (assert-equal 
    "
@@ -261,8 +263,14 @@ int main() {
   (re-search-forward "other_function")
   ;; Some single-character edits
   (insert "h")
+  (assert-equal 1 (number-of-did-change))
+  (assert-equal 1 (number-of-did-change-incremental))
+
   (insert "e")
   (insert "j")
+
+  (assert-equal 3 (number-of-did-change))
+  (assert-equal 3 (number-of-did-change-incremental))
 
   (beginning-of-line)
   (re-search-forward "other")
@@ -276,6 +284,9 @@ int main() {
   (end-of-line)
   (insert "\n") ;; and a newline
   (insert "third_function();\n")
+
+  (assert-equal 9 (number-of-did-change))
+  (assert-equal 9 (number-of-did-change-incremental))
 
   (previous-line 2)
   (beginning-of-line)
@@ -1246,12 +1257,14 @@ void last_function() {
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-full))
   (assert-equal 0 (number-of-did-close))
 
   (assert-not tlc--change)
   (tlc--before-change-hook 5 10)
   (assert tlc--change)
   (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-full))
 
   ;; Act
   (tlc--before-change-hook 6 7)
@@ -1260,6 +1273,7 @@ void last_function() {
   (assert-not tlc--change)
   (assert-equal 1 (number-of-did-open))
   (assert-equal 1 (number-of-did-change))
+  (assert-equal 1 (number-of-did-change-full))
   (assert-equal 0 (number-of-did-close))
   )
 
@@ -1269,6 +1283,7 @@ void last_function() {
 
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-change-full))
   (assert-equal 0 (number-of-did-close))
 
   (assert-not tlc--change)
@@ -1280,5 +1295,6 @@ void last_function() {
   (assert-not tlc--change)
   (assert-equal 1 (number-of-did-open))
   (assert-equal 1 (number-of-did-change))
+  (assert-equal 1 (number-of-did-change-full))
   (assert-equal 0 (number-of-did-close))
   )
