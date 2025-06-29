@@ -329,7 +329,7 @@ obvious that they happen."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  ;; if revert in progress, it can happen that didChange is sent before didOpen,
+  ;; If revert in progress, it can happen that didChange is sent before didOpen,
   ;; when discarding changes in magit
   (unless revert-buffer-in-progress-p
     (if tlc--change
@@ -337,6 +337,7 @@ obvious that they happen."
         ;; after-change were not called as a balanced pair. So send full
         ;; document to get out of this situation.
         (progn
+          (tlc--log "tlc--before-change-hook called with non-nil tlc--change")
           (setq tlc--change nil)
           (tlc--notify-text-document-did-change-full))
       (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
@@ -386,6 +387,7 @@ obvious that they happen."
       ;; If there is no tlc--change it means before-change and
       ;; after-change were not called as a balanced pair. So send full
       ;; document to get out of this situation.
+      (tlc--log "tlc--after-change-hook called with nil tlc--change")
       (tlc--notify-text-document-did-change-full))))
 
 (defun tlc--notify-text-document-did-change (text &optional
