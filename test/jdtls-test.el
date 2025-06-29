@@ -29,18 +29,13 @@
 
 (load (relative-repo-root "test" "common.el"))
 (setq test-file-name "jdtls-test")
+(common-setup)
 
-;; Manually require tlc-rust to get debug version
-(require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
-(require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
+;; -----------------------------------------------------------------------------
+;; Setup before running test cases
+;; -----------------------------------------------------------------------------
 
 (require 'cc-mode)
-
-(customize-set-variable 'tlc-log-io t)
-(customize-set-variable 'tlc-log-stderr t)
-(customize-set-variable 'tlc-log-rust-debug t)
-(customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio nil)
 
 (add-hook 'java-mode-hook #'tlc-mode)
 

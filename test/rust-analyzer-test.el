@@ -27,6 +27,7 @@
 
 (load (relative-repo-root "test" "common.el"))
 (setq test-file-name "rust-analyzer-test")
+(common-setup)
 
 ;; -----------------------------------------------------------------------------
 ;; Setup before running test cases
@@ -36,17 +37,6 @@
   "Fake rust-mode for testing.")
 
 (add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-mode))
-
-;; Manually add tlc-rust to get debug version
-(require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
-(require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
-
-(customize-set-variable 'tlc-log-io t)
-(customize-set-variable 'tlc-log-stderr t)
-(customize-set-variable 'tlc-log-rust-debug t)
-(customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio nil)
-(customize-set-variable 'tlc-find-root-function 'tlc-dev-find-root-function)
 
 (add-hook 'rust-mode-hook 'tlc-mode)
 

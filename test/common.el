@@ -77,8 +77,6 @@
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
   (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t))
 
-(add-hook 'tlc-mode-hook 'enable-all-tlc-features)
-
 ;; Since this should always be 0, it's hard to know if it's working
 ;; properly
 (defun number-of-STDERR ()
@@ -179,3 +177,19 @@ this common file. Is used to differentiate log file names.")
        ,@body
        (after-each-test)
        )))
+
+(defun common-setup ()
+  ;; Manually require tlc-rust to get debug version
+  (require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
+  (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
+
+  (add-hook 'tlc-mode-hook 'enable-all-tlc-features)
+  (customize-set-variable 'tlc-find-root-function 'tlc-dev-find-root-function)
+
+  (customize-set-variable 'tlc-log-io t)
+  (customize-set-variable 'tlc-log-stderr t)
+  (customize-set-variable 'tlc-log-rust-debug t)
+  (customize-set-variable 'tlc-log-emacs-debug t)
+  (customize-set-variable 'tlc-log-to-stdio nil)
+  (customize-set-variable 'tlc-debug-on-error t)
+  )
