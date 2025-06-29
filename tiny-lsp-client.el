@@ -377,22 +377,24 @@ obvious that they happen."
     ;; if revert in progress, it can happen that didChange is sent before didOpen
     ;; when discarding changes in magit
     (unless revert-buffer-in-progress-p
-      (tlc--notify-text-document-did-change start-line
+      (tlc--notify-text-document-did-change text
+                                            start-line
                                             start-character
                                             end-line
-                                            end-character
-                                            text))))
+                                            end-character))))
 
-(defun tlc--notify-text-document-did-change (start-line
-                                             start-character
-                                             end-line
-                                             end-character
-                                             text)
-  (tlc--send-notification
-   "textDocument/didChange"
-   (list (tlc--buffer-uri)
-         `((,text ,start-line ,start-character ,end-line ,end-character))
-         )))
+(defun tlc--notify-text-document-did-change (text &optional
+                                                  start-line
+                                                  start-character
+                                                  end-line
+                                                  end-character)
+  (let ((content-change (if start-line
+                            `(,text ,start-line ,start-character ,end-line ,end-character)
+                          `(,text))))
+    (tlc--send-notification
+     "textDocument/didChange"
+     (list (tlc--buffer-uri)
+           (list content-change)))))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response
