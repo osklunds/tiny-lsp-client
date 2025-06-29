@@ -329,15 +329,17 @@ obvious that they happen."
             end
             revert-buffer-in-progress-p
             tlc--change)
-  (when tlc--change
-    ;; I know this is overly simplified, but when this case happens, I fix it
-    ;; one idea could be send full document since these cases should hopefully
-    ;; be rare
-    (tlc--error "tlc--change is not-nil in before-change"))
   ;; if revert in progress, it can happen that didChange is sent before didOpen,
   ;; when discarding changes in magit
   (unless revert-buffer-in-progress-p
-    (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end)))))
+    (if tlc--change
+        ;; If there already is a tlc--change it means before-change and
+        ;; after-change were not called as a balanced pair. So send full
+        ;; document to get out of this situation.
+        (progn
+          (setq tlc--change nil)
+          (tlc--notify-text-document-did-change-full))
+      (setq tlc--change (append (tlc--pos-to-lsp-pos beg) (tlc--pos-to-lsp-pos end))))))
 
 ;; @credits: Heavily inspired by eglot
 ;; nil pos means current point
@@ -395,6 +397,11 @@ obvious that they happen."
      "textDocument/didChange"
      (list (tlc--buffer-uri)
            (list content-change)))))
+
+(defun tlc--notify-text-document-did-change-full ()
+  (tlc--notify-text-document-did-change
+   (tlc--widen
+    (buffer-substring-no-properties (point-min) (point-max)))))
 
 ;; -----------------------------------------------------------------------------
 ;; Request/response

@@ -50,6 +50,7 @@
 (customize-set-variable 'tlc-log-rust-debug t)
 (customize-set-variable 'tlc-log-emacs-debug t)
 (customize-set-variable 'tlc-log-to-stdio nil)
+(customize-set-variable 'tlc-debug-on-error t)
 
 (add-hook 'c++-mode-hook 'tlc-mode)
 
@@ -1235,5 +1236,28 @@ void last_function() {
   (assert-equal
    "tiny-lsp-client can only be used in buffers where root can be found."
    msg)
+  )
+
+;; todo: as another white box test, test send full change but something
+;; entirely different to know that lsp server accepts this format
+(tlc-deftest tlc-change-not-nil-in-before-change-hook ()
+  ;; Arrange
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-change))
+  (assert-equal 0 (number-of-did-close))
+
+  (assert-not tlc--change)
+  (tlc--before-change-hook 5 10)
+  (assert tlc--change)
+  (assert-equal 0 (number-of-did-change))
+
+  ;; Act
+  (tlc--before-change-hook 6 7)
+
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 1 (number-of-did-change))
+  (assert-equal 0 (number-of-did-close))
   )
 

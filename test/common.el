@@ -90,6 +90,9 @@
 (defun number-of-did-close ()
   (count-in-log-file "\"method\": \"textDocument/didClose\","))
 
+(defun number-of-did-change ()
+  (count-in-log-file "\"method\": \"textDocument/didChange\","))
+
 (defun number-of-completion-requests ()
   (count-in-log-file "\"method\": \"textDocument/completion\","))
 
