@@ -153,9 +153,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
                   - Could be that =tlc-server-cmds= should be removed, and general hook per major/minor mode that starts a server
 - Bugs
       - Higher priority
-            - =haskell-mode='s indentation causes asserts to fail in =tlc-after-change=.
-                  - Need to have the fallback to full sync.
-                  - For edit-tests need to check number of =didChange= as well as their type.
       - Lower priority
       - Hard to reproduce
             - when doing completions in c++ test file, clangd complained about non opened document
