@@ -299,24 +299,38 @@ unsafe fn build_text_document_did_change(
     for i in 0..content_changes_len {
         let content_change = nth(env, i, content_changes);
 
-        let start_line = nth(env, 0, content_change);
-        let start_character = nth(env, 1, content_change);
-        let end_line = nth(env, 2, content_change);
-        let end_character = nth(env, 3, content_change);
-        let text = nth(env, 4, content_change);
+        let text = extract_string(env, nth(env, 0, content_change));
+        let content_change_len =
+            extract_integer(env, call(env, "length", vec![content_change]));
 
-        let json_content_change = TextDocumentContentChangeEventIncremental {
-            range: Range {
-                start: Position {
-                    line: extract_integer(env, start_line) as usize,
-                    character: extract_integer(env, start_character) as usize,
+        // len 1 means full change, so the other elements don't exist
+        let json_content_change = if content_change_len == 1 {
+            TextDocumentContentChangeEvent::TextDocumentContentChangeEventFull(
+                TextDocumentContentChangeEventFull { text },
+            )
+        } else {
+            let start_line = nth(env, 1, content_change);
+            let start_character = nth(env, 2, content_change);
+            let end_line = nth(env, 3, content_change);
+            let end_character = nth(env, 4, content_change);
+
+            TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                TextDocumentContentChangeEventIncremental {
+                    range: Range {
+                        start: Position {
+                            line: extract_integer(env, start_line) as usize,
+                            character: extract_integer(env, start_character)
+                                as usize,
+                        },
+                        end: Position {
+                            line: extract_integer(env, end_line) as usize,
+                            character: extract_integer(env, end_character)
+                                as usize,
+                        },
+                    },
+                    text,
                 },
-                end: Position {
-                    line: extract_integer(env, end_line) as usize,
-                    character: extract_integer(env, end_character) as usize,
-                },
-            },
-            text: extract_string(env, text),
+            )
         };
         json_content_changes.push(json_content_change);
     }

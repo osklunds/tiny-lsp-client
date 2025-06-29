@@ -225,7 +225,7 @@ pub struct DidChangeTextDocumentParams {
     #[serde(rename = "textDocument")]
     pub text_document: VersionedTextDocumentIdentifier,
     #[serde(rename = "contentChanges")]
-    pub content_changes: Vec<TextDocumentContentChangeEventIncremental>,
+    pub content_changes: Vec<TextDocumentContentChangeEvent>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -235,6 +235,7 @@ pub struct VersionedTextDocumentIdentifier {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 pub enum TextDocumentContentChangeEvent {
     TextDocumentContentChangeEventIncremental(
         TextDocumentContentChangeEventIncremental,
