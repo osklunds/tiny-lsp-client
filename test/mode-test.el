@@ -1233,8 +1233,6 @@ void last_function() {
    msg)
   )
 
-;; todo: as another white box test, test send full change but something
-;; entirely different to know that lsp server accepts this format
 (tlc-deftest tlc-change-not-nil-in-before-change-hook-test ()
   ;; Arrange
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
