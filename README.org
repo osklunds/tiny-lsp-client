@@ -144,6 +144,8 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
                   - error strategy
                   - logging
                   - test strategy
+            - Rename
+            - Hover in eldoc
       - Lower priority
             - For e.g. =jdtls= and =hls= make it possible to jump to library files
             - Multiple servers per buffer, could be relevant for HTML, CSS and Javascript
