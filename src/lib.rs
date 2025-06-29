@@ -118,7 +118,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     servers::with_servers(|servers| {
         let mut servers: Vec<_> = servers.iter().collect();
         servers.sort_by_key(|(&ref server_key, _server)| server_key);
-            
+
         for (server_key, server) in servers.iter() {
             let info = call(
                 env,
@@ -305,7 +305,7 @@ unsafe fn build_text_document_did_change(
         let end_character = nth(env, 3, content_change);
         let text = nth(env, 4, content_change);
 
-        let json_content_change = TextDocumentContentChangeEvent {
+        let json_content_change = TextDocumentContentChangeEventIncremental {
             range: Range {
                 start: Position {
                     line: extract_integer(env, start_line) as usize,
@@ -579,8 +579,7 @@ unsafe fn handle_call<
     let args_vec = args_pointer_to_args_vec(nargs, args);
     let server_key = get_server_key(env, &args_vec);
     servers::with_servers(|servers| {
-        if let Some(ref mut server) = &mut servers.get_mut(&server_key)
-        {
+        if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
             if let Some(result) = f(env, args_vec, server) {
                 result
             } else {
