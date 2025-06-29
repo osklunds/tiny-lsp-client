@@ -841,8 +841,10 @@ seems to accept URIs that are not encoded properly."
     (decode-coding-string (url-unhex-string suffix) 'utf-8)))
 
 (defun tlc--error (msg)
-  (let ((debug-on-error tlc-debug-on-error))
-    (error msg)))
+  (if tlc-debug-on-error
+      (let ((debug-on-error t))
+        (error msg))
+    (message msg)))
 
 ;; -----------------------------------------------------------------------------
 ;; Server key
