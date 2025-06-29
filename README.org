@@ -157,6 +157,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Improvements of existing code/functionality
       - Higher priority
       - Lower priority
+            - Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
             - Remove duplicate completions in Rust code
             - Create a docker image that tests can be run in, because many external dependencies like =erlang_ls=, =clangd=, etc. Mount the repo root inside the image so that no need to rebuild image when changing code.
             - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
