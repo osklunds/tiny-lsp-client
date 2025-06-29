@@ -32,8 +32,6 @@
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-(run-shell-command "cargo build")
-
 (define-derived-mode rust-mode prog-mode "Rust"
   "Fake rust-mode for testing.")
 

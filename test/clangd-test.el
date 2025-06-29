@@ -34,7 +34,6 @@
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-(run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
 (run-shell-command "make" "test" "clangd")
 

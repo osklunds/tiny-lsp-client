@@ -36,8 +36,6 @@
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-;; todo: move cargo build to common
-(run-shell-command "cargo build")
 (run-shell-command "cmake ." "test" "clangd")
 (run-shell-command "make" "test" "clangd")
 

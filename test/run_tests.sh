@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cargo build || exit 1
+
 if [[ $# -eq 0 ]]; then
     echo "Running all test files"
     test_dir=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )

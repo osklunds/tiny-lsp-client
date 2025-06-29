@@ -32,8 +32,6 @@
 ;; Setup before running test cases
 ;; -----------------------------------------------------------------------------
 
-(run-shell-command "cargo build")
-
 (define-derived-mode haskell-mode prog-mode "Haskell"
   "Fake haskell-mode for testing.")
 
