@@ -391,7 +391,7 @@ obvious that they happen."
   (tlc--send-notification
    "textDocument/didChange"
    (list (tlc--buffer-uri)
-         `((,start-line ,start-character ,end-line ,end-character ,text))
+         `((,text ,start-line ,start-character ,end-line ,end-character))
          )))
 
 ;; -----------------------------------------------------------------------------
