@@ -3,14 +3,6 @@
 
 =tiny-lsp-client= is an LSP client for Emacs implemented in Rust. I call it tiny because it aims to only support a tiny feature set (as of this commit, find definition and code completion) and because it aims to have a tiny footprint, especially on memory and garbage collection. I created it for fun and because I was curious of how this would turn out. =tiny-lsp-client= has many limitations, such as only supporting stdio LSP servers and not providing that much information in completion candidates. However, it works, and I use it as my daily driver.
 
-* Contents
-
-- [[Usage]]
-- [[Design documentation]]
-- [[Copyright, license and acknowledgments]]
-- [[Backlog]]
-- [[notes]]
-
 * Usage
 
 ** Installation
