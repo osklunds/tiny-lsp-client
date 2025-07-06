@@ -1,0 +1,10 @@
+
+services:
+  tiny-lsp-client-test:
+    image: tiny-lsp-client-test
+    command: tail -F anything
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    container_name: tiny-lsp-client-test
+    init: true
