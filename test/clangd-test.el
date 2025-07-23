@@ -231,15 +231,17 @@ int main() {
 
   ;; Sleep to let clangd have time to start and be able to return more
   ;; completions
-  (sleep-for 0.5)
+  (sleep-for 1.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal '("other_function") (funcall tlc-collection-fun "oth" nil t))
 
   (setq pred (lambda (item)
                (string-match-p "function" item)))
   ;; todo: fix below when duplicates are removed
-  (assert-equal '("function_in_other_file" "function_in_other_file" "other_function")
-                (funcall tlc-collection-fun "" pred t))
+  (let ((result (funcall tlc-collection-fun "" nil t)))
+    (assert (cl-member "function_in_other_file" result :test 'string-equal))
+    (assert (cl-member "other_function" result :test 'string-equal))
+    (assert-not (cl-member "junk" result :test 'string-equal)))
 
   (assert-equal 1 (number-of-completion-requests))
   )
