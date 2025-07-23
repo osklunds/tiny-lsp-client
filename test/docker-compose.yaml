@@ -8,3 +8,5 @@ services:
       dockerfile: test/Dockerfile
     container_name: tiny-lsp-client-test
     init: true
+    volumes:
+      - ..:/tiny-lsp-client:rw
