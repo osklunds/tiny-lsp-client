@@ -237,7 +237,6 @@ int main() {
 
   (setq pred (lambda (item)
                (string-match-p "function" item)))
-  ;; todo: fix below when duplicates are removed
   (let ((result (funcall tlc-collection-fun "" nil t)))
     (assert (cl-member "function_in_other_file" result :test 'string-equal))
     (assert (cl-member "other_function" result :test 'string-equal))
