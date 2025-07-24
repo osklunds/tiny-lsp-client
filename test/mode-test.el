@@ -1201,7 +1201,7 @@ void last_function() {
   )
 
 (tlc-deftest cant-use-tlc-mode-test ()
-  (find-file (relative-repo-root "test" "common.el"))
+  (find-file (relative-repo-root "test" "clangd" "CMakeLists.txt"))
   (setq msg nil)
   (cl-letf (((symbol-function 'message) (lambda (m) (setq msg m))))
     (tlc-mode))
