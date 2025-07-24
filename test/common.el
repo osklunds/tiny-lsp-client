@@ -135,6 +135,7 @@ nested projects inside the test directory as separate projects."
 this common file. Is used to differentiate log file names.")
 
 (defun before-each-test (test-case-name)
+  (cleanup-previous-test)
   (message "Running test case: '%s'" test-case-name)
   (assert-equal t (stringp test-file-name) "test-file-name")
   (setq log-file-name (relative-repo-root
@@ -149,7 +150,7 @@ this common file. Is used to differentiate log file names.")
   (customize-set-variable 'tlc-after-start-server-hook nil)
   )
 
-(defun after-each-test ()
+(defun cleanup-previous-test ()
   ;; One drawback of running in the same emacs instance with ERT is that
   ;; this clean up in the end is needed.
 
@@ -175,7 +176,6 @@ this common file. Is used to differentiate log file names.")
      (ert-deftest ,name ()
        (before-each-test ',name)
        ,@body
-       (after-each-test)
        )))
 
 (defun common-setup ()

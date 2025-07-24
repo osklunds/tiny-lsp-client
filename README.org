@@ -207,7 +207,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Improvements of existing code/functionality
       - Higher priority
             - Make tests more stable w.r.t. timing, use looping instead of sleep
-            - When a test fails, other tests after it should not fail. Move all stuff to "before test" from "after test".
             - log tests
                   - Unit tests if possible
                   - test what happens if =tlc-log-file= is never set
