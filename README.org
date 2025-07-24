@@ -47,7 +47,7 @@ If there are issues, or you want to check how =tiny-lsp-client= and the LSP serv
 | =tlc-stop-server=    | Stop an LSP server                              |
 | =tlc-restart-server= | Restart the LSP server of the current root path |
 
-What's logged and where the log is stored is configured through =defcustom= variables.
+What's logged and where the log is stored is configured through =defcustom= variables. There's only one log file. When =tiny-lsp-client= is writing the first log entry, the existing file is renamed to contain =.old= as suffix, and if that file already exists, it's deleted. If you run multiple emacs instances you might want to use different =tlc-log-file= values.
 
 * Design documentation
 
@@ -187,9 +187,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 
 - New functionality
       - Higher priority
-            - Documentation
-                  - error strategy
-                  - logging
             - Rename
             - Hover in eldoc
       - Lower priority
@@ -211,6 +208,9 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
       - Higher priority
             - Make tests more stable w.r.t. timing, use looping instead of sleep
             - When a test fails, other tests after it should not fail. Move all stuff to "before test" from "after test".
+            - log tests
+                  - Unit tests if possible
+                  - test what happens if =tlc-log-file= is never set
       - Lower priority
             - Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
             - Remove duplicate completions in Rust code
