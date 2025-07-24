@@ -128,6 +128,26 @@ There is one =Server= object per project, and =lib.rs= stores a map of =(root pa
 
 =tiny-lsp-client.el= is where =tiny=lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
 
+* Testing
+
+Tests are located in =test/=. Change directory to =test/= and use =run_tests.sh=:
+
+- =run_tests.sh= to run all tests
+- =run_tests.sh mode-test.el= to run all tests in the file =mode-test.el=
+- =run_tests.sh mode-test.el start-server-hooks-test= to run the test =start-server-hooks-test= in =mode-test.el=
+
+Log files are stored in =test/logs=.
+
+Since the test cases use real LSP servers (=clangd=, =jdtls= etc), you need to have those programs installed. As an alternative, see [[Docker container]].
+
+** Docker container
+
+Since there are many test dependencies, a Docker container exists to make it easier to run the tests. Inside the =test/= directory, run =docker compose up --build= to start the test container. In another terminal, run =docker exec -it tiny-lsp-client-test bash= to attach to the container. Now you can use =run_tests.sh= as above and with all test dependencies available.
+
+The entire repository is mounted in the container. So if you change source code and/or tests, there's no need to restart or rebuild the container. The source code is not copied to the container.
+
+If you run =clangd= tests in Docker and bare-metal you might need to delete =CMakeCache.txt= and other generated files.
+
 * Copyright, license and acknowledgments
 
 The license for this repository is GPL v3, as specified by the separate =LICENSE= file.
