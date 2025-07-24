@@ -894,6 +894,8 @@ a nil root is OK."
 
 (defun tlc-find-root-default-function ()
   "Get root directory using project.el."
+  (tlc--log "tlc-find-root-default-function '%s' '%s'"
+            default-directory (project-current))
   (when-let ((project (project-current)))
     (project-root project)))
 

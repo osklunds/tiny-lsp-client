@@ -1,3 +1,4 @@
 /target
+/target_docker
 erl_crash.dump
 *.elc

@@ -174,10 +174,13 @@ public class App {
 
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
-  ;; jdtls takes some time to start. Unlike the other tests the looping
-  ;; happens in lisp here, which means the recurse limit is exceeded
-  (sleep-for 3)
-  (let ((result (funcall tlc-collection-fun "" nil t)))
+  (cl-letf* ((original (symbol-function #'tlc--wait-for-response))
+             ((symbol-function #'tlc--wait-for-response)
+              (lambda (request-id server-key rust-timeout emacs-timeout interruptible)
+                ;; jdtls takes time to start. Increase emacs-timeout to avoid
+                ;; nesting exceeds `max-lisp-eval-depth' 
+                (funcall original request-id server-key rust-timeout 1 interruptible)))
+             (result (funcall tlc-collection-fun "" nil t)))
     (dolist (exp '("other" "main"))
       (assert (cl-member exp result :test 'string-equal) exp))
     )
