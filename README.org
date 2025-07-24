@@ -183,7 +183,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
-            - Create a docker image that tests can be run in, because many external dependencies like =erlang_ls=, =clangd=, etc. Mount the repo root inside the image so that no need to rebuild image when changing code.
             - Make tests more stable w.r.t. timing, use looping instead of sleep
             - When a test fails, other tests after it should not fail. Move all stuff to "before test" from "after test".
       - Lower priority
