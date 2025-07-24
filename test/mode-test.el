@@ -445,7 +445,7 @@ abc(123);
 
 (tlc-deftest open-non-existing-file-test ()
   ;; Arrange
-  (setq non-existing-file "doesnt_exist_right.cpp")
+  (setq non-existing-file (relative-repo-root "test" "clangd" "doesnt_exist_right.cpp"))
   (assert-equal nil (file-exists-p non-existing-file))
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -454,6 +454,8 @@ abc(123);
   (find-file non-existing-file)
 
   ;; Assert
+  ;; Even if the file doesn't exist it should still be opened towards
+  ;; the LSP server
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   )
