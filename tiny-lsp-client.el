@@ -769,7 +769,6 @@ and always using the latest result."
                      'require-match
                      nil
                      'tlc-stop-server
-                     ;; todo: test case when not tlc-mode
                      (when-let ((key (and tlc-mode (tlc--server-key))))
                        (tlc--server-key-to-completion key))))))
 

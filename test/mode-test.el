@@ -473,12 +473,29 @@ abc(123);
   (assert-tlc-info root-path "clangd")
 
   ;; Act
-  (tlc--stop-server)
+  (cl-letf* ((entry (format "%s @ clangd" root-path))
+             ((symbol-function 'completing-read)
+              (lambda (_ collection _ _ _ _ default)
+                (assert-equal (list entry) collection)
+                (assert-equal entry default "default")
+                (nth 0 collection))))
+    (tlc-stop-server))
 
   ;; To see that spamming doesn't cause issues
   (tlc--stop-server)
   (tlc--stop-server)
   (tlc--stop-server)
+
+  ;; To see that tlc-stop-server works also from a buffer not in tlc-mode
+  (switch-to-buffer "some-buffer")
+  (assert-not tlc-mode)
+  (catch 'okay
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_ collection _ _ _ _ default)
+                 (assert-not collection)
+                 (assert-not default)
+                 (throw 'okay "okay"))))
+      (tlc-stop-server)))
 
   ;; Assert
   (assert-equal 0 (length (tlc-info)))
