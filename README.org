@@ -148,6 +148,33 @@ The entire repository is mounted in the container. So if you change source code 
 
 If you run =clangd= tests in Docker and bare-metal you might need to delete =CMakeCache.txt= and other generated files.
 
+** Test strategy
+
+There are 4 types of test suites:
+
+1. =*-test.el=
+2. =mode-test.el=
+3. =lisp-bindings-test.el=
+4. Rust unit tests
+
+***    *-test.el
+
+For each language server inside =tlc-server-cmds= there's one corresponding test file, e.g., =clangd-test.el= for =clangd=. Those language specific test files aim to test each LSP message type towards each language server. This typically means a few test cases that open a file, edit it, jump to defintion, and use completion. The idea is for the tests to act as a compatibility test towards the LSP server.
+
+*** mode-test.el
+
+=mode-test.el= has tests that are language-agnostic and are more related to =tlc-mode= and the emacs lisp layer. So for example testing that =start-server-hooks= are run then =tlc-mode= is enabled, that unicode works, and more thorough =xref= and =capf= tests with edge cases. One could argue some of these things should be tested for each LSP, but hopefully a few basic tests per LSP is enough.
+
+*** lisp-bindings-test.el
+
+=lisp-bindings-test.el= tests the lisp bindings provided by =lib.rs= directly without involving =tiny=lsp-client.el=. This suite was mainly useful when creating the basic of =tiny-lsp-client=, but is also useful now when something basic in the lisp-Rust interface breaks. There's no plan to add more tests to it as more LSP messages are supported.
+
+Also, =lisp-bindings-test.el= is the only suite run with =cargo build --release= and with garbage collection triggered.
+
+*** Rust unit tests
+
+Some of the Rust layer is tested in unit tests, that can be run with =cargo test=. Of special interest is =server/tests.rs=, which uses the Rust layer direcly towards an LSP server, without involving any lisp. This was mainly useful when creating the basic of =tiny-lsp-client=, but is also useful now when something basic breaks. There's no plan to add more tests to it as more LSP messages are supported. However, other unit tests might be added.
+
 * Copyright, license and acknowledgments
 
 The license for this repository is GPL v3, as specified by the separate =LICENSE= file.
@@ -163,7 +190,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - Documentation
                   - error strategy
                   - logging
-                  - test strategy
             - Rename
             - Hover in eldoc
       - Lower priority
