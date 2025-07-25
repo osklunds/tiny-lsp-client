@@ -79,11 +79,13 @@
   (assert-equal 3 (line-number-at-pos))
   (assert-equal 18 (current-column))
 
-  ;; Act
-  (sleep-for 2)
-  ;; todo: no longer needed once non-busy-wait is used for tlc-sync-request
-  (let ((max-lisp-eval-depth 100000))
-    (non-interactive-xref-find-definitions))
+  (run-until 100 0.1
+    ;; Act
+    (non-interactive-xref-find-definitions)
+
+    ;; Assert
+    (assert-equal 10 (line-number-at-pos))
+    (assert-equal 3 (current-column)))
 
   ;; Assert
   (assert-equal 10 (line-number-at-pos))
@@ -151,13 +153,10 @@ fn other_function_hej(arg: u32) -> u32 {
   (assert-equal 4 (line-number-at-pos))
   (assert-equal 9 (current-column))
 
-  (sleep-for 2)
-  ;; todo: no longer needed once non-busy-wait is used for tlc-sync-request
-  (let ((max-lisp-eval-depth 100000))
-    (non-interactive-xref-find-definitions))
-
-  (assert-equal 13 (line-number-at-pos))
-  (assert-equal 3 (current-column))
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions)
+    (assert-equal 13 (line-number-at-pos))
+    (assert-equal 3 (current-column)))
   )
 
 (tlc-deftest revert-buffer-test ()
@@ -193,27 +192,26 @@ fn other_function_hej(arg: u32) -> u32 {
   (find-file (relative-repo-root "test" "rust_analyzer" "src" "main.rs"))
   (assert-equal 0 (number-of-completion-requests))
 
-  (re-search-forward "other_function")
-  ;; Need to find def to detect when rust_analyzer is ready
-  (sleep-for 2)
-  (let ((max-lisp-eval-depth 100000))
-    (non-interactive-xref-find-definitions))
-
-  (assert-equal 10 (line-number-at-pos))
-  (assert-equal 3 (current-column))
-
   (beginning-of-buffer)
   (re-search-forward "other_function")
   (next-line)
 
-  (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal 0 (number-of-completion-requests))
 
-  (let ((result (funcall tlc-collection-fun "" nil t)))
-    (assert-equal 1 (number-of-completion-requests))
-    (dolist (exp '("main" "other_function" "assert_eq!"))
-      (assert (cl-member exp result :test 'string-equal) exp))
-    )
+  (setq test-fun
+        (lambda ()
+          (setq tlc-collection-fun (get-tlc-collection-fun))
+          (let ((result (funcall tlc-collection-fun "" nil t)))
+            (dolist (exp '("main" "other_function" "assert_eq!"))
+              (assert (cl-member exp result :test 'string-equal) exp))
+            )))
+
+  (run-until 100 0.1
+    (funcall test-fun))
+
+  (setq number-of-completion-requests (number-of-completion-requests))
+  (funcall test-fun)
+  (assert-equal (1+ number-of-completion-requests) (number-of-completion-requests))
   )
 
 ;; Only been able to trigger this in rust-analyzer
@@ -237,15 +235,6 @@ fn other_function(arg: u32) -> u32 {
 "
    (current-buffer-string))
 
-  (re-search-forward "other_function")
-  ;; Need to find def to detect when rust_analyzer is ready
-  (sleep-for 2)
-  (let ((max-lisp-eval-depth 100000))
-    (non-interactive-xref-find-definitions))
-
-  (assert-equal 10 (line-number-at-pos))
-  (assert-equal 3 (current-column))
-
   (beginning-of-buffer)
   (re-search-forward "other_function")
   (end-of-line)
@@ -267,19 +256,22 @@ fn other_function(arg: u32) -> u32 {
 "
    (current-buffer-string))
 
+  (assert-equal 0 (count-in-log-file "\"result\": null"))
+
   ;; When in a comment, null result
-  (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
-    (assert-equal 1 (number-of-completion-requests))
-    (assert-not result "null result")
-    )
+  (run-until 100 0.1
+    (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
+      (assert-not result "null result")
+      ))
+
+  (assert-equal 1 (count-in-log-file "\"result\": null"))
 
   (next-line)
 
   ;; As soon as move outside, gets some result
-  (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
-    (assert-equal 2 (number-of-completion-requests))
-    (assert result "non null")
-    (assert (cl-member "other_function" result :test 'string-equal))
-    )
-
-)
+  (run-until 100 0.1
+    (let ((result (funcall (get-tlc-collection-fun) "" nil t)))
+      (assert result "non null")
+      (assert (cl-member "other_function" result :test 'string-equal))
+      ))
+  )
