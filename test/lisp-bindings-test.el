@@ -146,19 +146,16 @@
                  "textDocument/definition"
                  `(,file-uri 10 4)))
 
-  ;; todo: need to loop even if less clear, becase now is unstable and
-  ;; wastefully slow
-  (sleep-for 2)
-
   (assert-equal 'no-server (tlc--rust-recv-response
                             (list "/some/root/path/not/found" server-cmd) 100))
 
   (assert-equal 'no-server (tlc--rust-recv-response
                             (list root-path "some server cmd") 100))
 
-  (assert-equal `(response 1 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response (list root-path server-cmd) 0)
-                "recv resp first definition")
+  (run-until 100 0.1
+    (assert-equal `(response 1 t ((,file-uri 4 6)))
+                  (tlc--rust-recv-response (list root-path server-cmd) 0)
+                  "recv resp first definition"))
 
   (test-garbage-collect "after textDocument/definition")
 
@@ -198,10 +195,9 @@
                  "textDocument/definition"
                  `(,file-uri 11 4)))
 
-  (sleep-for 2)
-
-  (assert-equal `(response 2 t ((,file-uri 5 6)))
-                (tlc--rust-recv-response (list root-path server-cmd) 0))
+  (run-until 100 0.1
+    (assert-equal `(response 2 t ((,file-uri 5 6)))
+                  (tlc--rust-recv-response (list root-path server-cmd) 0)))
 
   ;; ---------------------------------------------------------------------------
   ;; textDocument/didChange to revert the previous change, so that clangd's
@@ -250,10 +246,9 @@
                  "textDocument/definition"
                  `(,file-uri 10 4)))
 
-  (sleep-for 2)
-
-  (assert-equal `(response 3 t ((,file-uri 4 6)))
-                (tlc--rust-recv-response (list root-path server-cmd) 0))
+  (run-until 100 0.1
+    (assert-equal `(response 3 t ((,file-uri 4 6)))
+                  (tlc--rust-recv-response (list root-path server-cmd) 0)))
 
   ;; ---------------------------------------------------------------------------
   ;; Stopping the LSP server

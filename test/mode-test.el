@@ -519,8 +519,8 @@ abc(123);
   (shell-command (format "kill -9 %s" pid))
 
   ;; Assert
-  (sleep-for 0.1) ;; Avoid race
-  (assert-equal 0 (length (tlc-info)))
+  (run-until 10 0.1
+    (assert-equal 0 (length (tlc-info))))
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   )
@@ -582,9 +582,6 @@ abc(123);
   (re-search-forward "last_variable")
   (next-line)
 
-  ;; Sleep to let clangd have time to start and be able to return more
-  ;; completions
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   ;; Completions are lazily fetched
@@ -647,7 +644,6 @@ abc(123);
   (re-search-forward "last_variable")
   (next-line)
 
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   (assert-equal 0 (number-of-completion-requests))
@@ -672,7 +668,6 @@ abc(123);
   (re-search-forward "last_variable")
   (next-line)
 
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   (assert-equal 0 (number-of-completion-requests))
@@ -728,7 +723,6 @@ void last_function() {
   (re-search-forward "last_variable")
   (next-line)
 
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
   (assert-equal 0 (number-of-completion-requests))
@@ -833,9 +827,6 @@ void last_function() {
   (re-search-forward "last_variable")
   (next-line)
 
-  ;; Sleep to let clangd have time to start and be able to return more
-  ;; completions
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal 0 (number-of-completion-requests))
 

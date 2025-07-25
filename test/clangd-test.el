@@ -229,9 +229,6 @@ int main() {
   (re-search-forward "function_in_other_file")
   (previous-line)
 
-  ;; Sleep to let clangd have time to start and be able to return more
-  ;; completions
-  (sleep-for 1.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal '("other_function") (funcall tlc-collection-fun "oth" nil t))
 

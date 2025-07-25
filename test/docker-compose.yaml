@@ -2,6 +2,9 @@
 services:
   tiny-lsp-client-test:
     image: tiny-lsp-client-test
+    # Uncommenting cpus below can be useful when testing the stability of the
+    # tests
+    # cpus: 0.5
     command: tail -F anything
     build:
       context: ..

@@ -90,8 +90,6 @@
 (tlc-deftest edit-test ()
   (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
 
-  (sleep-for 1) ;; prevent instability
-
   (assert-equal 
    "-module(my_module).
 
@@ -140,9 +138,12 @@ my_function(Arg) ->
   (assert-equal 12 (line-number-at-pos))
   (assert-equal 9 (current-column))
 
-  (non-interactive-xref-find-definitions)
-  (assert-equal 5 (line-number-at-pos))
-  (assert-equal 0 (current-column))
+  (setq saved-point (point))
+  (run-until 100 0.1
+    (goto-char saved-point)
+    (non-interactive-xref-find-definitions)
+    (assert-equal 5 (line-number-at-pos))
+    (assert-equal 0 (current-column)))
 
   (beginning-of-buffer)
   (re-search-forward "my_fun")
@@ -173,9 +174,12 @@ other_function_hej(Arg) ->
   (assert-equal 3 (line-number-at-pos))
   (assert-equal 13 (current-column))
 
-  (non-interactive-xref-find-definitions)
-  (assert-equal 11 (line-number-at-pos))
-  (assert-equal 4 (current-column))
+  (setq saved-point (point))
+  (run-until 100 0.1
+    (goto-char saved-point)
+    (non-interactive-xref-find-definitions)
+    (assert-equal 11 (line-number-at-pos))
+    (assert-equal 4 (current-column) "four"))
   )
 
 (tlc-deftest revert-buffer-test ()
@@ -210,7 +214,6 @@ other_function_hej(Arg) ->
 
   (re-search-forward "other_function")
   (next-line)
-  (sleep-for 0.5)
   (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal 0 (number-of-completion-requests))
 

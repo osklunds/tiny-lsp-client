@@ -46,6 +46,23 @@
 (defun assert (act &optional label)
   (assert-equal t (not (not act)) label))
 
+(cl-defmacro run-until (times sleep &rest expr)
+  (declare (indent defun))
+  `(run-until-1 ,times ,sleep (lambda () ,@expr)))
+
+(defun run-until-1 (times sleep fun)
+  (message "run-until %s %s" times sleep)
+  (if (= times 0)
+      (funcall fun)
+    (condition-case err
+        (let* ((message-log-max nil)
+               (inhibit-message t))
+          (funcall fun))
+      (error
+       (message "%s" (error-message-string err))
+       (sleep-for sleep)
+       (run-until-1 (1- times) sleep fun)))))
+
 (defun run-shell-command (command &rest components)
   (message "-----------------------------------------------------------------------------")
   (message "Running command '%s'" command)
@@ -161,6 +178,7 @@ this common file. Is used to differentiate log file names.")
       (tlc-stop-server)
       ;; Avoid race where tlc-info returns the stopping server but
       ;; then not found in collection
+      ;; todo: fix in tiny-lsp-client
       (sleep-for 0.1)))
 
   (dolist (buffer (buffer-list))

@@ -80,7 +80,8 @@
   (assert-equal 13 (current-column))
 
   ;; Act
-  (non-interactive-xref-find-definitions)
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions))
 
   ;; Assert
   (assert-equal 7 (line-number-at-pos))
@@ -158,7 +159,8 @@ public class App {
   (assert-equal 15 (line-number-at-pos))
   (assert-equal 17 (current-column))
 
-  (non-interactive-xref-find-definitions)
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions))
 
   (assert-equal 8 (line-number-at-pos))
   (assert-equal 25 (current-column))
@@ -174,15 +176,10 @@ public class App {
 
   (setq tlc-collection-fun (get-tlc-collection-fun))
 
-  (cl-letf* ((original (symbol-function #'tlc--wait-for-response))
-             ((symbol-function #'tlc--wait-for-response)
-              (lambda (request-id server-key rust-timeout emacs-timeout interruptible)
-                ;; jdtls takes time to start. Increase emacs-timeout to avoid
-                ;; nesting exceeds `max-lisp-eval-depth' 
-                (funcall original request-id server-key rust-timeout 1 interruptible)))
-             (result (funcall tlc-collection-fun "" nil t)))
-    (dolist (exp '("other" "main"))
-      (assert (cl-member exp result :test 'string-equal) exp))
-    )
+  (run-until 100 0.1
+    (let ((result (funcall tlc-collection-fun "" nil t)))
+      (dolist (exp '("other" "main"))
+        (assert (cl-member exp result :test 'string-equal) exp))
+      ))
   )
 
