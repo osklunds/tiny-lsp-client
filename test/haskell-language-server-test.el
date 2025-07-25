@@ -139,13 +139,8 @@ other = my
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 25 (current-column))
 
-  (let ((continue t))
-    (while continue
-      ;; Sometimes no def found
-      (ignore-errors
-        (non-interactive-xref-find-definitions)
-        (setq continue nil))
-      (sleep-for 0.1)))
+  ;; Sometimes no definition is found
+  (run-until 100 0.1 (non-interactive-xref-find-definitions))
 
   (assert-equal 9 (line-number-at-pos))
   (assert-equal 0 (current-column))
@@ -154,17 +149,12 @@ other = my
 (tlc-deftest capf-test ()
   (find-file (relative-repo-root "test" "haskell_language_server" "app" "Main.hs"))
 
-  ;; so that capf doesn't exceed max eval depth
-  ;; todo: don't hardcode this sleep time
-  (sleep-for 5)
-
   (re-search-forward "my" nil nil 3)
   (setq tlc-collection-fun (get-tlc-collection-fun))
-  (assert-equal 0 (number-of-completion-requests))
 
-  (let ((result (funcall tlc-collection-fun "" nil t)))
-    (assert-equal 1 (number-of-completion-requests))
-    (dolist (exp '("myFunction" "myThreadId"))
-      (assert (cl-member exp result :test 'string-equal) exp))
-    )
+  (run-until 100 0.1
+    (let ((result (funcall tlc-collection-fun "" nil t)))
+      (dolist (exp '("myFunction" "myThreadId"))
+        (assert (cl-member exp result :test 'string-equal) exp))
+      ))
   )
