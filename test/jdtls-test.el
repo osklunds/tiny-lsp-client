@@ -80,7 +80,8 @@
   (assert-equal 13 (current-column))
 
   ;; Act
-  (non-interactive-xref-find-definitions)
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions))
 
   ;; Assert
   (assert-equal 7 (line-number-at-pos))
@@ -158,7 +159,8 @@ public class App {
   (assert-equal 15 (line-number-at-pos))
   (assert-equal 17 (current-column))
 
-  (non-interactive-xref-find-definitions)
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions))
 
   (assert-equal 8 (line-number-at-pos))
   (assert-equal 25 (current-column))
