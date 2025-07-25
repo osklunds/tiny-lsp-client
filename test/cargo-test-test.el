@@ -30,4 +30,15 @@
 (load (relative-repo-root "test" "common.el"))
 
 (ert-deftest cargo-test-test ()
-  (run-shell-command "cargo test -- --show-output --test-threads 1"))
+  (let ((proc
+         (make-process
+          :name "live-shell"
+          :buffer "*live-output*"
+          :command '("cargo" "test" "--" "--show-output" "--test-threads" "1")
+          :filter (lambda (_proc output)
+                    (princ output)))))
+    ;; Wait until process exits (needed in batch mode)
+    (while (process-live-p proc)
+      (sleep-for 0.1))
+    (assert-equal 0 (process-exit-status proc) "cargo-test-test exit code")))
+
