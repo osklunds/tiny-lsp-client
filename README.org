@@ -206,6 +206,8 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
+            - garbage collection comparison test
+            - check that LSP processes are not leaking due to C-g protection
             - log tests
                   - Unit tests if possible
                   - test what happens if =tlc-log-file= is never set
