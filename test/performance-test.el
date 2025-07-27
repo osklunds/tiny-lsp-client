@@ -65,15 +65,23 @@
   (let* ((tlc-result nil)
          (eglot-result nil))
     (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+    ;; First test with tlc
     (tlc-mode)
     (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+    (assert-equal xref-backend-functions '(tlc-xref-backend t))
     (setq tlc-result (xref-test))
+
+    ;; Disable tlc
     (tlc-mode -1)
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
 
+    ;; Then test with eglot
     (call-interactively #'eglot)
+    (assert-equal xref-backend-functions '(eglot-xref-backend t))
     (setq eglot-result (xref-test))
 
+    ;; Check that tlc and eglot gave the same results
     (dotimes (i (length tlc-result))
       (let* ((tlc-entry (nth i tlc-result))
              (eglot-entry (nth i eglot-result)))
