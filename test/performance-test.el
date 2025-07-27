@@ -51,27 +51,26 @@
   (tlc-mode)
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
 
-  (let ((result nil))
-    (dotimes (i (point-max))
-      (save-excursion
-        (ignore-errors
-          (non-interactive-xref-find-definitions))
-        (push (list i (point)) result)))
-    (message "oskar: %s" result))
+  (xref-test)
   )
 
 (tlc-deftest xref-eglot-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (eglot-ensure)
 
+  (xref-test)
+  )
+
+(defun xref-test ()
   (let ((result nil))
     (dotimes (i (point-max))
+      (goto-char i)
       (save-excursion
         (ignore-errors
           (cl-letf (((symbol-function 'completing-read)
                      (lambda (&rest _)
                        (throw 'dont-read "dont read"))))
             (non-interactive-xref-find-definitions)))
-        (push (list i (point)) result)))
-    (message "oskar: %s" result))
-  )
+        (push (list (point)) result)))
+    (message "oskar: %s" result)))
+
