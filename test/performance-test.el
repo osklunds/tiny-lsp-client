@@ -42,6 +42,13 @@
 (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 (require 'eglot)
 
+;; Make it low so that gc is triggered more often
+(setq gc-cons-threshold 8000)
+
+;; -----------------------------------------------------------------------------
+;; Helpers
+;; -----------------------------------------------------------------------------
+
 ;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
@@ -92,14 +99,18 @@
   )
 
 (defun xref-test ()
-  (let ((result nil))
-    (dotimes (i (point-max))
-      (goto-char i)
-      (save-excursion
-        (ignore-errors
-          (non-interactive-xref-find-definitions))
-        (push (list i (buffer-file-name) (point)) result)))
+  (garbage-collect)
+  (let* ((result nil)
+         (gcs-done-start gcs-done))
+    (dotimes (_ 100)
+      (dotimes (i (point-max))
+        (goto-char i)
+        (save-excursion
+          (ignore-errors
+            (non-interactive-xref-find-definitions))
+          (push (list i (buffer-file-name) (point)) result))))
     ;; (dolist (elt result)
     ;;   (message "%s" elt))
+    (message "Number of garbage collections: %s" (- gcs-done gcs-done-start))
     result))
 
