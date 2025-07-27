@@ -46,7 +46,7 @@
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
-(tlc-deftest xref-tlc-test ()
+(tlc-deftest xref-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
@@ -54,11 +54,33 @@
   (xref-test)
   )
 
-(tlc-deftest xref-eglot-test ()
+(tlc-deftest xref-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
-  (eglot-ensure)
+  (call-interactively #'eglot)
 
   (xref-test)
+  )
+
+(tlc-deftest xref-compare-test ()
+  (let* ((tlc-result nil)
+         (eglot-result nil))
+    (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+    (tlc-mode)
+    (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+    (setq tlc-result (xref-test))
+    (tlc-mode -1)
+    (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+
+    (call-interactively #'eglot)
+    (setq eglot-result (xref-test))
+
+    (dotimes (i (length tlc-result))
+      (let* ((tlc-entry (nth i tlc-result))
+             (eglot-entry (nth i eglot-result)))
+        (assert-equal tlc-entry eglot-entry)))
+    ;; so that also length is checked
+    (assert-equal tlc-result eglot-result)
+    )
   )
 
 (defun xref-test ()
@@ -67,10 +89,9 @@
       (goto-char i)
       (save-excursion
         (ignore-errors
-          (cl-letf (((symbol-function 'completing-read)
-                     (lambda (&rest _)
-                       (throw 'dont-read "dont read"))))
-            (non-interactive-xref-find-definitions)))
-        (push (list (point)) result)))
-    (message "oskar: %s" result)))
+          (non-interactive-xref-find-definitions))
+        (push (list i (buffer-file-name) (point)) result)))
+    ;; (dolist (elt result)
+    ;;   (message "%s" elt))
+    result))
 
