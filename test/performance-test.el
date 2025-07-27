@@ -45,9 +45,35 @@
 ;; Make it low so that gc is triggered more often
 (setq gc-cons-threshold 8000)
 
+(customize-set-variable 'tlc-log-stderr nil)
+
 ;; -----------------------------------------------------------------------------
 ;; Helpers
 ;; -----------------------------------------------------------------------------
+
+(defun native-comp-p (function)
+  (native-comp-function-p (symbol-function function)))
+
+(defun ensure-native-compiled ()
+  (find-file (relative-repo-root "tiny-lsp-client.el"))
+  (emacs-lisp-native-compile-and-load)
+
+  ;; To see that native-comp-p works
+  (assert-not (native-comp-p 'native-comp-p) "native-comp-p")
+
+  ;; Checking that eglot and some other built-in are indeed native compiled
+  ;; todo: not a perfect check. For some reason, e.g. describe-function
+  ;; is not considered native compiled.
+  (assert (native-comp-p 'eglot--connect) "eglot--connect")
+  (assert (native-comp-p 'jsonrpc-async-request))
+  (assert (native-comp-p 'jsonrpc--event))
+  (assert (native-comp-p 'url-unhex))
+
+  ;; Check that tlc is native compiled
+  (assert (native-comp-p 'tlc--sync-request) "tlc--sync-request")
+  )
+
+(ensure-native-compiled)
 
 ;; -----------------------------------------------------------------------------
 ;; Test cases
