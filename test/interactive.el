@@ -15,6 +15,23 @@
 ;; You should have received a copy of the GNU General Public License along with
 ;; tiny-lsp-client. If not, see <https:;;www.gnu.org/licenses/>.
 
+;; -----------------------------------------------------------------------------
+;; Loading common functions
+;; -----------------------------------------------------------------------------
+
+;; Moment 22: can't be in common.el because then common.el can't be found
+(defun relative-repo-root (&rest components)
+  (let* ((repo-root (file-truename (locate-dominating-file "." ".git"))))
+    (apply 'file-name-concat repo-root components)))
+
+(load (relative-repo-root "test" "common.el"))
+(setq test-file-name "interactive-test")
+(common-setup)
+(set-log-file-name "interactive")
+
+;; -----------------------------------------------------------------------------
+;; Interactive specific
+;; -----------------------------------------------------------------------------
 
 (setq debug-on-error t)
 
@@ -39,23 +56,6 @@
 (switch-to-buffer "*Messages*")
 (other-window 1)
 
-(add-to-list 'load-path default-directory)
-
-;; Manually require tlc-rust to get debug version, faster to compile that release
-(require 'tlc-rust "target/debug/libtiny_lsp_client.so")
-(require 'tiny-lsp-client)
-
-(customize-set-variable 'tlc-log-file (file-truename
-                                       (file-name-concat
-                                        user-emacs-directory
-                                        "tiny-lsp-client-test.log")))
-(customize-set-variable 'tlc-log-io t)
-(customize-set-variable 'tlc-log-stderr t)
-(customize-set-variable 'tlc-log-rust-debug t)
-(customize-set-variable 'tlc-log-emacs-debug t)
-(customize-set-variable 'tlc-log-to-stdio t)
-(customize-set-variable 'tlc-find-root-function 'tlc-dev-find-root-function)
-
 (add-hook 'c++-mode-hook 'tlc-mode)
 (add-hook 'erlang-mode-hook 'tlc-mode)
 (add-hook 'rust-mode-hook 'tlc-mode)
@@ -69,3 +69,7 @@
 (re-search-forward "other_function" nil nil 2)
 ;; (re-search-forward "other_function" nil nil 1)
 (next-line)
+
+(tlc-open-log-file)
+
+(message "oskar: %s" buffer-file-name)

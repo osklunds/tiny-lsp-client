@@ -20,6 +20,8 @@
 ;; Helpers
 ;; -----------------------------------------------------------------------------
 
+(require 'ert)
+
 (setq load-prefer-newer t)
 (setq debug-on-error t)
 
@@ -151,9 +153,7 @@ nested projects inside the test directory as separate projects."
   "Name of the .el file with test cases. Needs to be set when loading
 this common file. Is used to differentiate log file names.")
 
-(defun before-each-test (test-case-name)
-  (cleanup-previous-test)
-  (message "Running test case: '%s'" test-case-name)
+(defun set-log-file-name (test-case-name)
   (assert-equal t (stringp test-file-name) "test-file-name")
   (setq log-file-name (relative-repo-root
                        "test"
@@ -161,6 +161,12 @@ this common file. Is used to differentiate log file names.")
                        (format "%s-%s.log" test-file-name test-case-name)))
   (delete-file log-file-name)
   (customize-set-variable 'tlc-log-file log-file-name)
+  )
+
+(defun before-each-test (test-case-name)
+  (cleanup-previous-test)
+  (message "Running test case: '%s'" test-case-name)
+  (set-log-file-name test-case-name)
   (customize-set-variable 'tlc-find-root-function #'tlc-dev-find-root-function)
   
   (customize-set-variable 'tlc-before-start-server-hook nil)
