@@ -683,7 +683,8 @@ and always using the latest result."
 (defun tlc--async-refresh-cache-1 ()
   (let* ((while-result
           (while-no-input
-            (tlc--wait-for-response tlc--async-reqeust-id tlc--async-root-path))))
+            (tlc--wait-for-response tlc--async-reqeust-id tlc--async-root-path
+                                    'todo 'todo 'todo))))
     (cond
      ((eq while-result t)
       (message "Interrupted.")

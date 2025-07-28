@@ -475,7 +475,7 @@ abc(123);
   ;; Act
   (cl-letf* ((entry (format "%s @ clangd" root-path))
              ((symbol-function 'completing-read)
-              (lambda (_ collection _ _ _ _ default)
+              (lambda (_ collection _ _ _ _ default &rest _)
                 (assert-equal (list entry) collection)
                 (assert-equal entry default "default")
                 (nth 0 collection))))
@@ -491,7 +491,7 @@ abc(123);
   (assert-not tlc-mode)
   (catch 'okay
     (cl-letf (((symbol-function 'completing-read)
-               (lambda (_ collection _ _ _ _ default)
+               (lambda (_ collection _ _ _ _ default &rest _)
                  (assert-not collection)
                  (assert-not default)
                  (throw 'okay "okay"))))
@@ -1149,7 +1149,7 @@ void last_function() {
                 (tlc--completion-to-server-key "/some/path @ some-cmd"))
 
   (cl-letf (((symbol-function 'completing-read)
-             (lambda (_ collection _ _ _ _ default)
+             (lambda (_ collection _ _ _ _ default &rest _)
                (assert-equal (format "%s @ clangd" root) (nth 0 collection) "clangd1")
                (assert-equal (format "%s @ erlang_ls" root) (nth 1 collection) "erlang_ls1")
                (assert-equal (format "%s @ erlang_ls" root2) (nth 2 collection) "erlang_ls2")

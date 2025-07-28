@@ -60,6 +60,7 @@
   (message "Before load")
 
   ;; todo: find a way to assert that newly loaded and release
+  ;; todo: how does this work in docker?
   (require 'tlc-rust (relative-repo-root "target" "release" "libtiny_lsp_client.so"))
 
   (message "After load")
@@ -79,6 +80,7 @@
   ;; Initialize
   ;; ---------------------------------------------------------------------------
 
+  ;; todo: build with cmake
   (setq root-path (file-truename default-directory))
   (setq server-cmd "clangd")
 
