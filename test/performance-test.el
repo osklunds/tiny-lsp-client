@@ -140,3 +140,43 @@
     (message "Number of garbage collections: %s" (- gcs-done gcs-done-start))
     result))
 
+(tlc-deftest edit-no-lsp-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-not tlc-mode)
+  (assert-not eglot--managed-mode)
+
+  (edit-test)
+  )
+
+(tlc-deftest edit-tlc-only-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (tlc-mode)
+  (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
+
+  (edit-test)
+  )
+
+(tlc-deftest edit-eglot-only-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (call-interactively #'eglot)
+
+  (edit-test)
+  )
+
+(defun edit-test ()
+  (garbage-collect)
+  (let* ((content (buffer-substring-no-properties (point-min) (point-max)))
+         (gcs-done-start gcs-done))
+    (dotimes (_ 100)
+      (dotimes (i (length content))
+        (goto-char (point-max))
+        (insert (aref content i))
+        ;; It's a bit unclear when eglot sends changes. Also, eglot has a mighty
+        ;; fine accumulation of changes, which I also aim to implement. For
+        ;; these reasons, force eglot to signal changes towards the LSP after
+        ;; every emacs change, like tlc does.
+        (when eglot--managed-mode
+          (eglot--signal-textDocument/didChange))
+        ))
+    (message "Number of garbage collections: %s" (- gcs-done gcs-done-start)))
+  )
