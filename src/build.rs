@@ -24,6 +24,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/");
     let bindings = bindgen::Builder::default()
         .header(emacs_module_header_path())
         .allowlist_type("emacs_env")
