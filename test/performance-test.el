@@ -40,10 +40,7 @@
 (run-shell-command "cmake ." "test" "clangd")
 (run-shell-command "make" "test" "clangd")
 
-;; todo handle nil env
-;; todo: make prettier
-;; todo: handle in other files too, move this to common
-(require 'tlc-rust (concat (getenv "CARGO_TARGET_DIR") "/release/libtiny_lsp_client.so"))
+(require 'tlc-rust (release-rust-module))
 (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 (require 'eglot)
 

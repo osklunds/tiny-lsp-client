@@ -196,9 +196,19 @@ this common file. Is used to differentiate log file names.")
        ,@body
        )))
 
+(defun cargo-target-dir ()
+  (if-let ((dir (getenv "CARGO_TARGET_DIR")))
+      dir
+    (relative-repo-root "target")))
+
+(defun debug-rust-module ()
+  (concat (cargo-target-dir) "/debug/libtiny_lsp_client.so"))
+
+(defun release-rust-module ()
+  (concat (cargo-target-dir) "/release/libtiny_lsp_client.so"))
+
 (defun common-setup ()
-  ;; Manually require tlc-rust to get debug version
-  (require 'tlc-rust (relative-repo-root "target" "debug" "libtiny_lsp_client.so"))
+  (require 'tlc-rust (debug-rust-module))
   (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 
   (add-hook 'tlc-mode-hook 'enable-all-tlc-features)

@@ -60,8 +60,7 @@
   (message "Before load")
 
   ;; todo: find a way to assert that newly loaded and release
-  ;; todo: how does this work in docker?
-  (require 'tlc-rust (relative-repo-root "target" "release" "libtiny_lsp_client.so"))
+  (require 'tlc-rust (release-rust-module))
 
   (message "After load")
 
