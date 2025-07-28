@@ -106,6 +106,9 @@
   (tlc-mode)
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
 
+  (assert tlc-mode)
+  (assert-not eglot--managed-mode)
+
   (xref-test)
   )
 
@@ -113,6 +116,9 @@
 (tlc-deftest xref-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
+
+  (assert-not tlc-mode)
+  (assert eglot--managed-mode)
 
   (xref-test)
   )
@@ -124,6 +130,7 @@
 
     ;; First test with tlc
     (tlc-mode)
+    (assert-not eglot--managed-mode)
     (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
     (assert-equal xref-backend-functions '(tlc-xref-backend t))
     (setq tlc-result (xref-test))
@@ -131,10 +138,12 @@
     ;; Disable tlc
     (tlc-mode -1)
     (remove-hook 'xref-backend-functions 'tlc-xref-backend t)
+    (assert-not tlc-mode)
 
     ;; Then test with eglot
     (call-interactively #'eglot)
     (assert-equal xref-backend-functions '(eglot-xref-backend t))
+    (assert eglot--managed-mode)
     (setq eglot-result (xref-test))
 
     ;; Check that tlc and eglot gave the same results
@@ -178,6 +187,9 @@
   (tlc-mode)
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
 
+  (assert tlc-mode)
+  (assert-not eglot--managed-mode)
+
   (edit-test)
   )
 
@@ -185,6 +197,9 @@
 (tlc-deftest edit-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
+
+  (assert-not tlc-mode)
+  (assert eglot--managed-mode)
 
   (edit-test)
   )
