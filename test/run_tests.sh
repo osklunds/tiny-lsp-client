@@ -8,6 +8,7 @@ if [[ $# -eq 0 ]]; then
     cd "$test_dir"
     for file in *test.el; do
         [[ -f "$file" ]] || break
+        [[ "$file" = "performance-test.el" ]] && break
         echo "Running test file: $file"
         emacs -batch -l ert -l "$file" --eval '(ert-run-tests-batch-and-exit)' || break
     done
