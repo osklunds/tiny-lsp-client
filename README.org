@@ -228,11 +228,11 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
-            - check that LSP processes are not leaking due to C-g protection
             - log tests
                   - Unit tests if possible
                   - test what happens if =tlc-log-file= is never set
       - Lower priority
+            - Understand how LSP processes are killed even if not same process group. It happens even when wrong process id in initialize message.
             - Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
             - Remove duplicate completions in Rust code
             - Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
