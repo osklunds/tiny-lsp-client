@@ -415,7 +415,7 @@ obvious that they happen."
 ;; @credits: Reqeust/response mechanism inspired by
 ;; https://github.com/zbelial/lspce
 (defun tlc--sync-request (method arguments)
-  (let ((request-id (tlc--request method arguments (tlc--server-key))))
+  (when-let ((request-id (tlc--request method arguments (tlc--server-key))))
     ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but 100ms
     ;; is still responsive enough to C-g aborts.
     (tlc--wait-for-response request-id (tlc--server-key) 100 0 nil)))
@@ -432,8 +432,8 @@ obvious that they happen."
      ;; alternative but valid case - server crashed or not started
      ((equal 'no-server return) (progn
                                   (tlc--ask-start-server)
-                                  ;; if not error, then xref says incorrect type
-                                  (error "")))
+                                  ;; if no, above throws error
+                                  nil))
 
      ;; bug case - bad return
      (t (error "bad return")))))
@@ -827,7 +827,7 @@ and always using the latest result."
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
     (tlc-mode -1)
-    (error "You chose not the restart the LSP server. Disabling tlc-mode.")))
+    (user-error "You chose not the restart the LSP server. Disabling tlc-mode.")))
 
 (defun tlc--log (format-string &rest objects)
   (when tlc-log-emacs-debug

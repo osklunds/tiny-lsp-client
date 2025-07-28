@@ -993,10 +993,14 @@ void last_function() {
   (assert tlc-mode)
 
   ;; Act
-  (should-error
-   (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
-     (non-interactive-xref-find-definitions))
-   :type 'error)
+  (setq error-message
+        (condition-case err
+            (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
+              (non-interactive-xref-find-definitions))
+          (error (error-message-string err))))
+  (assert-equal "No definitions found for: other_function" error-message)
+  (assert-equal 11 (line-number-at-pos))
+  (assert-equal 18 (current-column))
 
   ;; Assert
   ;; tlc-mode still enabled
