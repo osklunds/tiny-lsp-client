@@ -15,6 +15,11 @@
 ;; You should have received a copy of the GNU General Public License along with
 ;; tiny-lsp-client. If not, see <https:;;www.gnu.org/licenses/>.
 
+;;; Commentary:
+
+;; Test cases can only be run one at a time since eglot isn't cleaned up
+;; Also, they take a long time to run, so excluded from run_tests.sh
+
 ;; -----------------------------------------------------------------------------
 ;; Loading common functions
 ;; -----------------------------------------------------------------------------
@@ -91,6 +96,7 @@
 ;; -----------------------------------------------------------------------------
 
 ;; Number of garbage collections: 2
+;; Reference test to see how much garbage just the loop causes.
 (tlc-deftest xref-no-lsp-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (add-hook 'xref-backend-functions 'dummy-xref-backend nil t)
@@ -101,6 +107,7 @@
   (xref-test)
   )
 ;; Number of garbage collections: 8
+;; tlc itself causes 8-2=6 garbage collections
 (tlc-deftest xref-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
@@ -113,6 +120,8 @@
   )
 
 ;; Number of garbage collections: 17
+;; eglot itself causes 17-2=15 garbage collections
+;; eglot causes 15/6=2.5 times as many garbage collections compared to tlc
 (tlc-deftest xref-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
@@ -123,6 +132,8 @@
   (xref-test)
   )
 
+;; This test is just to see that tlc and eglot return the same positions
+;; in the xref-test loop.
 (tlc-deftest xref-compare-test ()
   (let* ((tlc-result nil)
          (eglot-result nil))
@@ -173,6 +184,7 @@
     result))
 
 ;; Number of garbage collections: 88
+;; Reference test to see how much garbage just the loop causes.
 (tlc-deftest edit-no-lsp-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-not tlc-mode)
@@ -182,6 +194,7 @@
   )
 
 ;; Number of garbage collections: 95
+;; tlc itself causes 95-88=7 garbage collections
 (tlc-deftest edit-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
@@ -194,6 +207,8 @@
   )
 
 ;; Number of garbage collections: 202
+;; eglot itself causes 202-88=114 garbage collections
+;; eglot causes 114/7=16 times as many garbage collections compared to tlc
 (tlc-deftest edit-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
