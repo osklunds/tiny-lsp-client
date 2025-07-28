@@ -126,7 +126,7 @@ There is one =Server= object per project, and =lib.rs= stores a map of =(root pa
 
 =lib.rs= receives JSON by doing a non-blocking receive call on the channel. If there is a message, it's transformed into a lisp object and returned to emacs. If there's no message, =no-response= is returned. =tiny-lsp-client.el= waits for a response with a busy-wait loop using =sit-for=.
 
-=tiny-lsp-client.el= is where =tiny=lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
+=tiny-lsp-client.el= is where =tiny-lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
 
 * Testing
 
@@ -175,6 +175,28 @@ Also, =lisp-bindings-test.el= is the only suite run with =cargo build --release=
 
 Some of the Rust layer is tested in unit tests, that can be run with =cargo test=. Of special interest is =server/tests.rs=, which uses the Rust layer direcly towards an LSP server, without involving any lisp. This was mainly useful when creating the basic of =tiny-lsp-client=, but is also useful now when something basic breaks. There's no plan to add more tests to it as more LSP messages are supported. However, other unit tests might be added.
 
+* Garbage collection test
+
+One of the main goals of =tiny-lsp-client= is to cause as few garbage collections as possible. To test this, I ran two tests, an "xref" test and an "edit" test, and count how many garbage collections are caused by =tiny-lsp-client=, =eglot=, and if no LSP client is enabled.
+
+The "xref" test iterates through all points in a short C++ file and triggers xref's goto defintion. The "edit" test inserts one character at a time to a short C++ file. For both tests, I run them in a loop 100 times. See =test/performance-test.el= for all details.
+
+- For "xref", =eglot= causes *2.5* times as many garbage collections as =tiny-lsp-client=
+- For "edit", =eglot= causes *16* times as many garbage collections as =tiny-lsp-client=
+
+These numbers need to be taken with a grain of salt:
+
+- The tests don't represent typical workloads.
+- I disabled =eglot='s accumulation of changes to make it clearer when =eglot= sends changes to the LSP sever.
+- When having =eglot= send changes less frequently, in total there were /fewer/ garbage collections than if no LSP client at all! Clearly something is fishy.
+- I have set =gc-cons-threshold= to a very low value of 8000, which might have unintended consequences.
+
+I also want to emphasize that =eglot= is in no means "bad" because of making more garbage collections. =tiny-lsp-client= causes fewer garbage collections for these reasons:
+
+- =eglot= creates LISP objects for the full JSON sent to/received from the LSP server whereas =tiny-lsp-client= only creates very small LISP objects. See [[Design documentation]] for more details.
+      - I haven't figured out if =eglot= in emacs 30 encodes/decodes JSON in LISP or C. But even if it happens in C, LISP objects for the full JSON are still created, which causes garbage collection load.
+- =eglot= parses more LSP messages, e.g., =textDocument/publishDiagnostics=, which can be numerous and big. =tiny-lsp-client= drops those messages before they reach LISP. This limited feature set of =tiny-lsp-client= is by design. 
+
 * Copyright, license and acknowledgments
 
 The license for this repository is GPL v3, as specified by the separate =LICENSE= file.
@@ -206,7 +228,6 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
-            - garbage collection comparison test
             - check that LSP processes are not leaking due to C-g protection
             - log tests
                   - Unit tests if possible
