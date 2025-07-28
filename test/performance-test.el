@@ -75,10 +75,30 @@
 
 (ensure-native-compiled)
 
+(defun dummy-xref-backend () 'xref-dummy)
+
+;; Same as the one for (eql xref-tlc)
+(cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-dummy)))
+  (when tlc-mode
+    (propertize (or (thing-at-point 'symbol) "")
+                'identifier-at-point t)))
+
+(cl-defmethod xref-backend-definitions ((_backend (eql xref-dummy)) _identifier)
+  nil)
+
 ;; -----------------------------------------------------------------------------
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
+(tlc-deftest xref-no-lsp-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (add-hook 'xref-backend-functions 'dummy-xref-backend nil t)
+
+  (assert-not tlc-mode)
+  (assert-not eglot--managed-mode)
+
+  (xref-test)
+  )
 (tlc-deftest xref-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
