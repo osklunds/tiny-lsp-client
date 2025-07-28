@@ -90,6 +90,7 @@
 ;; Test cases
 ;; -----------------------------------------------------------------------------
 
+;; Number of garbage collections: 2
 (tlc-deftest xref-no-lsp-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (add-hook 'xref-backend-functions 'dummy-xref-backend nil t)
@@ -99,6 +100,7 @@
 
   (xref-test)
   )
+;; Number of garbage collections: 8
 (tlc-deftest xref-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
@@ -107,6 +109,7 @@
   (xref-test)
   )
 
+;; Number of garbage collections: 17
 (tlc-deftest xref-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
@@ -160,6 +163,7 @@
     (message "Number of garbage collections: %s" (- gcs-done gcs-done-start))
     result))
 
+;; Number of garbage collections: 88
 (tlc-deftest edit-no-lsp-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (assert-not tlc-mode)
@@ -168,6 +172,7 @@
   (edit-test)
   )
 
+;; Number of garbage collections: 95
 (tlc-deftest edit-tlc-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (tlc-mode)
@@ -176,6 +181,7 @@
   (edit-test)
   )
 
+;; Number of garbage collections: 202
 (tlc-deftest edit-eglot-only-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
   (call-interactively #'eglot)
