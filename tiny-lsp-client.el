@@ -737,7 +737,8 @@ and always using the latest result."
          (response (tlc--sync-request
                     "textDocument/hover"
                     (list uri line character))))
-    (message "oskar: %S" response))
+    (funcall callback response)
+    t)
   )
 
 ;; -----------------------------------------------------------------------------
