@@ -726,6 +726,21 @@ and always using the latest result."
                  (funcall callback candidates))))))))
 
 ;; -----------------------------------------------------------------------------
+;; eldoc
+;; -----------------------------------------------------------------------------
+
+(defun tlc-eldoc-function (callback)
+  (let* ((uri (tlc--buffer-uri))
+         (pos (tlc--pos-to-lsp-pos))
+         (line (nth 0 pos))
+         (character (nth 1 pos))
+         (response (tlc--sync-request
+                    "textDocument/hover"
+                    (list uri line character))))
+    (message "oskar: %S" response))
+  )
+
+;; -----------------------------------------------------------------------------
 ;; The "control room"
 ;;------------------------------------------------------------------------------
 

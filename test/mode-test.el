@@ -1494,3 +1494,12 @@ int main() {
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 6 (current-column))
   )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  (tlc-eldoc-function (lambda (string)))
+
+  )

@@ -265,10 +265,10 @@ pub struct HoverParams {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct HoverResult {
-    contents: MarkupContent,
+    pub contents: MarkupContent,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct MarkupContent {
-    value: String
+    pub value: String
 }

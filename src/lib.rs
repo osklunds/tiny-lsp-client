@@ -182,6 +182,8 @@ unsafe extern "C" fn tlc__rust_send_request(
             build_text_document_definition(env, request_args, server)
         } else if request_type == "textDocument/completion" {
             build_text_document_completion(env, request_args, server)
+        } else if request_type == "textDocument/hover" {
+            build_text_document_hover(env, request_args, server)
         } else {
             panic!("Incorrect request type")
         };
@@ -231,6 +233,27 @@ unsafe fn build_text_document_completion(
         text_document: TextDocumentIdentifier { uri },
         position: Position { line, character },
         context: CompletionContext { trigger_kind: 1 },
+    })
+}
+
+#[allow(non_snake_case)]
+unsafe fn build_text_document_hover(
+    env: *mut emacs_env,
+    request_args: emacs_value,
+    _server: &mut Server,
+) -> RequestParams {
+    let uri = nth(env, 0, request_args);
+    let uri = extract_string(env, uri);
+
+    let line = nth(env, 1, request_args);
+    let line = extract_integer(env, line) as usize;
+
+    let character = nth(env, 2, request_args);
+    let character = extract_integer(env, character) as usize;
+
+    RequestParams::HoverParams(HoverParams {
+        text_document: TextDocumentIdentifier { uri },
+        position: Position { line, character },
     })
 }
 
@@ -460,6 +483,17 @@ unsafe fn handle_response(
                     id,
                     make_bool(env, true),
                     completion_list,
+                ],
+            )
+        } else if let Result::TextDocumentHoverResult(hover_result) = result {
+            call(
+                env,
+                "list",
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    make_string(env, hover_result.contents.value),
                 ],
             )
         } else {
