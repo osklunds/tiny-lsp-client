@@ -466,7 +466,7 @@ as usual."
         ;; todo: for now, has-result=nil is re-interpreted as params=nil which
         ;; happens to work for textDocument/definition and
         ;; textDocument/completion but it might not be the case in the future
-        ;; for all respones
+        ;; for all responses
         (t                 (when has-result params))))
 
       ;; normal case - no response yet
@@ -730,20 +730,23 @@ and always using the latest result."
 ;; -----------------------------------------------------------------------------
 
 ;; todo: only plain, not markdown
-(defun tlc-eldoc-function (callback)
+(defun tlc-eldoc-function (_callback)
   (let* ((uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
-         ;; As a simplification, don't have hover request "in the background".
+         ;; As a simplification, don't have hover requests "in the background".
          ;; If cursor moves, abort.
          (response (tlc--request
                     "textDocument/hover"
                     (list uri line character)
-                    0 0.005 'interruptible)))
-    ;; todo: handle 'interrupted
-    (funcall callback response)
-    t)
+                    ;; Use 0ms rust timeout since want to be able to interrupt
+                    ;; as soon as the user moves. Use 0.1s as emacs timeout
+                    ;; because unlike capf, eldoc is not timing critical.
+                    0 0.1 'interruptible)))
+    (tlc--log "eldoc response: %s" response)
+    (unless (eq response 'interrupted)
+      response))
   )
 
 ;; -----------------------------------------------------------------------------

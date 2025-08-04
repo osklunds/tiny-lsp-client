@@ -836,6 +836,7 @@ void last_function() {
 
   ;; Act
   ;; Trick from https://stackoverflow.com/a/32972563 used
+  ;; unread-command-events AND noninteractive needed
   (let ((unread-command-events (listify-key-sequence (kbd "a")))
         (noninteractive nil)
         (tlc-interruptible-capf t))
@@ -1496,15 +1497,15 @@ int main() {
   (assert-equal 6 (current-column))
   )
 
+;; todo: eldoc end to end test
 (tlc-deftest eldoc-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
   (re-search-forward "other_function" nil nil 2)
 
   (run-until 10 0.1
-    (let* ((result nil))
-      (tlc-eldoc-function (lambda (string)
-                            (setq result string)))
+    (let* ((result (tlc-eldoc-function (lambda (_)))))
+      
       (assert-equal
        "function other_function
 
@@ -1515,4 +1516,18 @@ Parameters:
 short other_function(int arg)"
        result)
       ))
+  )
+
+(tlc-deftest eldoc-interrupted-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  ;; Trick from https://stackoverflow.com/a/32972563 used
+  ;; unread-command-events AND noninteractive needed
+  (let* ((unread-command-events (listify-key-sequence (kbd "a")))
+         (noninteractive nil)
+         (result (tlc-eldoc-function (lambda (_)))))
+    (assert-not result)
+    )
   )
