@@ -129,6 +129,9 @@
 (defun number-of-hover-requests ()
   (count-in-log-file "\"method\": \"textDocument/hover\","))
 
+(defun number-of-null-results ()
+  (count-in-log-file "\"result\": null"))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
                      (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))

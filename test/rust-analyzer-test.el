@@ -256,7 +256,7 @@ fn other_function(arg: u32) -> u32 {
 "
    (current-buffer-string))
 
-  (assert-equal 0 (count-in-log-file "\"result\": null"))
+  (assert-equal 0 (number-of-null-results))
 
   ;; When in a comment, null result
   (run-until 100 0.1
@@ -264,7 +264,7 @@ fn other_function(arg: u32) -> u32 {
       (assert-not result "null result")
       ))
 
-  (assert-equal 1 (count-in-log-file "\"result\": null"))
+  (assert-equal 1 (number-of-null-results))
 
   (next-line)
 
