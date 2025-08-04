@@ -275,3 +275,15 @@ fn other_function(arg: u32) -> u32 {
       (assert (cl-member "other_function" result :test 'string-equal))
       ))
   )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "rust_analyzer" "src" "main.rs"))
+
+  (re-search-forward "other_function")
+
+  (run-until 10 0.1
+    (assert-equal "rust_analyzer
+
+fn other_function(arg: u32) -> u32"
+                  (get-eldoc-msg)))
+  )
