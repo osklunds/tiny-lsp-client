@@ -35,6 +35,8 @@
 
 (setq debug-on-error t)
 
+(fset 'yes-or-no-p 'y-or-n-p)
+
 (customize-set-variable 'make-backup-files nil)
 (customize-set-variable 'auto-save-default nil)
 (setq create-lockfiles nil)
@@ -64,12 +66,13 @@
 (define-key prog-mode-map (kbd "M-o") 'tlc--async-collection-fun)
 
 (find-file "test/clangd/main.cpp")
+(delete-other-windows)
 ;; (find-file "test/erlang_ls/my_module.erl")
 
 (re-search-forward "other_function" nil nil 2)
 ;; (re-search-forward "other_function" nil nil 1)
 (next-line)
 
-(tlc-open-log-file)
+(add-hook 'eldoc-documentation-functions #'tlc-eldoc-function nil t)
+(eldoc-mode t)
 
-(message "oskar: %s" buffer-file-name)
