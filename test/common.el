@@ -126,6 +126,9 @@
 (defun number-of-completion-requests ()
   (count-in-log-file "\"method\": \"textDocument/completion\","))
 
+(defun number-of-hover-requests ()
+  (count-in-log-file "\"method\": \"textDocument/hover\","))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
                      (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
@@ -141,6 +144,16 @@ nested projects inside the test directory as separate projects."
              (prefix (car (split-string default-directory match))))
         (concat prefix match))
     (tlc-find-root-default-function)))
+
+(defun get-eldoc-msg ()
+  (cl-letf* ((eldoc-echo-area-use-multiline-p t)
+             (max-mini-window-height 100)
+             (msg nil)
+             ((symbol-function 'eldoc--message) (lambda (string) (setq msg string)))
+             ((symbol-function 'frame-height) (lambda () 100)))
+    (eldoc-print-current-symbol-info t)
+    msg)
+  )
 
 ;; -----------------------------------------------------------------------------
 ;; Test case framework
