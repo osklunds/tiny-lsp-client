@@ -556,7 +556,6 @@ as usual."
            (pos (tlc--pos-to-lsp-pos))
            (line (car pos))
            (character (cadr pos))
-           ;; todo: test for cached-candidates
            (cached-candidates 'none)
            (response-fun (lambda ()
                            (if (listp cached-candidates) cached-candidates
