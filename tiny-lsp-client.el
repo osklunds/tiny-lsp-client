@@ -25,6 +25,7 @@
 (require 'xref)
 (require 'project)
 (require 'url-util)
+(require 'eldoc)
 
 (eval-and-compile
   (cl-defmacro tlc--widen (&rest body)

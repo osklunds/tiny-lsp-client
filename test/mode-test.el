@@ -1497,25 +1497,29 @@ int main() {
   (assert-equal 6 (current-column))
   )
 
-;; todo: eldoc end to end test
 (tlc-deftest eldoc-test ()
   (find-file (relative-repo-root "test" "clangd" "main.cpp"))
 
   (re-search-forward "other_function" nil nil 2)
 
   (run-until 10 0.1
-    (let* ((result (tlc-eldoc-function (lambda (_)))))
-      
-      (assert-equal
-       "function other_function
+    (assert-equal "function other_function
 
 → short
 Parameters:
 - int arg
 
-short other_function(int arg)"
-       result)
-      ))
+short other_function(int arg)" (get-eldoc-msg)))
+  )
+
+(defun get-eldoc-msg ()
+  (cl-letf* ((eldoc-echo-area-use-multiline-p t)
+             (max-mini-window-height 100)
+             (msg nil)
+             ((symbol-function 'eldoc--message) (lambda (string) (setq msg string)))
+             ((symbol-function 'frame-height) (lambda () 100)))
+    (eldoc-print-current-symbol-info t)
+    msg)
   )
 
 (tlc-deftest eldoc-interrupted-test ()
@@ -1530,4 +1534,10 @@ short other_function(int arg)"
          (result (tlc-eldoc-function (lambda (_)))))
     (assert-not result)
     )
+  ;; Run again to see that result can become non-nil too
+  (let* ((noninteractive nil)
+         (result (tlc-eldoc-function (lambda (_)))))
+    (assert result)
+    )
   )
+

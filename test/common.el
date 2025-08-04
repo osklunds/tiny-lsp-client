@@ -94,7 +94,8 @@
 
 (defun enable-all-tlc-features ()
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-  (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t))
+  (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
+  (add-hook 'eldoc-documentation-functions #'tlc-eldoc-function nil t))
 
 ;; Since this should always be 0, it's hard to know if it's working
 ;; properly
