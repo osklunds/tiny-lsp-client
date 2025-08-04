@@ -729,7 +729,6 @@ and always using the latest result."
 ;; eldoc
 ;; -----------------------------------------------------------------------------
 
-;; todo: only plain, not markdown
 (defun tlc-eldoc-function (_callback)
   (let* ((uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
