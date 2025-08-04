@@ -418,84 +418,13 @@ unsafe fn handle_response(
     if let Some(result) = response.result {
         if let Result::TextDocumentDefinitionResult(definition_result) = result
         {
-            let location_list = match definition_result {
-                DefinitionResult::LocationList(location_list) => location_list,
-                DefinitionResult::LocationLinks(location_link_list) => {
-                    location_link_list
-                        .into_iter()
-                        .map(|location_link| location_link.to_location())
-                        .collect()
-                }
-            };
-            let mut lisp_location_list_vec = Vec::new();
-
-            for location in location_list {
-                let uri = &location.uri;
-                let range = &location.range;
-
-                let lisp_location = call(
-                    env,
-                    "list",
-                    vec![
-                        make_string(env, uri),
-                        make_integer(env, range.start.line as i64),
-                        make_integer(env, range.start.character as i64),
-                    ],
-                );
-                lisp_location_list_vec.push(lisp_location);
-            }
-            let lisp_location_list = call(env, "list", lisp_location_list_vec);
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, true),
-                    lisp_location_list,
-                ],
-            )
+            handle_definition_response(env, id, definition_result)
         } else if let Result::TextDocumentCompletionResult(completion_result) =
             result
         {
-            let mut completion_list_vec = Vec::new();
-
-            let items = match completion_result {
-                CompletionResult::CompletionList(CompletionList { items }) => {
-                    items
-                }
-                CompletionResult::CompletionItems(items) => items,
-            };
-
-            for item in items {
-                completion_list_vec
-                    .push(make_string(env, str::trim_start(item.get_text())));
-            }
-
-            let completion_list = call(env, "list", completion_list_vec);
-
-            // todo: find a way to avoid duplicating the non-null OK responses
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, true),
-                    completion_list,
-                ],
-            )
+            handle_completion_response(env, id, completion_result)
         } else if let Result::TextDocumentHoverResult(hover_result) = result {
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, true),
-                    make_string(env, hover_result.contents.value),
-                ],
-            )
+            handle_hover_response(env, id, hover_result)
         } else {
             logger::log_rust_debug!(
                 "Non-supported response received: {:?}",
@@ -520,6 +449,99 @@ unsafe fn handle_response(
             )
         }
     }
+}
+
+unsafe fn handle_definition_response(
+    env: *mut emacs_env,
+    id: emacs_value,
+    response: DefinitionResult,
+) -> emacs_value {
+    let location_list = match response {
+        DefinitionResult::LocationList(location_list) => location_list,
+        DefinitionResult::LocationLinks(location_link_list) => {
+            location_link_list
+                .into_iter()
+                .map(|location_link| location_link.to_location())
+                .collect()
+        }
+    };
+    let mut lisp_location_list_vec = Vec::new();
+
+    for location in location_list {
+        let uri = &location.uri;
+        let range = &location.range;
+
+        let lisp_location = call(
+            env,
+            "list",
+            vec![
+                make_string(env, uri),
+                make_integer(env, range.start.line as i64),
+                make_integer(env, range.start.character as i64),
+            ],
+        );
+        lisp_location_list_vec.push(lisp_location);
+    }
+    let lisp_location_list = call(env, "list", lisp_location_list_vec);
+    call(
+        env,
+        "list",
+        vec![
+            intern(env, "response"),
+            id,
+            make_bool(env, true),
+            lisp_location_list,
+        ],
+    )
+}
+
+unsafe fn handle_completion_response(
+    env: *mut emacs_env,
+    id: emacs_value,
+    response: CompletionResult,
+) -> emacs_value {
+    let mut completion_list_vec = Vec::new();
+
+    let items = match response {
+        CompletionResult::CompletionList(CompletionList { items }) => items,
+        CompletionResult::CompletionItems(items) => items,
+    };
+
+    for item in items {
+        completion_list_vec
+            .push(make_string(env, str::trim_start(item.get_text())));
+    }
+
+    let completion_list = call(env, "list", completion_list_vec);
+
+    // todo: find a way to avoid duplicating the non-null OK responses
+    call(
+        env,
+        "list",
+        vec![
+            intern(env, "response"),
+            id,
+            make_bool(env, true),
+            completion_list,
+        ],
+    )
+}
+
+unsafe fn handle_hover_response(
+    env: *mut emacs_env,
+    id: emacs_value,
+    response: HoverResult,
+) -> emacs_value {
+    call(
+        env,
+        "list",
+        vec![
+            intern(env, "response"),
+            id,
+            make_bool(env, true),
+            make_string(env, response.contents.value),
+        ],
+    )
 }
 
 #[allow(non_snake_case)]

@@ -109,6 +109,7 @@ pub enum Result {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
+// todo: rename Result to Response
 pub enum DefinitionResult {
     LocationList(Vec<Location>),
     LocationLinks(Vec<LocationLink>),
