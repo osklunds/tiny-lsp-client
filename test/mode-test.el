@@ -802,8 +802,9 @@ void last_function() {
   (let ((done nil))
     (while (not done)
       (dotimes (_ 1000)
-        ;; need to call internal functions to be able to test async
-        (tlc--request
+        ;; need to call internal functions to be able to send requests without
+        ;; waiting for a response
+        (tlc--send-request
          "textDocument/definition"
          (list (tlc--buffer-file-name) 0 0)
          (tlc--server-key)))
@@ -1500,17 +1501,18 @@ int main() {
 
   (re-search-forward "other_function" nil nil 2)
 
-  (let* ((result nil))
-    (tlc-eldoc-function (lambda (string)
-                          (setq result string)))
-    (assert-equal
-     "function other_function
+  (run-until 10 0.1
+    (let* ((result nil))
+      (tlc-eldoc-function (lambda (string)
+                            (setq result string)))
+      (assert-equal
+       "function other_function
 
 → short
 Parameters:
 - int arg
 
 short other_function(int arg)"
-     result)
-    )
+       result)
+      ))
   )

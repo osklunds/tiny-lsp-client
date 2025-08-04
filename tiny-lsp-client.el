@@ -414,15 +414,14 @@ obvious that they happen."
 
 ;; @credits: Reqeust/response mechanism inspired by
 ;; https://github.com/zbelial/lspce
-(defun tlc--sync-request (method arguments)
-  (when-let ((request-id (tlc--request method arguments (tlc--server-key))))
-    ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but 100ms
-    ;; is still responsive enough to C-g aborts.
-    (tlc--wait-for-response request-id (tlc--server-key) 100 0 nil)))
+(defun tlc--request (method arguments rust-timeout emacs-timeout interruptible)
+  (when-let ((request-id (tlc--send-request method arguments (tlc--server-key))))
+    (tlc--wait-for-response request-id (tlc--server-key)
+                            rust-timeout emacs-timeout interruptible)))
 
 ;; tlc--request might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--server-key) inside, so pass server-key
-(defun tlc--request (method arguments server-key)
+(defun tlc--send-request (method arguments server-key)
   (let ((return (tlc--rust-send-request server-key method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
@@ -521,9 +520,12 @@ as usual."
            (pos (tlc--pos-to-lsp-pos))
            (line (nth 0 pos))
            (character (nth 1 pos))
-           (response (tlc--sync-request
+           ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but
+           ;; 100ms is still responsive enough to abort with C-g.
+           (response (tlc--request
                       "textDocument/definition"
-                      (list uri line character))))
+                      (list uri line character)
+                      100 0 nil)))
       (mapcar (lambda (location)
                 (pcase-let ((`(,uri-target ,line-start ,character-start) location))
                   (let* ((line-target (+ line-start 1))
@@ -553,23 +555,21 @@ as usual."
            (pos (tlc--pos-to-lsp-pos))
            (line (car pos))
            (character (cadr pos))
+           ;; todo: test for cached-candidates
            (cached-candidates 'none)
-           (server-key (tlc--server-key))
            (response-fun (lambda ()
                            (if (listp cached-candidates) cached-candidates
-                             (let* ((request-id (tlc--request
-                                                 "textDocument/completion"
-                                                 (list uri line character)
-                                                 server-key))
-                                    (result
-                                     ;; Use 0ms rust timeout since for capf want
-                                     ;; to interrupt as soon as possible. Use
-                                     ;; 0.005s as emacs timeout because if too
-                                     ;; long, it means we wait too long before
-                                     ;; checking again if a response has arrived.
-                                     (tlc--wait-for-response request-id server-key
-                                                             0 0.005
-                                                             tlc-interruptible-capf)))
+                             (let* ((result (tlc--request
+                                             "textDocument/completion"
+                                             (list uri line character)
+                                             ;; Use 0ms rust timeout since for
+                                             ;; capf want to interrupt as soon
+                                             ;; as possible. Use 0.005s as emacs
+                                             ;; timeout because if too long, it
+                                             ;; means we wait too long before
+                                             ;; checking again if a response has
+                                             ;; arrived.
+                                             0 0.005 tlc-interruptible-capf)))
                                (cond
                                 ((eq result 'interrupted)
                                  tlc--last-candidates)
@@ -735,16 +735,12 @@ and always using the latest result."
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
-         (server-key (tlc--server-key))
-         (request-id (tlc--request
-                      "textDocument/hover"
-                      (list uri line character)
-                      server-key))
          ;; As a simplification, don't have hover request "in the background".
          ;; If cursor moves, abort.
-         (response (tlc--wait-for-response request-id server-key
-                                           0 0.005
-                                           tlc-interruptible-capf)))
+         (response (tlc--request
+                    "textDocument/hover"
+                    (list uri line character)
+                    0 0.005 'interruptible)))
     ;; todo: handle 'interrupted
     (funcall callback response)
     t)
