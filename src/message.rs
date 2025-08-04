@@ -48,6 +48,7 @@ pub struct Request {
 pub enum RequestParams {
     DefinitionParams(DefinitionParams),
     CompletionParams(CompletionParams),
+    HoverParams(HoverParams),
     Untyped(serde_json::Value),
 }
 
@@ -102,6 +103,7 @@ pub struct ResponseError {
 pub enum Result {
     TextDocumentDefinitionResult(DefinitionResult),
     TextDocumentCompletionResult(CompletionResult),
+    TextDocumentHoverResult(HoverResult),
     Untyped(serde_json::Value),
 }
 
@@ -252,4 +254,21 @@ pub struct TextDocumentContentChangeEventIncremental {
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct TextDocumentContentChangeEventFull {
     pub text: String,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct HoverParams {
+    #[serde(rename = "textDocument")]
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct HoverResult {
+    contents: MarkupContent,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct MarkupContent {
+    value: String
 }
