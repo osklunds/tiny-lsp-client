@@ -416,21 +416,35 @@ unsafe fn handle_response(
 ) -> emacs_value {
     let id = make_integer(env, response.id as i64);
     if let Some(result) = response.result {
-        if let Result::TextDocumentDefinitionResult(definition_result) = result
-        {
-            handle_definition_response(env, id, definition_result)
-        } else if let Result::TextDocumentCompletionResult(completion_result) =
-            result
-        {
-            handle_completion_response(env, id, completion_result)
-        } else if let Result::TextDocumentHoverResult(hover_result) = result {
-            handle_hover_response(env, id, hover_result)
-        } else {
+        if let Result::Untyped(_) = result {
             logger::log_rust_debug!(
                 "Non-supported response received: {:?}",
                 result
             );
             intern(env, "error-response")
+        } else {
+            let return_value = match result {
+                Result::TextDocumentDefinitionResult(definition_result) => {
+                    handle_definition_response(env, definition_result)
+                }
+                Result::TextDocumentCompletionResult(completion_result) => {
+                    handle_completion_response(env, completion_result)
+                }
+                Result::TextDocumentHoverResult(hover_result) => {
+                    handle_hover_response(env, hover_result)
+                }
+                _ => panic!("case already handled"),
+            };
+            call(
+                env,
+                "list",
+                vec![
+                    intern(env, "response"),
+                    id,
+                    make_bool(env, true),
+                    return_value,
+                ],
+            )
         }
     } else {
         if response.error.is_some() {
@@ -453,7 +467,6 @@ unsafe fn handle_response(
 
 unsafe fn handle_definition_response(
     env: *mut emacs_env,
-    id: emacs_value,
     response: DefinitionResult,
 ) -> emacs_value {
     let location_list = match response {
@@ -482,22 +495,11 @@ unsafe fn handle_definition_response(
         );
         lisp_location_list_vec.push(lisp_location);
     }
-    let lisp_location_list = call(env, "list", lisp_location_list_vec);
-    call(
-        env,
-        "list",
-        vec![
-            intern(env, "response"),
-            id,
-            make_bool(env, true),
-            lisp_location_list,
-        ],
-    )
+    call(env, "list", lisp_location_list_vec)
 }
 
 unsafe fn handle_completion_response(
     env: *mut emacs_env,
-    id: emacs_value,
     response: CompletionResult,
 ) -> emacs_value {
     let mut completion_list_vec = Vec::new();
@@ -512,36 +514,14 @@ unsafe fn handle_completion_response(
             .push(make_string(env, str::trim_start(item.get_text())));
     }
 
-    let completion_list = call(env, "list", completion_list_vec);
-
-    // todo: find a way to avoid duplicating the non-null OK responses
-    call(
-        env,
-        "list",
-        vec![
-            intern(env, "response"),
-            id,
-            make_bool(env, true),
-            completion_list,
-        ],
-    )
+    call(env, "list", completion_list_vec)
 }
 
 unsafe fn handle_hover_response(
     env: *mut emacs_env,
-    id: emacs_value,
     response: HoverResult,
 ) -> emacs_value {
-    call(
-        env,
-        "list",
-        vec![
-            intern(env, "response"),
-            id,
-            make_bool(env, true),
-            make_string(env, response.contents.value),
-        ],
-    )
+    make_string(env, response.contents.value)
 }
 
 #[allow(non_snake_case)]
