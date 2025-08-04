@@ -734,9 +734,17 @@ and always using the latest result."
          (pos (tlc--pos-to-lsp-pos))
          (line (nth 0 pos))
          (character (nth 1 pos))
-         (response (tlc--sync-request
-                    "textDocument/hover"
-                    (list uri line character))))
+         (server-key (tlc--server-key))
+         (request-id (tlc--request
+                      "textDocument/hover"
+                      (list uri line character)
+                      server-key))
+         ;; As a simplification, don't have hover request "in the background".
+         ;; If cursor moves, abort.
+         (response (tlc--wait-for-response request-id server-key
+                                           0 0.005
+                                           tlc-interruptible-capf)))
+    ;; todo: handle 'interrupted
     (funcall callback response)
     t)
   )
