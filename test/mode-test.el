@@ -1500,6 +1500,17 @@ int main() {
 
   (re-search-forward "other_function" nil nil 2)
 
-  (tlc-eldoc-function (lambda (string)))
+  (let* ((result nil))
+    (tlc-eldoc-function (lambda (string)
+                          (setq result string)))
+    (assert-equal
+     "function other_function
 
+→ short
+Parameters:
+- int arg
+
+short other_function(int arg)"
+     result)
+    )
   )
