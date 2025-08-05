@@ -603,23 +603,24 @@ as usual."
 ;; -----------------------------------------------------------------------------
 
 (defun tlc-eldoc-function (_callback)
-  (let* ((uri (tlc--buffer-uri))
-         (pos (tlc--pos-to-lsp-pos))
-         (line (nth 0 pos))
-         (character (nth 1 pos))
-         ;; As a simplification, don't have hover requests "in the background".
-         ;; If cursor moves, abort.
-         (response (tlc--request
-                    "textDocument/hover"
-                    (list uri line character)
-                    ;; Use 0ms rust timeout since want to be able to interrupt
-                    ;; as soon as the user moves. Use 0.1s as emacs timeout
-                    ;; because unlike capf, eldoc is not timing critical.
-                    0 0.1 'interruptible)))
-    (tlc--log "eldoc response: %s" response)
-    (unless (eq response 'interrupted)
-      response))
-  )
+  (when tlc-mode
+    (let* ((uri (tlc--buffer-uri))
+           (pos (tlc--pos-to-lsp-pos))
+           (line (nth 0 pos))
+           (character (nth 1 pos))
+           ;; As a simplification, don't have hover requests "in the background".
+           ;; If cursor moves, abort.
+           (response (ignore-errors (tlc--request
+                                     "textDocument/hover"
+                                     (list uri line character)
+                                     ;; Use 0ms rust timeout since want to be able to interrupt
+                                     ;; as soon as the user moves. Use 0.1s as emacs timeout
+                                     ;; because unlike capf, eldoc is not timing critical.
+                                     0 0.1 'interruptible))))
+      (tlc--log "eldoc response: %s" response)
+      (unless (eq response 'interrupted)
+        response))
+    ))
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"
