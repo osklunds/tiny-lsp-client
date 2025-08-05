@@ -228,6 +228,13 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - At stop, sometimes get duplicate didOpen due to mode and server out of sync
 - Improvements of existing code/functionality
       - Higher priority
+            - Improve LISP <-> Rust conversion
+                  - Error handling, continue to throw towards LISP if error encountered
+                  - 1-2 retries to handle capf case
+            - Error cases
+                  - Handle, test and understand error responses from LSP servers better
+                  - Test and understand all cases of =tlc--wait-for-response= better
+            - Keep track of server capabilities
             - log tests
                   - Unit tests if possible
                   - test what happens if =tlc-log-file= is never set
