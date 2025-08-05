@@ -36,6 +36,8 @@
 (setq debug-on-error t)
 
 (fset 'yes-or-no-p 'y-or-n-p)
+;; To avoid prompts if files are changed
+(global-set-key (kbd "C-x C-c") #'kill-emacs)
 
 (customize-set-variable 'make-backup-files nil)
 (customize-set-variable 'auto-save-default nil)
