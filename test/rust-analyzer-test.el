@@ -206,6 +206,7 @@ fn other_function_hej(arg: u32) -> u32 {
               (assert (cl-member exp result :test 'string-equal) exp))
             )))
 
+  ;; todo: sometimes gets stuck here, infinite loop with non-local exit in rust
   (run-until 100 0.1
     (funcall test-fun))
 
