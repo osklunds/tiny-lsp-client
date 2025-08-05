@@ -178,14 +178,19 @@ unsafe extern "C" fn tlc__rust_send_request(
         let request_type = extract_string(env, args[1]);
         let request_args = args[2];
 
-        let request_params = if request_type == "textDocument/definition" {
-            build_text_document_definition(env, request_args, server)
-        } else if request_type == "textDocument/completion" {
-            build_text_document_completion(env, request_args, server)
-        } else if request_type == "textDocument/hover" {
-            build_text_document_hover(env, request_args, server)
-        } else {
-            panic!("Incorrect request type")
+        let request_params = match request_type.as_str() {
+            "textDocument/definition" => {
+                build_text_document_definition(env, request_args, server)
+            }
+            "textDocument/completion" => {
+                build_text_document_completion(env, request_args, server)
+            }
+            "textDocument/hover" => {
+                build_text_document_hover(env, request_args, server)
+            }
+            _ => {
+                panic!("Incorrect request type")
+            }
         };
         server
             .send_request(request_type, request_params)
