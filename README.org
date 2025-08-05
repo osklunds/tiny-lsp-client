@@ -1,7 +1,7 @@
 
 * tiny-lsp-client
 
-=tiny-lsp-client= is an LSP client for Emacs implemented in Rust. I call it tiny because it aims to only support a tiny feature set (as of this commit, find definition and code completion) and because it aims to have a tiny footprint, especially on memory and garbage collection. I created it for fun and because I was curious of how this would turn out. =tiny-lsp-client= has many limitations, such as only supporting stdio LSP servers and not providing that much information in completion candidates. However, it works, and I use it as my daily driver.
+=tiny-lsp-client= is an LSP client for Emacs implemented in Rust. I call it tiny because it aims to only support a tiny feature set and because it aims to have a tiny footprint, especially on memory and garbage collection. I created it for fun and because I was curious of how this would turn out. =tiny-lsp-client= has many limitations, such as only supporting stdio LSP servers and not providing that much information in completion candidates. However, it works, and I use it as my daily driver.
 
 * Usage
 
@@ -13,7 +13,15 @@ Prerequisite: rust and cargo need to be installed.
 2. Navigate to the cloned repo and run =cargo build --release=
 3. =(require 'tiny-lsp-client)=
 
-** Configuration
+** Features and configuration
+
+The table below shows the features =tiny-lsp-client= supports, the corresponding LSP method used to implement it, and the LISP function from =tiny-lsp-client= to use.
+
+| Feature            | LSP method              | =tiny-lsp-client= function  |
+|--------------------+-------------------------+---------------------------|
+| Jump to definition | =textDocument/definition= | =#'tlc-xref-backend=        |
+| Code completion    | =textDocument/completion= | =#'tlc-completion-at-point= |
+| Hover information  | =textDocument/hover=      | =#'tlc-eldoc-function=      |
 
 Add =tlc-mode= to the mode hooks you want, for example:
 
@@ -22,12 +30,16 @@ Add =tlc-mode= to the mode hooks you want, for example:
 (add-hook 'rust-mode-hook 'tlc-mode)
 #+END_SRC
 
-=tlc-mode= itself doesn't provide any features (it only provides document synchronization with the LSP server). This is to be as customizable and unobtrusive as possible. Instead, you must yourself enable the features you want, in the way you want. For example, to enable jump-to-definition (as a =xref= backend) and completion (as a =completion-at-point-functions= function) whenever =tlc-mode= is enabled, do the following:
+=tlc-mode= itself doesn't provide any features (it only provides document synchronization with the LSP server). This is to be as customizable and unobtrusive as possible. Instead, you must yourself enable the features you want, in the way you want.
+
+To enable all currently supported features whenever =tlc-mode= is enabled, you can do the following:
 
 #+BEGIN_SRC emacs-lisp
 (defun my-tlc-features ()
   (add-hook 'xref-backend-functions 'tlc-xref-backend nil t)
-  (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t))
+  (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
+  (eldoc-mode 1)
+  (add-hook 'eldoc-documentation-functions #'tlc-eldoc-function nil t))
 
 (add-hook 'tlc-mode-hook 'my-tlc-features)
 #+END_SRC
@@ -210,7 +222,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - New functionality
       - Higher priority
             - Rename
-            - Hover in eldoc
+            - Signature help in eldoc
       - Lower priority
             - For e.g. =jdtls= and =hls= make it possible to jump to library files
             - Multiple servers per buffer, could be relevant for HTML, CSS and Javascript
