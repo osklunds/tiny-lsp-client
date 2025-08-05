@@ -183,3 +183,11 @@ public class App {
       ))
   )
 
+(tlc-deftest eldoc-test ()
+  (find-src-file-jdtls "App.java")
+
+  (re-search-forward "other" nil nil 2)
+
+  (run-until 10 0.1
+    (assert-equal "void com.mycompany.app.App.other()" (get-eldoc-msg)))
+  )

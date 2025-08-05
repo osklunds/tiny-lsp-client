@@ -206,6 +206,7 @@ fn other_function_hej(arg: u32) -> u32 {
               (assert (cl-member exp result :test 'string-equal) exp))
             )))
 
+  ;; todo: sometimes gets stuck here, infinite loop with non-local exit in rust
   (run-until 100 0.1
     (funcall test-fun))
 
@@ -256,7 +257,7 @@ fn other_function(arg: u32) -> u32 {
 "
    (current-buffer-string))
 
-  (assert-equal 0 (count-in-log-file "\"result\": null"))
+  (assert-equal 0 (number-of-null-results))
 
   ;; When in a comment, null result
   (run-until 100 0.1
@@ -264,7 +265,7 @@ fn other_function(arg: u32) -> u32 {
       (assert-not result "null result")
       ))
 
-  (assert-equal 1 (count-in-log-file "\"result\": null"))
+  (assert-equal 1 (number-of-null-results))
 
   (next-line)
 
@@ -274,4 +275,16 @@ fn other_function(arg: u32) -> u32 {
       (assert result "non null")
       (assert (cl-member "other_function" result :test 'string-equal))
       ))
+  )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "rust_analyzer" "src" "main.rs"))
+
+  (re-search-forward "other_function")
+
+  (run-until 10 0.1
+    (assert-equal "rust_analyzer
+
+fn other_function(arg: u32) -> u32"
+                  (get-eldoc-msg)))
   )

@@ -802,8 +802,9 @@ void last_function() {
   (let ((done nil))
     (while (not done)
       (dotimes (_ 1000)
-        ;; need to call internal functions to be able to test async
-        (tlc--request
+        ;; need to call internal functions to be able to send requests without
+        ;; waiting for a response
+        (tlc--send-request
          "textDocument/definition"
          (list (tlc--buffer-file-name) 0 0)
          (tlc--server-key)))
@@ -835,6 +836,7 @@ void last_function() {
 
   ;; Act
   ;; Trick from https://stackoverflow.com/a/32972563 used
+  ;; unread-command-events AND noninteractive needed
   (let ((unread-command-events (listify-key-sequence (kbd "a")))
         (noninteractive nil)
         (tlc-interruptible-capf t))
@@ -1493,4 +1495,59 @@ int main() {
   (non-interactive-xref-find-definitions)
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 6 (current-column))
+  )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  (assert (= 0 (number-of-hover-requests)))
+
+  (run-until 10 0.1
+    (assert-equal "function other_function
+
+→ short
+Parameters:
+- int arg
+
+short other_function(int arg)" (get-eldoc-msg)))
+
+  (assert (< 0 (number-of-hover-requests)))
+  )
+
+(tlc-deftest eldoc-interrupted-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  (assert-equal 0 (number-of-hover-requests))
+
+  ;; Trick from https://stackoverflow.com/a/32972563 used
+  ;; unread-command-events AND noninteractive needed
+  (let* ((unread-command-events (listify-key-sequence (kbd "a")))
+         (noninteractive nil)
+         (result (tlc-eldoc-function (lambda (_)))))
+    (assert-not result)
+    (assert-equal 1 (number-of-hover-requests))
+    )
+  ;; Run again to see that result can become non-nil too
+  (let* ((noninteractive nil)
+         (result (tlc-eldoc-function (lambda (_)))))
+    (assert result)
+    (assert-equal 2 (number-of-hover-requests))
+    )
+  )
+
+(tlc-deftest lisp-compile-warnings-test ()
+  (find-file (relative-repo-root "tiny-lsp-client.el"))
+
+  (cl-letf* ((found-error nil)
+             ((symbol-function 'display-warning)
+              (lambda (&rest args)
+                (message "error: %s" args)
+                (setq found-error t))
+              ))
+    (emacs-lisp-native-compile-and-load)
+    (assert-not found-error))
   )

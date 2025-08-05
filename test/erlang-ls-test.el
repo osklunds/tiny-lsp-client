@@ -241,3 +241,12 @@ other_function_hej(Arg) ->
     )
   (assert-equal 2 (number-of-completion-requests))
   )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "erlang_ls" "my_module.erl"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  (run-until 10 0.1
+    (assert-equal "## other_function/1" (get-eldoc-msg)))
+  )

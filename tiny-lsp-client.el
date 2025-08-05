@@ -25,6 +25,7 @@
 (require 'xref)
 (require 'project)
 (require 'url-util)
+(require 'eldoc)
 
 (eval-and-compile
   (cl-defmacro tlc--widen (&rest body)
@@ -414,15 +415,14 @@ obvious that they happen."
 
 ;; @credits: Reqeust/response mechanism inspired by
 ;; https://github.com/zbelial/lspce
-(defun tlc--sync-request (method arguments)
-  (when-let ((request-id (tlc--request method arguments (tlc--server-key))))
-    ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but 100ms
-    ;; is still responsive enough to C-g aborts.
-    (tlc--wait-for-response request-id (tlc--server-key) 100 0 nil)))
+(defun tlc--request (method arguments rust-timeout emacs-timeout interruptible)
+  (when-let ((request-id (tlc--send-request method arguments (tlc--server-key))))
+    (tlc--wait-for-response request-id (tlc--server-key)
+                            rust-timeout emacs-timeout interruptible)))
 
 ;; tlc--request might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--server-key) inside, so pass server-key
-(defun tlc--request (method arguments server-key)
+(defun tlc--send-request (method arguments server-key)
   (let ((return (tlc--rust-send-request server-key method arguments)))
     (tlc--log "Send request return: %s" return)
     (cond
@@ -467,7 +467,7 @@ as usual."
         ;; todo: for now, has-result=nil is re-interpreted as params=nil which
         ;; happens to work for textDocument/definition and
         ;; textDocument/completion but it might not be the case in the future
-        ;; for all respones
+        ;; for all responses
         (t                 (when has-result params))))
 
       ;; normal case - no response yet
@@ -521,9 +521,12 @@ as usual."
            (pos (tlc--pos-to-lsp-pos))
            (line (nth 0 pos))
            (character (nth 1 pos))
-           (response (tlc--sync-request
+           ;; Use 100ms as Rust timeout to avoid too fast busy-wait loop, but
+           ;; 100ms is still responsive enough to abort with C-g.
+           (response (tlc--request
                       "textDocument/definition"
-                      (list uri line character))))
+                      (list uri line character)
+                      100 0 nil)))
       (mapcar (lambda (location)
                 (pcase-let ((`(,uri-target ,line-start ,character-start) location))
                   (let* ((line-target (+ line-start 1))
@@ -554,22 +557,19 @@ as usual."
            (line (car pos))
            (character (cadr pos))
            (cached-candidates 'none)
-           (server-key (tlc--server-key))
            (response-fun (lambda ()
                            (if (listp cached-candidates) cached-candidates
-                             (let* ((request-id (tlc--request
-                                                 "textDocument/completion"
-                                                 (list uri line character)
-                                                 server-key))
-                                    (result
-                                     ;; Use 0ms rust timeout since for capf want
-                                     ;; to interrupt as soon as possible. Use
-                                     ;; 0.005s as emacs timeout because if too
-                                     ;; long, it means we wait too long before
-                                     ;; checking again if a response has arrived.
-                                     (tlc--wait-for-response request-id server-key
-                                                             0 0.005
-                                                             tlc-interruptible-capf)))
+                             (let* ((result (tlc--request
+                                             "textDocument/completion"
+                                             (list uri line character)
+                                             ;; Use 0ms rust timeout since for
+                                             ;; capf want to interrupt as soon
+                                             ;; as possible. Use 0.005s as emacs
+                                             ;; timeout because if too long, it
+                                             ;; means we wait too long before
+                                             ;; checking again if a response has
+                                             ;; arrived.
+                                             0 0.005 tlc-interruptible-capf)))
                                (cond
                                 ((eq result 'interrupted)
                                  tlc--last-candidates)
@@ -599,131 +599,27 @@ as usual."
   )
 
 ;; -----------------------------------------------------------------------------
-;; Async cached capf (experimental)
+;; eldoc
 ;; -----------------------------------------------------------------------------
 
-(defvar tlc--async-current-timer nil)
-(defvar tlc--async-reqeust-id nil)
-(defvar tlc--async-cached-candidates nil)
-(defvar tlc--async-cache-start-point nil)
-(defvar tlc--async-cache-symbol nil)
-(defvar tlc--async-root-path nil)
-
-(defun tlc-async-cached-completion-at-point ()
-  "As soon as the user starts typing in a new location, fetch completion
-candidates from the LSP server in the background. Whenever the user is not
-typing, emacs waits for a response. Once a response is received, cache it, and
-re-use whenever the user completes in the same
-area. `tlc-async-cached-completion-at-point' works well when the LSP server is
-slow (1000-2000ms). It works under the assumption that new candidates are the
-same as the once already fetched as long as the prefix of what the user has
-typed stays the same. todo: this can be improved by re-fetching all the time
-and always using the latest result."
-  (let* ((bounds (bounds-of-thing-at-point 'symbol)))
-    (list
-     (or (car bounds) (point))
-     (or (cdr bounds) (point))
-     (lambda (probe pred action)
-       (cond
-        ((eq action 'metadata) (progn
-                                 '(metadata . nil)))
-
-        ((eq (car-safe action) 'boundaries) nil)
-        (t
-         (complete-with-action action (tlc--async-collection-fun) probe pred))))
-     :annotation-function
-     (lambda (_item)
-       (concat "tlc cached async") ;; temporary, to see that completion comes from tlc
-       )
-     )
-    )
-  )
-
-(defun tlc--async-collection-fun ()
-  (interactive)
-  (cond
-   ;; Can use cache
-   ((tlc--async-can-use-cache-p) tlc--async-cached-candidates)
-
-   ;; Refresh already in progress
-   ((integerp tlc--async-reqeust-id) (tlc--async-refresh-cache-1))
-
-   ;; Need to start a new refresh
-   (t (tlc--async-refresh-cache))))
-
-(defun tlc--async-can-use-cache-p ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (start (or (car bounds) (point)))
-         (end (or (cdr bounds) (point)))
-         (current-symbol (buffer-substring-no-properties start end)))
-    (and tlc--async-cache-symbol
-         tlc--async-cache-start-point
-         (string-prefix-p tlc--async-cache-symbol current-symbol)
-         (eq start tlc--async-cache-start-point))))
-
-(defun tlc--async-refresh-cache ()
-  (let* ((bounds (bounds-of-thing-at-point 'symbol))
-         (start (or (car bounds) (point)))
-         (end (or (cdr bounds) (point)))
-         (uri (tlc--buffer-uri))
+(defun tlc-eldoc-function (_callback)
+  (let* ((uri (tlc--buffer-uri))
          (pos (tlc--pos-to-lsp-pos))
-         (line (car pos))
-         (character (cadr pos))
-         (request-id (tlc--sync-request
-                      "textDocument/completion"
-                      (list uri line character))))
-    (when tlc--async-current-timer
-      (cancel-timer tlc--async-current-timer))
-    (setq tlc--async-reqeust-id request-id)
-    (setq tlc--async-cache-start-point start)
-    (setq tlc--async-root-path (tlc--root))
-    (setq tlc--async-cache-symbol (buffer-substring-no-properties start end))
-    (tlc--async-refresh-cache-1)))
-
-(defun tlc--async-refresh-cache-1 ()
-  (let* ((while-result
-          (while-no-input
-            (tlc--wait-for-response tlc--async-reqeust-id tlc--async-root-path
-                                    'todo 'todo 'todo))))
-    (cond
-     ((eq while-result t)
-      (message "Interrupted.")
-      (when tlc--async-current-timer
-        (cancel-timer tlc--async-current-timer))
-      (setq tlc--async-current-timer
-            (run-with-idle-timer
-             0 nil 'tlc--async-refresh-cache-1)))
-     (t
-      (message "Got result")
-      (setq tlc--async-reqeust-id nil)
-      (setq tlc--async-current-timer nil)
-      (setq tlc--async-cached-candidates while-result)
-      ))))
-
-;; One bug: after second char typed in company, interrupted spams, and nothing
-;; happens until something is typed again. Also happens with built-in cap
-;; maybe when deleting text and then spamming cap
-
-;; -----------------------------------------------------------------------------
-;; Company (experimental)
-;; -----------------------------------------------------------------------------
-
-(defun company-async-tlc (command &optional _arg &rest _args)
-  (interactive (list 'interactive))
-  (let* (
-         (capf-info (tlc-completion-at-point))
-         (start (nth 0 capf-info))
-         (end (nth 1 capf-info))
-         (collection-fun (nth 2 capf-info))
-         (probe (buffer-substring-no-properties start end))
-         )
-    (pcase command
-      (`prefix probe)
-      (`candidates
-       (cons :async
-             (lambda (callback)
-               (let* ((candidates (funcall collection-fun probe nil t)))
-                 (funcall callback candidates))))))))
+         (line (nth 0 pos))
+         (character (nth 1 pos))
+         ;; As a simplification, don't have hover requests "in the background".
+         ;; If cursor moves, abort.
+         (response (tlc--request
+                    "textDocument/hover"
+                    (list uri line character)
+                    ;; Use 0ms rust timeout since want to be able to interrupt
+                    ;; as soon as the user moves. Use 0.1s as emacs timeout
+                    ;; because unlike capf, eldoc is not timing critical.
+                    0 0.1 'interruptible)))
+    (tlc--log "eldoc response: %s" response)
+    (unless (eq response 'interrupted)
+      response))
+  )
 
 ;; -----------------------------------------------------------------------------
 ;; The "control room"

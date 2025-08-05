@@ -158,3 +158,30 @@ other = my
         (assert (cl-member exp result :test 'string-equal) exp))
       ))
   )
+
+(tlc-deftest eldoc-test ()
+  (find-file (relative-repo-root "test" "haskell_language_server" "app" "Main.hs"))
+
+  (re-search-forward "myFunction")
+
+  ;; todo: doesn't seem like hls respects plaintext setting
+  (run-until 10 0.1
+    (assert-equal "```haskell
+myFunction :: forall {a}. Num a => a -> a -> a
+```
+
+*Defined at /tiny-lsp-client/test/haskell_language_server/app/Main.hs:6:1*
+
+* * *
+Evidence of constraint `Num (ZonkAny 0)` constructed using:
+* * *
+
+```haskell
+_ :: ZonkAny 0 -> ZonkAny 0 -> ZonkAny 0
+```
+* * *
+
+```haskell
+_ :: forall {a}. Num a => a -> a -> a
+```" (get-eldoc-msg)))
+  )

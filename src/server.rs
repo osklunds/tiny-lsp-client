@@ -511,6 +511,11 @@ impl Server {
                     "definition": {
                         "linkSupport": true
                     }
+                },
+                "hover": {
+                    "contentFormat": [
+                        "plaintext"
+                    ]
                 }
             }
         });
