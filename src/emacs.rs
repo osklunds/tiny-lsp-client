@@ -224,7 +224,18 @@ pub trait IntoLisp {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value>;
 }
 
+// todo: unify IntoLisp for strings
 impl IntoLisp for String {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let make_string = (*env).make_string.unwrap();
+        let c_string = CString::new(self.as_str()).unwrap();
+        let len = c_string.as_bytes().len() as isize;
+        let c_string_ptr = c_string.as_ptr();
+        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+    }
+}
+
+impl IntoLisp for &String {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         let make_string = (*env).make_string.unwrap();
         let c_string = CString::new(self.as_str()).unwrap();
