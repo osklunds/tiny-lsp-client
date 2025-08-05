@@ -234,6 +234,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
             - Error cases
                   - Handle, test and understand error responses from LSP servers better
                   - Test and understand all cases of =tlc--wait-for-response= better
+                  - Test =Untyped= and unsupported respones. Check log file.
             - Keep track of server capabilities
             - log tests
                   - Unit tests if possible
