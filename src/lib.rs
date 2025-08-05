@@ -113,25 +113,25 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
-    let mut server_info_list = Vec::new();
+    handle_none(env, || {
+        let mut server_info_list = Vec::new();
 
-    servers::with_servers(|servers| {
-        let mut servers: Vec<_> = servers.iter().collect();
-        servers.sort_by_key(|(&ref server_key, _server)| server_key);
+        servers::with_servers(|servers| {
+            let mut servers: Vec<_> = servers.iter().collect();
+            servers.sort_by_key(|(&ref server_key, _server)| server_key);
 
-        for (server_key, server) in servers.iter() {
-            let info = call(
-                env,
-                "list",
-                vec![
-                    make_string(env, &server_key.root_path),
-                    make_string(env, &server_key.server_cmd),
-                    make_integer(env, server.get_server_process_id() as i64),
-                ],
-            );
-            server_info_list.push(info);
-        }
-        call(env, "list", server_info_list)
+            for (server_key, server) in servers.iter() {
+                let info = (
+                    //todo: dont' clone
+                    server_key.root_path.clone(),
+                    server_key.server_cmd.clone(),
+                    server.get_server_process_id() as i64,
+                );
+                server_info_list.push(info);
+            }
+        });
+
+        server_info_list
     })
 }
 

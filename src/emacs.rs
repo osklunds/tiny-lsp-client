@@ -161,3 +161,132 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
         }
     }
 }
+
+pub unsafe fn handle_none<T: IntoLisp, F: FnMut() -> T>(
+    env: *mut emacs_env,
+    mut func: F,
+) -> emacs_value {
+    let value = func();
+    if let Some(value) = value.into_lisp(env) {
+        value
+    } else {
+        todo!()
+    }
+}
+
+unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
+    env: *mut emacs_env,
+    mut func: F,
+) -> Option<R> {
+    let result = func();
+    let status = (*env).non_local_exit_check.unwrap()(env);
+    if status == emacs_funcall_exit_emacs_funcall_exit_return {
+        Some(result)
+    } else {
+        // logger can only be called once the log file has been initialized,
+        // which is not the case in emacs_module_init for example. But for
+        // now, gamble that no non-local exists until log file has been
+        // created.
+        // logger::log_rust_debug!("non local exit: {}", status);
+        None
+    }
+}
+
+pub unsafe fn intern_new(
+    env: *mut emacs_env,
+    symbol: &str,
+) -> Option<emacs_value> {
+    let symbol = CString::new(symbol).unwrap();
+    handle_non_local_exit_new(env, || {
+        (*env).intern.unwrap()(env, symbol.as_ptr())
+    })
+}
+
+pub unsafe fn call_new<F: AsRef<str>>(
+    env: *mut emacs_env,
+    func: F,
+    mut args: Vec<emacs_value>,
+) -> Option<emacs_value> {
+    let funcall = (*env).funcall.unwrap();
+    handle_non_local_exit_new(env, || {
+        funcall(
+            env,
+            intern(env, func.as_ref()),
+            args.len() as isize,
+            args.as_mut_ptr(),
+        )
+    })
+}
+
+pub trait IntoLisp {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value>;
+}
+
+impl IntoLisp for String {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let make_string = (*env).make_string.unwrap();
+        let c_string = CString::new(self.as_str()).unwrap();
+        let len = c_string.as_bytes().len() as isize;
+        let c_string_ptr = c_string.as_ptr();
+        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+    }
+}
+
+impl IntoLisp for &str {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let make_string = (*env).make_string.unwrap();
+        let c_string = CString::new(self).unwrap();
+        let len = c_string.as_bytes().len() as isize;
+        let c_string_ptr = c_string.as_ptr();
+        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+    }
+}
+
+impl IntoLisp for i64 {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        handle_non_local_exit_new(env, || {
+            (*env).make_integer.unwrap()(env, self)
+        })
+    }
+}
+
+impl IntoLisp for bool {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        if self {
+            intern_new(env, "t")
+        } else {
+            intern_new(env, "nil")
+        }
+    }
+}
+
+impl<T: IntoLisp> IntoLisp for Vec<T> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let len = self.len();
+        let vec_of_lisp_objects: Vec<_> = self
+            .into_iter()
+            .map_while(|element| element.into_lisp(env))
+            .collect();
+
+        if vec_of_lisp_objects.len() == len {
+            call_new(env, "list", vec_of_lisp_objects)
+        } else {
+            None
+        }
+    }
+}
+
+impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let (a,b,c) = self;
+
+        if let Some(a) = a.into_lisp(env) {
+            if let Some(b) = b.into_lisp(env) {
+                if let Some(c) = c.into_lisp(env) {
+                    return call_new(env, "list", vec![a,b,c]);
+                }
+            }
+        }
+        None
+    }
+}
