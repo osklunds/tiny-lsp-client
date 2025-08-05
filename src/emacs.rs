@@ -218,6 +218,8 @@ pub unsafe fn call_new<F: AsRef<str>>(
     })
 }
 
+// @credits: IntoLisp/FromLisp inspired by
+// https://github.com/ubolonton/emacs-module-rs
 pub trait IntoLisp {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value>;
 }
