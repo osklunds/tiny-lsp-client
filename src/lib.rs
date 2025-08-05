@@ -113,6 +113,7 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_all_server_info");
+
     servers::with_servers(|servers| {
         handle_none(env, || {
             let mut server_info_list = Vec::new();
@@ -140,25 +141,27 @@ unsafe extern "C" fn tlc__rust_start_server(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_start_server");
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let server_key = get_server_key(env, &args_vec);
 
     servers::with_servers(|servers| {
-        if servers.contains_key(&server_key) {
-            return intern(env, "already-started");
-        } else {
-            logger::log_rust_debug!("Need to start new");
-        }
-        match Server::new(&server_key.root_path, &server_key.server_cmd) {
-            Some(mut server) => match server.initialize() {
-                Some(()) => {
-                    servers.insert(server_key, server);
-                    intern(env, "started")
-                }
-                None => intern(env, "start-failed"),
-            },
-            None => intern(env, "start-failed"),
-        }
+        handle_none(env, || {
+            let args_vec = args_pointer_to_args_vec(nargs, args);
+            let server_key = get_server_key(env, &args_vec);
+            if servers.contains_key(&server_key) {
+                return StartResult::AlreadyStarted;
+            } else {
+                logger::log_rust_debug!("Need to start new");
+            }
+            match Server::new(&server_key.root_path, &server_key.server_cmd) {
+                Some(mut server) => match server.initialize() {
+                    Some(()) => {
+                        servers.insert(server_key, server);
+                        StartResult::Started
+                    }
+                    None => StartResult::StartFailed,
+                },
+                None => StartResult::StartFailed,
+            }
+        })
     })
 }
 
@@ -676,5 +679,22 @@ unsafe fn get_server_key(
     ServerKey {
         root_path,
         server_cmd,
+    }
+}
+
+enum StartResult {
+    AlreadyStarted,
+    Started,
+    StartFailed,
+}
+
+impl IntoLisp for StartResult {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let string = match self {
+            StartResult::AlreadyStarted => "already-started",
+            StartResult::Started => "started",
+            StartResult::StartFailed => "start-failed",
+        };
+        intern_new(env, string)
     }
 }
