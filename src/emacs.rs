@@ -106,6 +106,18 @@ pub unsafe fn call<F: AsRef<str>>(
     })
 }
 
+pub unsafe fn call1<F: AsRef<str>, T: IntoLisp>(
+    env: *mut emacs_env,
+    function_name: F,
+    arg1: T,
+) -> Option<emacs_value> {
+    if let Some(arg1) = arg1.into_lisp(env) {
+        call_new(env, function_name, vec![arg1])
+    } else {
+        None
+    }
+}
+
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
     let symbol = CString::new(symbol).unwrap();
     handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))

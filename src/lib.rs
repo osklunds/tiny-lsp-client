@@ -100,7 +100,11 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(env, 1, 1, tlc__rust_stop_server, "tlc--rust-stop-server");
 
-    call(env, "provide", vec![intern(env, "tlc-rust")]);
+    // todo: emit warning if don't unwrap
+    // todo: own env wrapper that returns None if already an error
+    // todo: Improve RustCallResult. Maybe symbol should be something
+    // separate.
+    call1(env, "provide", RustCallResult::<u32>::Symbol("tlc-rust"));
 
     0
 }
