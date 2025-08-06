@@ -50,16 +50,6 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
 }
 
-unsafe fn make_string<S: AsRef<str>>(
-    env: *mut emacs_env,
-    string: S,
-) -> emacs_value {
-    let make_string = (*env).make_string.unwrap();
-    let c_string = CString::new(string.as_ref()).unwrap();
-    let len = c_string.as_bytes().len() as isize;
-    handle_non_local_exit(env, || make_string(env, c_string.as_ptr(), len))
-}
-
 pub unsafe fn extract_integer(
     env: *mut emacs_env,
     integer: emacs_value,
@@ -67,20 +57,8 @@ pub unsafe fn extract_integer(
     handle_non_local_exit(env, || (*env).extract_integer.unwrap()(env, integer))
 }
 
-unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
-    handle_non_local_exit(env, || (*env).make_integer.unwrap()(env, integer))
-}
-
 pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
     extract_string(env, call(env, "symbol-name", vec![value])) != "nil"
-}
-
-unsafe fn make_bool(env: *mut emacs_env, value: bool) -> emacs_value {
-    if value {
-        intern(env, "t")
-    } else {
-        intern(env, "nil")
-    }
 }
 
 pub unsafe fn export_function(
@@ -138,7 +116,8 @@ pub unsafe fn nth(
     index: i64,
     list: emacs_value,
 ) -> emacs_value {
-    call(env, "nth", vec![make_integer(env, index), list])
+    // todo: don't unwrap
+    call(env, "nth", vec![index.into_lisp(env).unwrap(), list])
 }
 
 unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
