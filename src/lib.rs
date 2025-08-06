@@ -104,7 +104,7 @@ pub unsafe extern "C" fn emacs_module_init(
     // todo: own env wrapper that returns None if already an error
     // todo: Improve RustCallResult. Maybe symbol should be something
     // separate.
-    call1(env, "provide", RustCallResult::<u32>::Symbol("tlc-rust"));
+    call1(env, "provide", symbol("tlc-rust"));
 
     0
 }
@@ -151,7 +151,7 @@ unsafe extern "C" fn tlc__rust_start_server(
             let args_vec = args_pointer_to_args_vec(nargs, args);
             let server_key = get_server_key(env, &args_vec);
             if servers.contains_key(&server_key) {
-                return RustCallResult::<i64>::Symbol("already-started");
+                return symbol("already-started");
             } else {
                 logger::log_rust_debug!("Need to start new");
             }
@@ -159,11 +159,11 @@ unsafe extern "C" fn tlc__rust_start_server(
                 Some(mut server) => match server.initialize() {
                     Some(()) => {
                         servers.insert(server_key, server);
-                        RustCallResult::Symbol("started")
+                        symbol("started")
                     }
-                    None => RustCallResult::Symbol("start-failed"),
+                    None => symbol("start-failed"),
                 },
-                None => RustCallResult::Symbol("start-failed"),
+                None => symbol("start-failed"),
             }
         })
     })
@@ -288,7 +288,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
         };
         server
             .send_notification(request_type, notification_params)
-            .map(|_| RustCallResult::<u32>::Symbol("ok"))
+            .map(|_| symbol("ok"))
     })
 }
 
@@ -580,7 +580,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
         // could consider removing from servers, but in case the stopping fails
         // it's good that the server remains in the list
         server.stop_server();
-        Some(RustCallResult::<u32>::Symbol("ok"))
+        Some(symbol("ok"))
     })
 }
 

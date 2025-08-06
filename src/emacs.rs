@@ -215,6 +215,18 @@ pub trait IntoLisp {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value>;
 }
 
+pub struct Symbol(pub String);
+
+pub fn symbol<S: ToString>(s: S) -> Symbol {
+    Symbol(s.to_string())
+}
+
+impl IntoLisp for Symbol {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        intern_new(env, &self.0)
+    }
+}
+
 // todo: unify IntoLisp for strings
 impl IntoLisp for String {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
