@@ -50,7 +50,7 @@ pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
     str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
 }
 
-pub unsafe fn make_string<S: AsRef<str>>(
+unsafe fn make_string<S: AsRef<str>>(
     env: *mut emacs_env,
     string: S,
 ) -> emacs_value {
@@ -67,7 +67,7 @@ pub unsafe fn extract_integer(
     handle_non_local_exit(env, || (*env).extract_integer.unwrap()(env, integer))
 }
 
-pub unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
+unsafe fn make_integer(env: *mut emacs_env, integer: i64) -> emacs_value {
     handle_non_local_exit(env, || (*env).make_integer.unwrap()(env, integer))
 }
 
@@ -75,7 +75,7 @@ pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
     extract_string(env, call(env, "symbol-name", vec![value])) != "nil"
 }
 
-pub unsafe fn make_bool(env: *mut emacs_env, value: bool) -> emacs_value {
+unsafe fn make_bool(env: *mut emacs_env, value: bool) -> emacs_value {
     if value {
         intern(env, "t")
     } else {

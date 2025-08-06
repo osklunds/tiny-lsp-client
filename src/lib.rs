@@ -594,10 +594,9 @@ unsafe fn log_args<S: AsRef<str>>(
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
-        let format_string = make_string(
-            env,
-            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs),
-        );
+        let format_string = format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
+        // todo: don't unwrap
+        let format_string = format_string.into_lisp(env).unwrap();
         let formatted = call(env, "format", vec![format_string, list]);
         let formatted = extract_string(env, formatted);
         logger::log_rust_debug!("{}", formatted);
