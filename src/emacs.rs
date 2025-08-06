@@ -255,6 +255,22 @@ impl IntoLisp for &str {
     }
 }
 
+impl IntoLisp for usize {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        handle_non_local_exit_new(env, || {
+            (*env).make_integer.unwrap()(env, self as i64)
+        })
+    }
+}
+
+impl IntoLisp for u32 {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        handle_non_local_exit_new(env, || {
+            (*env).make_integer.unwrap()(env, self as i64)
+        })
+    }
+}
+
 impl IntoLisp for i64 {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         handle_non_local_exit_new(env, || {
@@ -291,12 +307,31 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
 
 impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        let (a,b,c) = self;
+        let (a, b, c) = self;
 
         if let Some(a) = a.into_lisp(env) {
             if let Some(b) = b.into_lisp(env) {
                 if let Some(c) = c.into_lisp(env) {
-                    return call_new(env, "list", vec![a,b,c]);
+                    return call_new(env, "list", vec![a, b, c]);
+                }
+            }
+        }
+        None
+    }
+}
+
+impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
+    for (A, B, C, D)
+{
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let (a, b, c, d) = self;
+
+        if let Some(a) = a.into_lisp(env) {
+            if let Some(b) = b.into_lisp(env) {
+                if let Some(c) = c.into_lisp(env) {
+                    if let Some(d) = d.into_lisp(env) {
+                        return call_new(env, "list", vec![a, b, c, d]);
+                    }
                 }
             }
         }

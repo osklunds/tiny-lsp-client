@@ -147,7 +147,7 @@ unsafe extern "C" fn tlc__rust_start_server(
             let args_vec = args_pointer_to_args_vec(nargs, args);
             let server_key = get_server_key(env, &args_vec);
             if servers.contains_key(&server_key) {
-                return StartResult::AlreadyStarted;
+                return RustCallResult::<i64>::Symbol("already-started");
             } else {
                 logger::log_rust_debug!("Need to start new");
             }
@@ -155,11 +155,11 @@ unsafe extern "C" fn tlc__rust_start_server(
                 Some(mut server) => match server.initialize() {
                     Some(()) => {
                         servers.insert(server_key, server);
-                        StartResult::Started
+                        RustCallResult::Symbol("started")
                     }
-                    None => StartResult::StartFailed,
+                    None => RustCallResult::Symbol("start-failed"),
                 },
-                None => StartResult::StartFailed,
+                None => RustCallResult::Symbol("start-failed"),
             }
         })
     })
@@ -192,9 +192,7 @@ unsafe extern "C" fn tlc__rust_send_request(
                 panic!("Incorrect request type")
             }
         };
-        server
-            .send_request(request_type, request_params)
-            .map(|id| make_integer(env, id as i64))
+        server.send_request(request_type, request_params)
     })
 }
 
@@ -286,7 +284,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
         };
         server
             .send_notification(request_type, notification_params)
-            .map(|_| intern(env, "ok"))
+            .map(|_| RustCallResult::<u32>::Symbol("ok"))
     })
 }
 
@@ -405,8 +403,10 @@ unsafe extern "C" fn tlc__rust_recv_response(
         };
         if let Some(recv_result) = server.try_recv_response(timeout) {
             let result = match recv_result {
-                Some(response) => handle_response(env, response),
-                None => intern(env, "no-response"),
+                Some(response) => {
+                    RustCallResult::Any(handle_response::<u32>(response))
+                }
+                None => RustCallResult::Symbol("no-response"),
             };
             Some(result)
         } else {
@@ -415,65 +415,60 @@ unsafe extern "C" fn tlc__rust_recv_response(
     })
 }
 
-unsafe fn handle_response(
-    env: *mut emacs_env,
+unsafe fn handle_response<A: IntoLisp>(
     response: Response,
-) -> emacs_value {
-    let id = make_integer(env, response.id as i64);
+) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
     if let Some(result) = response.result {
         if let Result::Untyped(_) = result {
             logger::log_rust_debug!(
                 "Non-supported response received: {:?}",
                 result
             );
-            intern(env, "error-response")
+            RustCallResult::Symbol("error-response")
         } else {
             let return_value = match result {
                 Result::TextDocumentDefinitionResult(definition_result) => {
-                    handle_definition_response(env, definition_result)
+                    HandleResponse::DefinitionResponse(
+                        handle_definition_response(definition_result),
+                    )
                 }
                 Result::TextDocumentCompletionResult(completion_result) => {
-                    handle_completion_response(env, completion_result)
+                    HandleResponse::CompletionResponse(
+                        handle_completion_response(completion_result),
+                    )
                 }
                 Result::TextDocumentHoverResult(hover_result) => {
-                    handle_hover_response(env, hover_result)
+                    HandleResponse::HoverResponse(handle_hover_response(
+                        hover_result,
+                    ))
                 }
                 _ => panic!("case already handled"),
             };
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, true),
-                    return_value,
-                ],
-            )
+            RustCallResult::Any((
+                RustCallResult::<A>::Symbol("response"),
+                response.id,
+                true,
+                return_value,
+            ))
         }
     } else {
         if response.error.is_some() {
-            intern(env, "error-response")
+            RustCallResult::Symbol("error-response")
         } else {
             // Happens e.g. when rust-analyzer doesn't send any completion result
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, false),
-                    make_bool(env, false),
-                ],
-            )
+            RustCallResult::Any((
+                RustCallResult::Symbol("response"),
+                response.id,
+                false,
+                HandleResponse::NullResponse,
+            ))
         }
     }
 }
 
 unsafe fn handle_definition_response(
-    env: *mut emacs_env,
     response: DefinitionResult,
-) -> emacs_value {
+) -> Vec<(String, usize, usize)> {
     let location_list = match response {
         DefinitionResult::LocationList(location_list) => location_list,
         DefinitionResult::LocationLinks(location_link_list) => {
@@ -489,24 +484,17 @@ unsafe fn handle_definition_response(
         let uri = &location.uri;
         let range = &location.range;
 
-        let lisp_location = call(
-            env,
-            "list",
-            vec![
-                make_string(env, uri),
-                make_integer(env, range.start.line as i64),
-                make_integer(env, range.start.character as i64),
-            ],
-        );
+        // todo: don't clone
+        let lisp_location =
+            (uri.clone(), range.start.line, range.start.character);
         lisp_location_list_vec.push(lisp_location);
     }
-    call(env, "list", lisp_location_list_vec)
+    lisp_location_list_vec
 }
 
 unsafe fn handle_completion_response(
-    env: *mut emacs_env,
     response: CompletionResult,
-) -> emacs_value {
+) -> Vec<String> {
     let mut completion_list_vec = Vec::new();
 
     let items = match response {
@@ -515,18 +503,15 @@ unsafe fn handle_completion_response(
     };
 
     for item in items {
-        completion_list_vec
-            .push(make_string(env, str::trim_start(item.get_text())));
+        // todo: don't clone
+        completion_list_vec.push(str::trim_start(item.get_text()).to_string());
     }
 
-    call(env, "list", completion_list_vec)
+    completion_list_vec
 }
 
-unsafe fn handle_hover_response(
-    env: *mut emacs_env,
-    response: HoverResult,
-) -> emacs_value {
-    make_string(env, response.contents.value)
+unsafe fn handle_hover_response(response: HoverResult) -> String {
+    response.contents.value
 }
 
 #[allow(non_snake_case)]
@@ -587,11 +572,11 @@ unsafe extern "C" fn tlc__rust_stop_server(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     log_args(env, nargs, args, "tlc__rust_stop_server");
-    handle_call(env, nargs, args, |env, _args, server| {
+    handle_call(env, nargs, args, |_env, _args, server| {
         // could consider removing from servers, but in case the stopping fails
         // it's good that the server remains in the list
         server.stop_server();
-        Some(intern(env, "ok"))
+        Some(RustCallResult::<u32>::Symbol("ok"))
     })
 }
 
@@ -620,32 +605,31 @@ unsafe fn log_args<S: AsRef<str>>(
 }
 
 unsafe fn handle_call<
-    F: FnOnce(
-        *mut emacs_env,
-        Vec<emacs_value>,
-        &mut Server,
-    ) -> Option<emacs_value>,
+    T: IntoLisp,
+    F: Copy + FnOnce(*mut emacs_env, Vec<emacs_value>, &mut Server) -> Option<T>,
 >(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
     f: F,
 ) -> emacs_value {
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let server_key = get_server_key(env, &args_vec);
     servers::with_servers(|servers| {
-        if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
-            if let Some(result) = f(env, args_vec, server) {
-                result
+        handle_none(env, || {
+            let args_vec = args_pointer_to_args_vec(nargs, args);
+            let server_key = get_server_key(env, &args_vec);
+            if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
+                if let Some(result) = f(env, args_vec, server) {
+                    RustCallResult::Any(result)
+                } else {
+                    // This means it failed during handling this call
+                    servers.remove(&server_key);
+                    RustCallResult::Symbol("no-server")
+                }
             } else {
-                // This means it failed during handling this call
-                servers.remove(&server_key);
-                intern(env, "no-server")
+                // This means the server wasn't existing before this call
+                RustCallResult::Symbol("no-server")
             }
-        } else {
-            // This means the server wasn't existing before this call
-            intern(env, "no-server")
-        }
+        })
     })
 }
 
@@ -682,19 +666,34 @@ unsafe fn get_server_key(
     }
 }
 
-enum StartResult {
-    AlreadyStarted,
-    Started,
-    StartFailed,
+enum RustCallResult<A: IntoLisp> {
+    Symbol(&'static str),
+    Any(A),
 }
 
-impl IntoLisp for StartResult {
+impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        let string = match self {
-            StartResult::AlreadyStarted => "already-started",
-            StartResult::Started => "started",
-            StartResult::StartFailed => "start-failed",
-        };
-        intern_new(env, string)
+        match self {
+            Self::Symbol(string) => intern_new(env, string),
+            Self::Any(value) => value.into_lisp(env),
+        }
+    }
+}
+
+enum HandleResponse {
+    DefinitionResponse(Vec<(String, usize, usize)>),
+    CompletionResponse(Vec<String>),
+    HoverResponse(String),
+    NullResponse,
+}
+
+impl IntoLisp for HandleResponse {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        match self {
+            Self::DefinitionResponse(a) => a.into_lisp(env),
+            Self::CompletionResponse(a) => a.into_lisp(env),
+            Self::HoverResponse(a) => a.into_lisp(env),
+            Self::NullResponse => false.into_lisp(env),
+        }
     }
 }
