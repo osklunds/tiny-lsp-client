@@ -674,6 +674,7 @@ enum RustCallResult<A: IntoLisp> {
     Any(A),
 }
 
+// Add derive, but perhaps these should be removed
 impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         match self {
