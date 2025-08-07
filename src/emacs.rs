@@ -57,7 +57,7 @@ pub unsafe fn export_function(
     call(env, "fset", vec![intern(env, symbol), emacs_fun]);
 }
 
-pub unsafe fn call<F: AsRef<str>>(
+unsafe fn call<F: AsRef<str>>(
     env: *mut emacs_env,
     func: F,
     mut args: Vec<emacs_value>,

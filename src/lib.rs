@@ -277,7 +277,8 @@ unsafe extern "C" fn tlc__rust_send_notification(
             build_text_document_did_change(uri, content_changes, server)
         } else if request_type == "textDocument/didClose" {
             // todo: 1-tuple instead
-            let uris: Vec<String> = FromLisp::from_lisp(env, request_args).unwrap();
+            let uris: Vec<String> =
+                FromLisp::from_lisp(env, request_args).unwrap();
             build_text_document_did_close(uris[0].clone())
         } else {
             panic!("Incorrect request type")
@@ -568,13 +569,14 @@ unsafe fn log_args<S: AsRef<str>>(
     // optimization without macros
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
-        let list = call(env, "list", args_list);
+        let list = call_new(env, "list", args_list).unwrap();
         let format_string =
             format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
         // todo: don't unwrap
         let format_string = format_string.into_lisp(env).unwrap();
-        let formatted = call(env, "format", vec![format_string, list]);
-        let formatted = String::from_lisp(env, formatted).unwrap();
+        let formatted: String =
+            call_new_from_lisp(env, "format", vec![format_string, list])
+                .unwrap();
         logger::log_rust_debug!("{}", formatted);
     }
 }
