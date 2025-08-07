@@ -27,6 +27,7 @@ use crate::logger;
 use std::ffi::CString;
 use std::ptr;
 use std::str;
+use std::sync::atomic::Ordering;
 
 // Module initialization
 
@@ -63,7 +64,7 @@ pub unsafe fn export_function(
 // Calling emacs functions
 
 // To be used when calling with lisp arguments and need lisp return value
-pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
+unsafe fn call_lisp_lisp<F: AsRef<str>>(
     env: *mut emacs_env,
     func: F,
     mut args: Vec<emacs_value>,
@@ -123,6 +124,44 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
             (*env).non_local_exit_clear.unwrap()(env);
         }
     }
+}
+
+// Function API
+
+pub unsafe fn log_args<S: AsRef<str>>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    function_name: S,
+) -> Option<()> {
+    // logger::log_rust_debug! already knows whether to log or not. But check
+    // anyway as an optimization so that lots of string and terms aren't
+    // created unecessarily.
+    // Idea: pass lambda that is lazily called. So can do a general
+    // optimization without macros
+    if logger::is_log_enabled!(LOG_RUST_DEBUG) {
+        let args_list = args_pointer_to_args_vec(nargs, args);
+        let list = call_lisp_lisp(env, "list", args_list)?;
+        let format_string =
+            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
+        let format_string = format_string.into_lisp(env)?;
+        let formatted: String =
+            call_lisp_rust(env, "format", vec![format_string, list])?;
+        logger::log_rust_debug!("{}", formatted);
+    }
+    // todo: check return value
+    Some(())
+}
+
+pub unsafe fn args_pointer_to_args_vec(
+    nargs: isize,
+    args: *mut emacs_value,
+) -> Vec<emacs_value> {
+    let mut args_list = Vec::new();
+    for i in 0..nargs {
+        args_list.push(*args.offset(i));
+    }
+    args_list
 }
 
 pub unsafe fn handle_none<T: IntoLisp, F: FnMut() -> T>(
