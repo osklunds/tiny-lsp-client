@@ -371,11 +371,11 @@ unsafe extern "C" fn tlc__rust_recv_response(
     log_args(env, nargs, args, "tlc__rust_recv_response");
 
     handle_call(env, nargs, args, |env, args, server| {
-        let timeout = extract_integer(env, args[1]);
+        let timeout: u64 = FromLisp::from_lisp(env, args[1]).unwrap();
         let timeout = if timeout == 0 {
             None
         } else {
-            Some(Duration::from_millis(timeout as u64))
+            Some(Duration::from_millis(timeout))
         };
         if let Some(recv_result) = server.try_recv_response(timeout) {
             let result = match recv_result {
@@ -499,24 +499,23 @@ unsafe extern "C" fn tlc__rust_set_option(
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
-    let symbol = *args.offset(0);
-    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
+    let symbol: Symbol = FromLisp::from_lisp(env, *args.offset(0)).unwrap();
     let value = *args.offset(1);
 
-    if symbol == "tlc-log-file" {
-        let path = extract_string(env, value);
+    if symbol.0 == "tlc-log-file" {
+        let path = String::from_lisp(env, value).unwrap();
         logger::set_log_file_name(path);
     } else {
-        let value = extract_bool(env, value);
-        if symbol == "tlc-log-io" {
+        let value = bool::from_lisp(env, value).unwrap();
+        if symbol.0 == "tlc-log-io" {
             logger::LOG_IO.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-stderr" {
+        } else if symbol.0 == "tlc-log-stderr" {
             logger::LOG_STDERR.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-rust-debug" {
+        } else if symbol.0 == "tlc-log-rust-debug" {
             logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-to-stdio" {
+        } else if symbol.0 == "tlc-log-to-stdio" {
             logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-stop-server-on-stderr" {
+        } else if symbol.0 == "tlc-stop-server-on-stderr" {
             server::STOP_SERVER_ON_STDERR.store(value, Ordering::Relaxed)
         } else {
             panic!("Incorrect log symbol")
@@ -534,7 +533,7 @@ unsafe extern "C" fn tlc__rust_log_emacs_debug(
     _data: *mut raw::c_void,
 ) -> emacs_value {
     let msg = *args.offset(0);
-    let msg = extract_string(env, msg);
+    let msg = String::from_lisp(env, msg).unwrap();
     logger::log_emacs_debug!("{}", msg);
 
     intern(env, "nil")
@@ -575,7 +574,7 @@ unsafe fn log_args<S: AsRef<str>>(
         // todo: don't unwrap
         let format_string = format_string.into_lisp(env).unwrap();
         let formatted = call(env, "format", vec![format_string, list]);
-        let formatted = extract_string(env, formatted);
+        let formatted = String::from_lisp(env, formatted).unwrap();
         logger::log_rust_debug!("{}", formatted);
     }
 }
@@ -625,17 +624,7 @@ unsafe fn get_server_key(
     args: &[emacs_value],
 ) -> ServerKey {
     let server_key = args[0];
-    // Asserts because if not fulfilled, endless loop is entered, which is
-    // harder to debug. The loop happens due to non-local exit handling in
-    // emacs.rs.
-    // Todo: Could consider to have limited retries in that loop.
-    assert!(extract_bool(env, call(env, "listp", vec![server_key])));
-    assert_eq!(
-        extract_integer(env, call(env, "length", vec![server_key])),
-        2
-    );
-    let root_path = extract_string(env, nth(env, 0, server_key));
-    let server_cmd = extract_string(env, nth(env, 1, server_key));
+    let (root_path, server_cmd) = FromLisp::from_lisp(env, server_key).unwrap();
     ServerKey {
         root_path,
         server_cmd,

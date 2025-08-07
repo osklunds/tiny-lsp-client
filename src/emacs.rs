@@ -240,6 +240,19 @@ impl IntoLisp for Symbol {
     }
 }
 
+impl FromLisp for Symbol {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<Symbol> {
+        if let Some(string) = call_new_from_lisp(env, "symbol-name", vec![value]) {
+            Some(Symbol(string))
+        } else {
+            None
+        }
+    }
+}
+
 // todo: unify IntoLisp for strings
 impl IntoLisp for String {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
@@ -435,6 +448,17 @@ impl FromLisp for i64 {
     ) -> Option<i64> {
         handle_non_local_exit_new(env, || {
             (*env).extract_integer.unwrap()(env, value)
+        })
+    }
+}
+
+impl FromLisp for u64 {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<u64> {
+        handle_non_local_exit_new(env, || {
+            (*env).extract_integer.unwrap()(env, value) as u64
         })
     }
 }
