@@ -561,7 +561,7 @@ unsafe fn log_args<S: AsRef<str>>(
     nargs: isize,
     args: *mut emacs_value,
     function_name: S,
-) {
+) -> Option<()> {
     // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
@@ -569,16 +569,16 @@ unsafe fn log_args<S: AsRef<str>>(
     // optimization without macros
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
-        let list = call_new(env, "list", args_list).unwrap();
+        let list = call_new(env, "list", args_list)?;
         let format_string =
             format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
-        // todo: don't unwrap
-        let format_string = format_string.into_lisp(env).unwrap();
+        let format_string = format_string.into_lisp(env)?;
         let formatted: String =
-            call_new_from_lisp(env, "format", vec![format_string, list])
-                .unwrap();
+            call_new_from_lisp(env, "format", vec![format_string, list])?;
         logger::log_rust_debug!("{}", formatted);
     }
+    // todo: check return value
+    Some(())
 }
 
 unsafe fn handle_call<
