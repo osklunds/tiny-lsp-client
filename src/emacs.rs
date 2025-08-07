@@ -118,6 +118,19 @@ pub unsafe fn call1<F: AsRef<str>, T: IntoLisp>(
     }
 }
 
+// todo: consider call1, call2 etc to avoid vec as argument
+pub unsafe fn call_new_from_lisp<F: AsRef<str>, T: FromLisp>(
+    env: *mut emacs_env,
+    func: F,
+    args: Vec<emacs_value>,
+) -> Option<T> {
+    if let Some(ret) = call_new(env, func, args) {
+        T::from_lisp(env, ret)
+    } else {
+        None
+    }
+}
+
 pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
     let symbol = CString::new(symbol).unwrap();
     handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
@@ -266,6 +279,14 @@ impl IntoLisp for usize {
     }
 }
 
+impl IntoLisp for i32 {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        handle_non_local_exit_new(env, || {
+            (*env).make_integer.unwrap()(env, self as i64)
+        })
+    }
+}
+
 impl IntoLisp for u32 {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         handle_non_local_exit_new(env, || {
@@ -338,6 +359,122 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
                 }
             }
         }
+        None
+    }
+}
+
+pub trait FromLisp {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+impl FromLisp for String {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        val: emacs_value,
+    ) -> Option<String> {
+        let copy_string_contents = (*env).copy_string_contents.unwrap();
+
+        // First find the length
+        let mut len: isize = 0;
+        // todo: use ?
+        if let Some(result_find_length) = handle_non_local_exit_new(env, || {
+            copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
+        }) {
+            assert!(result_find_length);
+            assert!(len > 0);
+
+            // Then get the actual string
+            let mut buf = vec![0; len as usize];
+            if let Some(result_get_string) =
+                handle_non_local_exit_new(env, || {
+                    copy_string_contents(
+                        env,
+                        val,
+                        buf.as_mut_ptr() as *mut i8,
+                        &mut len,
+                    )
+                })
+            {
+                assert!(result_get_string);
+                len -= 1; // remove null-terminator
+                Some(str::from_utf8(&buf[0..len as usize]).unwrap().to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl FromLisp for bool {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<bool> {
+        if let Some(string) =
+            call_new_from_lisp::<&str, String>(env, "symbol-name", vec![value])
+        {
+            Some(string != "nil")
+        } else {
+            None
+        }
+    }
+}
+
+impl FromLisp for i64 {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<i64> {
+        handle_non_local_exit_new(env, || {
+            (*env).extract_integer.unwrap()(env, value)
+        })
+    }
+}
+
+impl<A: FromLisp + std::fmt::Debug, B: FromLisp, C: FromLisp> FromLisp
+    for (A, B, C)
+{
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<(A, B, C)> {
+        // todo: don't unwrap
+        // todo: throw lisp exception instead of crashing
+        assert!(call_new_from_lisp::<&str, bool>(env, "listp", vec![value])
+            .unwrap());
+        assert_eq!(
+            call_new_from_lisp::<&str, i64>(env, "length", vec![value])
+                .unwrap(),
+            3
+        );
+
+        if let Some(a) = call_new_from_lisp(
+            env,
+            "nth",
+            vec![0.into_lisp(env).unwrap(), value],
+        ) {
+            if let Some(b) = call_new_from_lisp(
+                env,
+                "nth",
+                vec![1.into_lisp(env).unwrap(), value],
+            ) {
+                if let Some(c) = call_new_from_lisp(
+                    env,
+                    "nth",
+                    vec![2.into_lisp(env).unwrap(), value],
+                ) {
+                    return Some((a, b, c));
+                }
+            }
+        }
+
         None
     }
 }

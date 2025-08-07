@@ -179,18 +179,28 @@ unsafe extern "C" fn tlc__rust_send_request(
     log_args(env, nargs, args, "tlc__rust_send_request");
 
     handle_call(env, nargs, args, |env, args, server| {
-        let request_type = extract_string(env, args[1]);
-        let request_args = args[2];
+        // todo: don't unwrap
+        // let request_type = extract_string(env, args[1]);
+        let request_type = String::from_lisp(env, args[1]).unwrap();
 
         let request_params = match request_type.as_str() {
             "textDocument/definition" => {
-                build_text_document_definition(env, request_args, server)
+                // Doing the extraction HERE because in unsafe fun.
+                // Also, doing this tuple inside the clauses because incidental
+                // duplication
+                let (uri, line, character) =
+                    FromLisp::from_lisp(env, args[2]).unwrap();
+                build_text_document_definition(uri, line, character)
             }
             "textDocument/completion" => {
-                build_text_document_completion(env, request_args, server)
+                let (uri, line, character) =
+                    FromLisp::from_lisp(env, args[2]).unwrap();
+                build_text_document_completion(uri, line, character)
             }
             "textDocument/hover" => {
-                build_text_document_hover(env, request_args, server)
+                let (uri, line, character) =
+                    FromLisp::from_lisp(env, args[2]).unwrap();
+                build_text_document_hover(uri, line, character)
             }
             _ => {
                 panic!("Incorrect request type")
@@ -200,67 +210,48 @@ unsafe extern "C" fn tlc__rust_send_request(
     })
 }
 
-#[allow(non_snake_case)]
-unsafe fn build_text_document_definition(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+fn build_text_document_definition(
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::DefinitionParams(DefinitionParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
     })
 }
 
 #[allow(non_snake_case)]
 unsafe fn build_text_document_completion(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::CompletionParams(CompletionParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
         context: CompletionContext { trigger_kind: 1 },
     })
 }
 
 #[allow(non_snake_case)]
 unsafe fn build_text_document_hover(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::HoverParams(HoverParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
     })
 }
 
@@ -598,7 +589,8 @@ unsafe fn log_args<S: AsRef<str>>(
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call(env, "list", args_list);
-        let format_string = format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
+        let format_string =
+            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
         // todo: don't unwrap
         let format_string = format_string.into_lisp(env).unwrap();
         let formatted = call(env, "format", vec![format_string, list]);
