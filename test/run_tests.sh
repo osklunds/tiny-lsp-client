@@ -2,6 +2,8 @@
 
 cargo build || exit 1
 
+# export RUST_BACKTRACE=full
+
 if [[ $# -eq 0 ]]; then
     echo "Running all test files"
     test_dir=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )

@@ -180,7 +180,6 @@ unsafe extern "C" fn tlc__rust_send_request(
 
     handle_call(env, nargs, args, |env, args, server| {
         // todo: don't unwrap
-        // let request_type = extract_string(env, args[1]);
         let request_type = String::from_lisp(env, args[1]).unwrap();
 
         let request_params = match request_type.as_str() {
@@ -265,15 +264,21 @@ unsafe extern "C" fn tlc__rust_send_notification(
     log_args(env, nargs, args, "tlc__rust_send_notification");
 
     handle_call(env, nargs, args, |env, args, server| {
-        let request_type = extract_string(env, args[1]);
+        let request_type = String::from_lisp(env, args[1]).unwrap();
         let request_args = args[2];
 
         let notification_params = if request_type == "textDocument/didOpen" {
-            build_text_document_did_open(env, request_args, server)
+            let (uri, file_content) =
+                FromLisp::from_lisp(env, request_args).unwrap();
+            build_text_document_did_open(uri, file_content, server)
         } else if request_type == "textDocument/didChange" {
-            build_text_document_did_change(env, request_args, server)
+            let (uri, content_changes) =
+                FromLisp::from_lisp(env, request_args).unwrap();
+            build_text_document_did_change(uri, content_changes, server)
         } else if request_type == "textDocument/didClose" {
-            build_text_document_did_close(env, request_args, server)
+            // todo: 1-tuple instead
+            let uris: Vec<String> = FromLisp::from_lisp(env, request_args).unwrap();
+            build_text_document_did_close(uris[0].clone())
         } else {
             panic!("Incorrect request type")
         };
@@ -283,16 +288,11 @@ unsafe extern "C" fn tlc__rust_send_notification(
     })
 }
 
-unsafe fn build_text_document_did_open(
-    env: *mut emacs_env,
-    request_args: emacs_value,
+fn build_text_document_did_open(
+    uri: String,
+    file_content: String,
     server: &mut Server,
 ) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let file_content = extract_string(env, nth(env, 1, request_args));
-
     NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri,
@@ -303,50 +303,38 @@ unsafe fn build_text_document_did_open(
     })
 }
 
-unsafe fn build_text_document_did_change(
-    env: *mut emacs_env,
-    request_args: emacs_value,
+fn build_text_document_did_change(
+    uri: String,
+    content_changes: Vec<(
+        String,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+    )>,
     server: &mut Server,
 ) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let content_changes = nth(env, 1, request_args);
-    let content_changes_len = call(env, "length", vec![content_changes]);
-    let content_changes_len = extract_integer(env, content_changes_len);
-
     let mut json_content_changes = Vec::new();
 
-    for i in 0..content_changes_len {
-        let content_change = nth(env, i, content_changes);
+    for content_change in content_changes {
+        let (text, start_line, start_character, end_line, end_character) =
+            content_change;
 
-        let text = extract_string(env, nth(env, 0, content_change));
-        let content_change_len =
-            extract_integer(env, call(env, "length", vec![content_change]));
-
-        // len 1 means full change, so the other elements don't exist
-        let json_content_change = if content_change_len == 1 {
+        let json_content_change = if start_line.is_none() {
             TextDocumentContentChangeEvent::TextDocumentContentChangeEventFull(
                 TextDocumentContentChangeEventFull { text },
             )
         } else {
-            let start_line = nth(env, 1, content_change);
-            let start_character = nth(env, 2, content_change);
-            let end_line = nth(env, 3, content_change);
-            let end_character = nth(env, 4, content_change);
-
             TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
                 TextDocumentContentChangeEventIncremental {
                     range: Range {
                         start: Position {
-                            line: extract_integer(env, start_line) as usize,
-                            character: extract_integer(env, start_character)
-                                as usize,
+                            line: start_line.unwrap(),
+                            character: start_character.unwrap()
                         },
                         end: Position {
-                            line: extract_integer(env, end_line) as usize,
-                            character: extract_integer(env, end_character)
-                                as usize,
+                            line: end_line.unwrap(),
+                            character: end_character.unwrap()
                         },
                     },
                     text,
@@ -367,14 +355,7 @@ unsafe fn build_text_document_did_change(
     )
 }
 
-unsafe fn build_text_document_did_close(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
-) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
+fn build_text_document_did_close(uri: String) -> NotificationParams {
     NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
         text_document: TextDocumentIdentifier { uri },
     })

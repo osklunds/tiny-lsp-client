@@ -396,9 +396,8 @@ obvious that they happen."
                                                   start-character
                                                   end-line
                                                   end-character)
-  (let ((content-change (if start-line
-                            `(,text ,start-line ,start-character ,end-line ,end-character)
-                          `(,text))))
+  (let ((content-change 
+         `(,text ,start-line ,start-character ,end-line ,end-character)))
     (tlc--send-notification
      "textDocument/didChange"
      (list (tlc--buffer-uri)
