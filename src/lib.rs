@@ -104,7 +104,7 @@ pub unsafe extern "C" fn emacs_module_init(
     // todo: own env wrapper that returns None if already an error
     // todo: Improve RustCallResult. Maybe symbol should be something
     // separate.
-    call1(env, "provide", symbol("tlc-rust"));
+    call1_rust_lisp(env, "provide", symbol("tlc-rust"));
 
     0
 }
@@ -569,12 +569,12 @@ unsafe fn log_args<S: AsRef<str>>(
     // optimization without macros
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
-        let list = call_new(env, "list", args_list)?;
+        let list = call_lisp_lisp(env, "list", args_list)?;
         let format_string =
             format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
         let format_string = format_string.into_lisp(env)?;
         let formatted: String =
-            call_new_from_lisp(env, "format", vec![format_string, list])?;
+            call_lisp_rust(env, "format", vec![format_string, list])?;
         logger::log_rust_debug!("{}", formatted);
     }
     // todo: check return value

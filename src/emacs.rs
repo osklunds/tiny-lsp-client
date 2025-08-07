@@ -28,6 +28,8 @@ use std::ffi::CString;
 use std::ptr;
 use std::str;
 
+// Module initialization
+
 pub unsafe fn export_function(
     env: *mut emacs_env,
     min_arity: isize,
@@ -54,26 +56,46 @@ pub unsafe fn export_function(
             ptr::null_mut(),
         )
     });
-    call_new(env, "fset", vec![intern(env, symbol), emacs_fun])?;
+    call_lisp_lisp(env, "fset", vec![intern(env, symbol), emacs_fun])?;
     Some(())
 }
 
-pub unsafe fn call1<F: AsRef<str>, T: IntoLisp>(
+// Calling emacs functions
+
+// To be used when calling with lisp arguments and need lisp return value
+pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
+    env: *mut emacs_env,
+    func: F,
+    mut args: Vec<emacs_value>,
+) -> Option<emacs_value> {
+    let funcall = (*env).funcall.unwrap();
+    handle_non_local_exit_new(env, || {
+        funcall(
+            env,
+            intern(env, func.as_ref()),
+            args.len() as isize,
+            args.as_mut_ptr(),
+        )
+    })
+}
+
+// To be used when calling with rust arguments but need lisp return value
+pub unsafe fn call1_rust_lisp<F: AsRef<str>, T: IntoLisp>(
     env: *mut emacs_env,
     function_name: F,
     arg1: T,
 ) -> Option<emacs_value> {
     let arg1 = arg1.into_lisp(env)?;
-    call_new(env, function_name, vec![arg1])
+    call_lisp_lisp(env, function_name, vec![arg1])
 }
 
-// todo: consider call1, call2 etc to avoid vec as argument
-pub unsafe fn call_new_from_lisp<F: AsRef<str>, T: FromLisp>(
+// To be used when calling with lisp arguments but need rust return value
+pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     env: *mut emacs_env,
     func: F,
     args: Vec<emacs_value>,
 ) -> Option<T> {
-    let ret = call_new(env, func, args)?;
+    let ret = call_lisp_lisp(env, func, args)?;
     T::from_lisp(env, ret)
 }
 
@@ -140,22 +162,6 @@ unsafe fn intern_new(env: *mut emacs_env, symbol: &str) -> Option<emacs_value> {
     })
 }
 
-pub unsafe fn call_new<F: AsRef<str>>(
-    env: *mut emacs_env,
-    func: F,
-    mut args: Vec<emacs_value>,
-) -> Option<emacs_value> {
-    let funcall = (*env).funcall.unwrap();
-    handle_non_local_exit_new(env, || {
-        funcall(
-            env,
-            intern(env, func.as_ref()),
-            args.len() as isize,
-            args.as_mut_ptr(),
-        )
-    })
-}
-
 // @credits: IntoLisp/FromLisp inspired by
 // https://github.com/ubolonton/emacs-module-rs
 pub trait IntoLisp {
@@ -179,7 +185,7 @@ impl FromLisp for Symbol {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Symbol> {
-        let string = call_new_from_lisp(env, "symbol-name", vec![value])?;
+        let string = call_lisp_rust(env, "symbol-name", vec![value])?;
         Some(Symbol(string))
     }
 }
@@ -266,7 +272,7 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
             .collect();
 
         if vec_of_lisp_objects.len() == len {
-            call_new(env, "list", vec_of_lisp_objects)
+            call_lisp_lisp(env, "list", vec_of_lisp_objects)
         } else {
             None
         }
@@ -279,7 +285,7 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
         let a = a.into_lisp(env)?;
         let b = b.into_lisp(env)?;
         let c = c.into_lisp(env)?;
-        call_new(env, "list", vec![a, b, c])
+        call_lisp_lisp(env, "list", vec![a, b, c])
     }
 }
 
@@ -292,7 +298,7 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
         let b = b.into_lisp(env)?;
         let c = c.into_lisp(env)?;
         let d = d.into_lisp(env)?;
-        call_new(env, "list", vec![a, b, c, d])
+        call_lisp_lisp(env, "list", vec![a, b, c, d])
     }
 }
 
@@ -346,7 +352,7 @@ impl FromLisp for bool {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<bool> {
-        let null: Symbol = call_new_from_lisp(env, "null", vec![value])?;
+        let null: Symbol = call_lisp_rust(env, "null", vec![value])?;
         Some(null.0 != "t")
     }
 }
@@ -390,21 +396,21 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B)> {
-        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
 
-        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 2 {
+        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 2 {
             return None;
         }
 
-        let a = call_new_from_lisp(
+        let a = call_lisp_rust(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
         )?;
 
-        let b = call_new_from_lisp(
+        let b = call_lisp_rust(
             env,
             "nth",
             vec![1.into_lisp(env).unwrap(), value],
@@ -418,25 +424,25 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C)> {
-        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
 
-        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 3 {
+        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 3 {
             return None;
         }
 
-        let a = call_new_from_lisp(
+        let a = call_lisp_rust(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
         )?;
-        let b = call_new_from_lisp(
+        let b = call_lisp_rust(
             env,
             "nth",
             vec![1.into_lisp(env).unwrap(), value],
         )?;
-        let c = call_new_from_lisp(
+        let c = call_lisp_rust(
             env,
             "nth",
             vec![2.into_lisp(env).unwrap(), value],
@@ -452,35 +458,35 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C, D, E)> {
-        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
 
-        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 5 {
+        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 5 {
             return None;
         }
 
-        let a = call_new_from_lisp(
+        let a = call_lisp_rust(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
         )?;
-        let b = call_new_from_lisp(
+        let b = call_lisp_rust(
             env,
             "nth",
             vec![1.into_lisp(env).unwrap(), value],
         )?;
-        let c = call_new_from_lisp(
+        let c = call_lisp_rust(
             env,
             "nth",
             vec![2.into_lisp(env).unwrap(), value],
         )?;
-        let d = call_new_from_lisp(
+        let d = call_lisp_rust(
             env,
             "nth",
             vec![3.into_lisp(env).unwrap(), value],
         )?;
-        let e = call_new_from_lisp(
+        let e = call_lisp_rust(
             env,
             "nth",
             vec![4.into_lisp(env).unwrap(), value],
@@ -494,17 +500,17 @@ impl<T: FromLisp> FromLisp for Vec<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Vec<T>> {
-        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
 
-        let len = call_new_from_lisp::<&str, i64>(env, "length", vec![value])?;
+        let len = call_lisp_rust::<&str, i64>(env, "length", vec![value])?;
 
         let mut vec = Vec::new();
 
         for i in 0..len {
             let i = i.into_lisp(env)?;
-            let element = call_new_from_lisp(env, "nth", vec![i, value])?;
+            let element = call_lisp_rust(env, "nth", vec![i, value])?;
             vec.push(element);
         }
 
@@ -517,7 +523,7 @@ impl<T: FromLisp> FromLisp for Option<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Option<T>> {
-        if call_new_from_lisp(env, "null", vec![value])? {
+        if call_lisp_rust(env, "null", vec![value])? {
             Some(None)
         } else {
             T::from_lisp(env, value).map(|v| Some(v))
