@@ -522,7 +522,7 @@ unsafe extern "C" fn tlc__rust_set_option(
         };
     }
 
-    intern(env, "nil")
+    false.into_lisp(env).unwrap()
 }
 
 #[allow(non_snake_case)]
@@ -536,7 +536,7 @@ unsafe extern "C" fn tlc__rust_log_emacs_debug(
     let msg = String::from_lisp(env, msg).unwrap();
     logger::log_emacs_debug!("{}", msg);
 
-    intern(env, "nil")
+    false.into_lisp(env).unwrap()
 }
 
 #[allow(non_snake_case)]
@@ -640,7 +640,7 @@ enum RustCallResult<A: IntoLisp> {
 impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         match self {
-            Self::Symbol(string) => intern_new(env, string),
+            Self::Symbol(string) => symbol(string).into_lisp(env),
             Self::Any(value) => value.into_lisp(env),
         }
     }

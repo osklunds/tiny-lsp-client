@@ -28,39 +28,6 @@ use std::ffi::CString;
 use std::ptr;
 use std::str;
 
-pub unsafe fn extract_string(env: *mut emacs_env, val: emacs_value) -> String {
-    let copy_string_contents = (*env).copy_string_contents.unwrap();
-
-    // First find the length
-    let mut len: isize = 0;
-    let result_find_length = handle_non_local_exit(env, || {
-        copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
-    });
-    assert!(result_find_length);
-    assert!(len > 0);
-
-    // Then get the actual string
-    let mut buf = vec![0; len as usize];
-    let result_get_string = handle_non_local_exit(env, || {
-        copy_string_contents(env, val, buf.as_mut_ptr() as *mut i8, &mut len)
-    });
-
-    assert!(result_get_string);
-    len -= 1; // remove null-terminator
-    str::from_utf8(&buf[0..len as usize]).unwrap().to_string()
-}
-
-pub unsafe fn extract_integer(
-    env: *mut emacs_env,
-    integer: emacs_value,
-) -> i64 {
-    handle_non_local_exit(env, || (*env).extract_integer.unwrap()(env, integer))
-}
-
-pub unsafe fn extract_bool(env: *mut emacs_env, value: emacs_value) -> bool {
-    extract_string(env, call(env, "symbol-name", vec![value])) != "nil"
-}
-
 pub unsafe fn export_function(
     env: *mut emacs_env,
     min_arity: isize,
@@ -131,18 +98,9 @@ pub unsafe fn call_new_from_lisp<F: AsRef<str>, T: FromLisp>(
     }
 }
 
-pub unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
+unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
     let symbol = CString::new(symbol).unwrap();
     handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
-}
-
-pub unsafe fn nth(
-    env: *mut emacs_env,
-    index: i64,
-    list: emacs_value,
-) -> emacs_value {
-    // todo: don't unwrap
-    call(env, "nth", vec![index.into_lisp(env).unwrap(), list])
 }
 
 unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
@@ -196,7 +154,7 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
     }
 }
 
-pub unsafe fn intern_new(
+unsafe fn intern_new(
     env: *mut emacs_env,
     symbol: &str,
 ) -> Option<emacs_value> {
