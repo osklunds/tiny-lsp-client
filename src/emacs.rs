@@ -39,7 +39,7 @@ pub unsafe fn export_function(
         data: *mut ::std::os::raw::c_void,
     ) -> emacs_value,
     symbol: &str,
-) {
+) -> Option<()> {
     let make_function = (*env).make_function.unwrap();
 
     let emacs_fun = handle_non_local_exit(env, || {
@@ -54,23 +54,8 @@ pub unsafe fn export_function(
             ptr::null_mut(),
         )
     });
-    call(env, "fset", vec![intern(env, symbol), emacs_fun]);
-}
-
-unsafe fn call<F: AsRef<str>>(
-    env: *mut emacs_env,
-    func: F,
-    mut args: Vec<emacs_value>,
-) -> emacs_value {
-    let funcall = (*env).funcall.unwrap();
-    handle_non_local_exit(env, || {
-        funcall(
-            env,
-            intern(env, func.as_ref()),
-            args.len() as isize,
-            args.as_mut_ptr(),
-        )
-    })
+    call_new(env, "fset", vec![intern(env, symbol), emacs_fun])?;
+    Some(())
 }
 
 pub unsafe fn call1<F: AsRef<str>, T: IntoLisp>(
