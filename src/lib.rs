@@ -104,7 +104,7 @@ pub unsafe extern "C" fn emacs_module_init(
     // todo: own env wrapper that returns None if already an error
     // todo: Improve RustCallResult. Maybe symbol should be something
     // separate.
-    call1_rust_lisp(env, "provide", symbol("tlc-rust"));
+    provide_tlc_rust(env);
 
     0
 }

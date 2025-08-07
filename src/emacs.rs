@@ -61,6 +61,10 @@ pub unsafe fn export_function(
     Some(())
 }
 
+pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> Option<()> {
+    call1_rust(env, "provide", symbol("tlc-rust"))
+}
+
 // Calling emacs functions
 
 // To be used when calling with lisp arguments and need lisp return value
@@ -80,18 +84,19 @@ unsafe fn call_lisp_lisp<F: AsRef<str>>(
     })
 }
 
-// To be used when calling with rust arguments but need lisp return value
-pub unsafe fn call1_rust_lisp<F: AsRef<str>, T: IntoLisp>(
+// To be used when calling with rust arguments and dont' care about return value
+unsafe fn call1_rust<F: AsRef<str>, T: IntoLisp>(
     env: *mut emacs_env,
     function_name: F,
     arg1: T,
-) -> Option<emacs_value> {
+) -> Option<()> {
     let arg1 = arg1.into_lisp(env)?;
-    call_lisp_lisp(env, function_name, vec![arg1])
+    call_lisp_lisp(env, function_name, vec![arg1])?;
+    Some(())
 }
 
 // To be used when calling with lisp arguments but need rust return value
-pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
+unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     env: *mut emacs_env,
     func: F,
     args: Vec<emacs_value>,
@@ -443,17 +448,11 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
             return None;
         }
 
-        let a = call_lisp_rust(
-            env,
-            "nth",
-            vec![0.into_lisp(env).unwrap(), value],
-        )?;
+        let a =
+            call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
 
-        let b = call_lisp_rust(
-            env,
-            "nth",
-            vec![1.into_lisp(env).unwrap(), value],
-        )?;
+        let b =
+            call_lisp_rust(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
         Some((a, b))
     }
 }
@@ -471,21 +470,12 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
             return None;
         }
 
-        let a = call_lisp_rust(
-            env,
-            "nth",
-            vec![0.into_lisp(env).unwrap(), value],
-        )?;
-        let b = call_lisp_rust(
-            env,
-            "nth",
-            vec![1.into_lisp(env).unwrap(), value],
-        )?;
-        let c = call_lisp_rust(
-            env,
-            "nth",
-            vec![2.into_lisp(env).unwrap(), value],
-        )?;
+        let a =
+            call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
+        let b =
+            call_lisp_rust(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
+        let c =
+            call_lisp_rust(env, "nth", vec![2.into_lisp(env).unwrap(), value])?;
         Some((a, b, c))
     }
 }
@@ -505,31 +495,16 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
             return None;
         }
 
-        let a = call_lisp_rust(
-            env,
-            "nth",
-            vec![0.into_lisp(env).unwrap(), value],
-        )?;
-        let b = call_lisp_rust(
-            env,
-            "nth",
-            vec![1.into_lisp(env).unwrap(), value],
-        )?;
-        let c = call_lisp_rust(
-            env,
-            "nth",
-            vec![2.into_lisp(env).unwrap(), value],
-        )?;
-        let d = call_lisp_rust(
-            env,
-            "nth",
-            vec![3.into_lisp(env).unwrap(), value],
-        )?;
-        let e = call_lisp_rust(
-            env,
-            "nth",
-            vec![4.into_lisp(env).unwrap(), value],
-        )?;
+        let a =
+            call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
+        let b =
+            call_lisp_rust(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
+        let c =
+            call_lisp_rust(env, "nth", vec![2.into_lisp(env).unwrap(), value])?;
+        let d =
+            call_lisp_rust(env, "nth", vec![3.into_lisp(env).unwrap(), value])?;
+        let e =
+            call_lisp_rust(env, "nth", vec![4.into_lisp(env).unwrap(), value])?;
         Some((a, b, c, d, e))
     }
 }
