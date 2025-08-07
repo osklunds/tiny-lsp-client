@@ -78,11 +78,8 @@ pub unsafe fn call1<F: AsRef<str>, T: IntoLisp>(
     function_name: F,
     arg1: T,
 ) -> Option<emacs_value> {
-    if let Some(arg1) = arg1.into_lisp(env) {
-        call_new(env, function_name, vec![arg1])
-    } else {
-        None
-    }
+    let arg1 = arg1.into_lisp(env)?;
+    call_new(env, function_name, vec![arg1])
 }
 
 // todo: consider call1, call2 etc to avoid vec as argument
@@ -91,11 +88,8 @@ pub unsafe fn call_new_from_lisp<F: AsRef<str>, T: FromLisp>(
     func: F,
     args: Vec<emacs_value>,
 ) -> Option<T> {
-    if let Some(ret) = call_new(env, func, args) {
-        T::from_lisp(env, ret)
-    } else {
-        None
-    }
+    let ret = call_new(env, func, args)?;
+    T::from_lisp(env, ret)
 }
 
 unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
@@ -154,10 +148,7 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
     }
 }
 
-unsafe fn intern_new(
-    env: *mut emacs_env,
-    symbol: &str,
-) -> Option<emacs_value> {
+unsafe fn intern_new(env: *mut emacs_env, symbol: &str) -> Option<emacs_value> {
     let symbol = CString::new(symbol).unwrap();
     handle_non_local_exit_new(env, || {
         (*env).intern.unwrap()(env, symbol.as_ptr())
@@ -203,11 +194,8 @@ impl FromLisp for Symbol {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Symbol> {
-        if let Some(string) = call_new_from_lisp(env, "symbol-name", vec![value]) {
-            Some(Symbol(string))
-        } else {
-            None
-        }
+        let string = call_new_from_lisp(env, "symbol-name", vec![value])?;
+        Some(Symbol(string))
     }
 }
 
@@ -303,15 +291,10 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
 impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         let (a, b, c) = self;
-
-        if let Some(a) = a.into_lisp(env) {
-            if let Some(b) = b.into_lisp(env) {
-                if let Some(c) = c.into_lisp(env) {
-                    return call_new(env, "list", vec![a, b, c]);
-                }
-            }
-        }
-        None
+        let a = a.into_lisp(env)?;
+        let b = b.into_lisp(env)?;
+        let c = c.into_lisp(env)?;
+        call_new(env, "list", vec![a, b, c])
     }
 }
 
@@ -320,17 +303,11 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
 {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         let (a, b, c, d) = self;
-
-        if let Some(a) = a.into_lisp(env) {
-            if let Some(b) = b.into_lisp(env) {
-                if let Some(c) = c.into_lisp(env) {
-                    if let Some(d) = d.into_lisp(env) {
-                        return call_new(env, "list", vec![a, b, c, d]);
-                    }
-                }
-            }
-        }
-        None
+        let a = a.into_lisp(env)?;
+        let b = b.into_lisp(env)?;
+        let c = c.into_lisp(env)?;
+        let d = d.into_lisp(env)?;
+        call_new(env, "list", vec![a, b, c, d])
     }
 }
 
@@ -352,34 +329,30 @@ impl FromLisp for String {
 
         // First find the length
         let mut len: isize = 0;
-        // todo: use ?
-        if let Some(result_find_length) = handle_non_local_exit_new(env, || {
+        if !handle_non_local_exit_new(env, || {
             copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
-        }) {
-            assert!(result_find_length);
-            assert!(len > 0);
-
-            // Then get the actual string
-            let mut buf = vec![0; len as usize];
-            if let Some(result_get_string) =
-                handle_non_local_exit_new(env, || {
-                    copy_string_contents(
-                        env,
-                        val,
-                        buf.as_mut_ptr() as *mut i8,
-                        &mut len,
-                    )
-                })
-            {
-                assert!(result_get_string);
-                len -= 1; // remove null-terminator
-                Some(str::from_utf8(&buf[0..len as usize]).unwrap().to_string())
-            } else {
-                None
-            }
-        } else {
-            None
+        })? {
+            return None;
         }
+        if len <= 0 {
+            return None;
+        }
+
+        // Then get the actual string
+        let mut buf = vec![0; len as usize];
+        if !handle_non_local_exit_new(env, || {
+            copy_string_contents(
+                env,
+                val,
+                buf.as_mut_ptr() as *mut i8,
+                &mut len,
+            )
+        })? {
+            return None;
+        }
+
+        len -= 1; // remove null-terminator
+        Some(str::from_utf8(&buf[0..len as usize]).unwrap().to_string())
     }
 }
 
@@ -388,13 +361,8 @@ impl FromLisp for bool {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<bool> {
-        if let Some(string) =
-            call_new_from_lisp::<&str, String>(env, "symbol-name", vec![value])
-        {
-            Some(string != "nil")
-        } else {
-            None
-        }
+        let null: Symbol = call_new_from_lisp(env, "null", vec![value])?;
+        Some(null.0 != "t")
     }
 }
 
@@ -437,31 +405,26 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B)> {
-        // todo: don't unwrap
-        // todo: throw lisp exception instead of crashing
-        assert!(call_new_from_lisp::<&str, bool>(env, "listp", vec![value])
-            .unwrap());
-        assert_eq!(
-            call_new_from_lisp::<&str, i64>(env, "length", vec![value])
-                .unwrap(),
-            2
-        );
+        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+            return None;
+        }
 
-        if let Some(a) = call_new_from_lisp(
+        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 2 {
+            return None;
+        }
+
+        let a = call_new_from_lisp(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
-        ) {
-            if let Some(b) = call_new_from_lisp(
-                env,
-                "nth",
-                vec![1.into_lisp(env).unwrap(), value],
-            ) {
-                return Some((a, b));
-            }
-        }
+        )?;
 
-        None
+        let b = call_new_from_lisp(
+            env,
+            "nth",
+            vec![1.into_lisp(env).unwrap(), value],
+        )?;
+        Some((a, b))
     }
 }
 
@@ -470,37 +433,30 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C)> {
-        // todo: don't unwrap
-        // todo: throw lisp exception instead of crashing
-        assert!(call_new_from_lisp::<&str, bool>(env, "listp", vec![value])
-            .unwrap());
-        assert_eq!(
-            call_new_from_lisp::<&str, i64>(env, "length", vec![value])
-                .unwrap(),
-            3
-        );
+        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+            return None;
+        }
 
-        if let Some(a) = call_new_from_lisp(
+        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 3 {
+            return None;
+        }
+
+        let a = call_new_from_lisp(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
-        ) {
-            if let Some(b) = call_new_from_lisp(
-                env,
-                "nth",
-                vec![1.into_lisp(env).unwrap(), value],
-            ) {
-                if let Some(c) = call_new_from_lisp(
-                    env,
-                    "nth",
-                    vec![2.into_lisp(env).unwrap(), value],
-                ) {
-                    return Some((a, b, c));
-                }
-            }
-        }
-
-        None
+        )?;
+        let b = call_new_from_lisp(
+            env,
+            "nth",
+            vec![1.into_lisp(env).unwrap(), value],
+        )?;
+        let c = call_new_from_lisp(
+            env,
+            "nth",
+            vec![2.into_lisp(env).unwrap(), value],
+        )?;
+        Some((a, b, c))
     }
 }
 
@@ -511,49 +467,40 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C, D, E)> {
-        // todo: don't unwrap
-        // todo: throw lisp exception instead of crashing
-        assert!(call_new_from_lisp::<&str, bool>(env, "listp", vec![value])
-            .unwrap());
-        assert_eq!(
-            call_new_from_lisp::<&str, i64>(env, "length", vec![value])
-                .unwrap(),
-            5
-        );
+        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+            return None;
+        }
 
-        if let Some(a) = call_new_from_lisp(
+        if call_new_from_lisp::<&str, i64>(env, "length", vec![value])? != 5 {
+            return None;
+        }
+
+        let a = call_new_from_lisp(
             env,
             "nth",
             vec![0.into_lisp(env).unwrap(), value],
-        ) {
-            if let Some(b) = call_new_from_lisp(
-                env,
-                "nth",
-                vec![1.into_lisp(env).unwrap(), value],
-            ) {
-                if let Some(c) = call_new_from_lisp(
-                    env,
-                    "nth",
-                    vec![2.into_lisp(env).unwrap(), value],
-                ) {
-                    if let Some(d) = call_new_from_lisp(
-                        env,
-                        "nth",
-                        vec![3.into_lisp(env).unwrap(), value],
-                    ) {
-                        if let Some(e) = call_new_from_lisp(
-                            env,
-                            "nth",
-                            vec![4.into_lisp(env).unwrap(), value],
-                        ) {
-                            return Some((a, b, c, d, e));
-                        }
-                    }
-                }
-            }
-        }
-
-        None
+        )?;
+        let b = call_new_from_lisp(
+            env,
+            "nth",
+            vec![1.into_lisp(env).unwrap(), value],
+        )?;
+        let c = call_new_from_lisp(
+            env,
+            "nth",
+            vec![2.into_lisp(env).unwrap(), value],
+        )?;
+        let d = call_new_from_lisp(
+            env,
+            "nth",
+            vec![3.into_lisp(env).unwrap(), value],
+        )?;
+        let e = call_new_from_lisp(
+            env,
+            "nth",
+            vec![4.into_lisp(env).unwrap(), value],
+        )?;
+        Some((a, b, c, d, e))
     }
 }
 
@@ -562,25 +509,18 @@ impl<T: FromLisp> FromLisp for Vec<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Vec<T>> {
-        // todo: don't unwrap
-        // todo: throw lisp exception instead of crashing
-        assert!(call_new_from_lisp::<&str, bool>(env, "listp", vec![value])
-            .unwrap());
-        let len = call_new_from_lisp::<&str, i64>(env, "length", vec![value])
-            .unwrap();
+        if !call_new_from_lisp::<&str, bool>(env, "listp", vec![value])? {
+            return None;
+        }
+
+        let len = call_new_from_lisp::<&str, i64>(env, "length", vec![value])?;
 
         let mut vec = Vec::new();
 
         for i in 0..len {
-            if let Some(i) = i.into_lisp(env) {
-                if let Some(element) =
-                    call_new_from_lisp(env, "nth", vec![i, value])
-                {
-                    vec.push(element);
-                    continue;
-                }
-            }
-            return None;
+            let i = i.into_lisp(env)?;
+            let element = call_new_from_lisp(env, "nth", vec![i, value])?;
+            vec.push(element);
         }
 
         Some(vec)
@@ -592,14 +532,10 @@ impl<T: FromLisp> FromLisp for Option<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Option<T>> {
-        if let Some(is_nil) = call_new_from_lisp(env, "null", vec![value]) {
-            if is_nil {
-                Some(None)
-            } else {
-                T::from_lisp(env, value).map(|v| Some(v))
-            }
+        if call_new_from_lisp(env, "null", vec![value])? {
+            Some(None)
         } else {
-            None
+            T::from_lisp(env, value).map(|v| Some(v))
         }
     }
 }
