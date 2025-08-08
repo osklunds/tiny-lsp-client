@@ -539,7 +539,7 @@ unsafe extern "C" fn tlc__rust_set_option(
             } else {
                 let value = match value {
                     SetOptionValue::Bool(value) => value,
-                    _ => todo!("raise lisp error")
+                    _ => todo!("raise lisp error"),
                 };
                 if symbol.0 == "tlc-log-io" {
                     logger::LOG_IO.store(value, Ordering::Relaxed)
@@ -563,15 +563,13 @@ unsafe extern "C" fn tlc__rust_set_option(
 #[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_log_emacs_debug(
     env: *mut emacs_env,
-    _nargs: isize,
+    nargs: isize,
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    let msg = *args.offset(0);
-    let msg = String::from_lisp(env, msg).unwrap();
-    logger::log_emacs_debug!("{}", msg);
-
-    false.into_lisp(env).unwrap()
+    lisp_function_in_rust_no_args_log(env, nargs, args, |(msg,): (String,)| {
+        logger::log_emacs_debug!("{}", msg);
+    })
 }
 
 #[allow(non_snake_case)]
