@@ -455,12 +455,12 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
         }
 
         let a =
-            call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
+            call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
         let b =
-            call_lisp_rust(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
+            call_lisp_lisp(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
         let c =
-            call_lisp_rust(env, "nth", vec![2.into_lisp(env).unwrap(), value])?;
-        Some((a, b, c))
+            call_lisp_lisp(env, "nth", vec![2.into_lisp(env).unwrap(), value])?;
+        FromVecOfLisp::from_vec_of_lisp(env, vec![a, b, c])
     }
 }
 
@@ -557,5 +557,18 @@ impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
         let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
         Some((a, b))
+    }
+}
+
+impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
+    unsafe fn from_vec_of_lisp(
+        env: *mut emacs_env,
+        vec_of_lisp: Vec<emacs_value>,
+    ) -> Option<(A, B, C)> {
+        // todo: take nargs into account
+        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+        let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
+        let c = FromLisp::from_lisp(env, vec_of_lisp[2])?;
+        Some((a, b, c))
     }
 }

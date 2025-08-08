@@ -183,37 +183,35 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_send_request");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        // todo: don't unwrap
-        let request_type = String::from_lisp(env, args[1]).unwrap();
-
-        let request_params = match request_type.as_str() {
-            "textDocument/definition" => {
-                // Doing the extraction HERE because in unsafe fun.
-                // Also, doing this tuple inside the clauses because incidental
-                // duplication
-                let (uri, line, character) =
-                    FromLisp::from_lisp(env, args[2]).unwrap();
-                build_text_document_definition(uri, line, character)
-            }
-            "textDocument/completion" => {
-                let (uri, line, character) =
-                    FromLisp::from_lisp(env, args[2]).unwrap();
-                build_text_document_completion(uri, line, character)
-            }
-            "textDocument/hover" => {
-                let (uri, line, character) =
-                    FromLisp::from_lisp(env, args[2]).unwrap();
-                build_text_document_hover(uri, line, character)
-            }
-            _ => {
-                panic!("Incorrect request type")
-            }
-        };
-        server.send_request(request_type, request_params)
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        "tlc__rust_send_request",
+        |(server_key, method, request_args): (ServerKey, String, (_, _, _))| {
+            // todo: By accident, request_args are the same for all requests
+            // when they no longer are, need to have an enum of the variants
+            let (uri, line, character) = request_args;
+            handle_call_new(server_key, |server| {
+                let request_params = match method.as_str() {
+                    "textDocument/definition" => {
+                        build_text_document_definition(uri, line, character)
+                    }
+                    "textDocument/completion" => {
+                        build_text_document_completion(uri, line, character)
+                    }
+                    "textDocument/hover" => {
+                        build_text_document_hover(uri, line, character)
+                    }
+                    _ => {
+                        // todo: emacs error instead
+                        panic!("Incorrect method")
+                    }
+                };
+                server.send_request(method, request_params)
+            })
+        },
+    )
 }
 
 fn build_text_document_definition(
@@ -568,7 +566,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
     })
 }
 
-fn handle_call_new<T: IntoLisp, F: Copy + FnOnce(&mut Server) -> Option<T>>(
+fn handle_call_new<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     server_key: ServerKey,
     function: F,
 ) -> RustCallResult<T> {
