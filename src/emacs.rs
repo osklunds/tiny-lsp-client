@@ -133,6 +133,9 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
 
 // Function API
 
+// todo: wrapper that takes lambda, that takes some args. the lambda is
+// safe the wrapper is unsafe
+
 pub unsafe fn log_args<S: AsRef<str>>(
     env: *mut emacs_env,
     nargs: isize,
