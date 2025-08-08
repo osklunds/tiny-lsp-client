@@ -151,29 +151,32 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_start_server");
-
-    servers::with_servers(|servers| {
-        handle_none(env, || {
-            let args_vec = args_pointer_to_args_vec(nargs, args);
-            let server_key = get_server_key(env, &args_vec);
-            if servers.contains_key(&server_key) {
-                return symbol("already-started");
-            } else {
-                logger::log_rust_debug!("Need to start new");
-            }
-            match Server::new(&server_key.root_path, &server_key.server_cmd) {
-                Some(mut server) => match server.initialize() {
-                    Some(()) => {
-                        servers.insert(server_key, server);
-                        symbol("started")
-                    }
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        "tlc__rust_start_server",
+        |(server_key,)| {
+            servers::with_servers(|servers| {
+                if servers.contains_key(&server_key) {
+                    return symbol("already-started");
+                } else {
+                    logger::log_rust_debug!("Need to start new");
+                }
+                match Server::new(&server_key.root_path, &server_key.server_cmd)
+                {
+                    Some(mut server) => match server.initialize() {
+                        Some(()) => {
+                            servers.insert(server_key, server);
+                            symbol("started")
+                        }
+                        None => symbol("start-failed"),
+                    },
                     None => symbol("start-failed"),
-                },
-                None => symbol("start-failed"),
-            }
-        })
-    })
+                }
+            })
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -606,18 +609,6 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
             RustCallResult::Symbol("no-server")
         }
     })
-}
-
-unsafe fn get_server_key(
-    env: *mut emacs_env,
-    args: &[emacs_value],
-) -> ServerKey {
-    let server_key = args[0];
-    let (root_path, server_cmd) = FromLisp::from_lisp(env, server_key).unwrap();
-    ServerKey {
-        root_path,
-        server_cmd,
-    }
 }
 
 enum RustCallResult<A: IntoLisp> {
