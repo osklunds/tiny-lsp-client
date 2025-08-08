@@ -183,6 +183,8 @@ unsafe fn intern_new<T: AsRef<str>>(
     })
 }
 
+// IntoLisp
+
 // @credits: IntoLisp/FromLisp inspired by
 // https://github.com/ubolonton/emacs-module-rs
 pub trait IntoLisp {
@@ -233,37 +235,25 @@ impl IntoLisp for &str {
     }
 }
 
-impl IntoLisp for usize {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        handle_non_local_exit_new(env, || {
-            (*env).make_integer.unwrap()(env, self as i64)
-        })
-    }
+macro_rules! impl_into_lisp_for_integer {
+    ($t:ident) => {
+        impl IntoLisp for $t {
+            unsafe fn into_lisp(
+                self,
+                env: *mut emacs_env,
+            ) -> Option<emacs_value> {
+                handle_non_local_exit_new(env, || {
+                    (*env).make_integer.unwrap()(env, self as i64)
+                })
+            }
+        }
+    };
 }
 
-impl IntoLisp for i32 {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        handle_non_local_exit_new(env, || {
-            (*env).make_integer.unwrap()(env, self as i64)
-        })
-    }
-}
-
-impl IntoLisp for u32 {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        handle_non_local_exit_new(env, || {
-            (*env).make_integer.unwrap()(env, self as i64)
-        })
-    }
-}
-
-impl IntoLisp for i64 {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        handle_non_local_exit_new(env, || {
-            (*env).make_integer.unwrap()(env, self)
-        })
-    }
-}
+impl_into_lisp_for_integer!(i32);
+impl_into_lisp_for_integer!(u32);
+impl_into_lisp_for_integer!(i64);
+impl_into_lisp_for_integer!(usize);
 
 impl IntoLisp for bool {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
@@ -313,6 +303,8 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
         call_lisp_lisp(env, "list", vec![a, b, c, d])
     }
 }
+
+// FromLisp
 
 pub trait FromLisp {
     unsafe fn from_lisp(
@@ -369,7 +361,6 @@ impl FromLisp for bool {
     }
 }
 
-// todo: macro for all integers
 impl FromLisp for i64 {
     unsafe fn from_lisp(
         env: *mut emacs_env,
@@ -381,27 +372,23 @@ impl FromLisp for i64 {
     }
 }
 
-impl FromLisp for u64 {
-    unsafe fn from_lisp(
-        env: *mut emacs_env,
-        value: emacs_value,
-    ) -> Option<u64> {
-        handle_non_local_exit_new(env, || {
-            (*env).extract_integer.unwrap()(env, value) as u64
-        })
-    }
+macro_rules! impl_from_lisp_for_integer {
+    ($t:ident) => {
+        impl FromLisp for $t {
+            unsafe fn from_lisp(
+                env: *mut emacs_env,
+                value: emacs_value,
+            ) -> Option<Self> {
+                handle_non_local_exit_new(env, || {
+                    (*env).extract_integer.unwrap()(env, value) as Self
+                })
+            }
+        }
+    };
 }
 
-impl FromLisp for usize {
-    unsafe fn from_lisp(
-        env: *mut emacs_env,
-        value: emacs_value,
-    ) -> Option<usize> {
-        handle_non_local_exit_new(env, || {
-            (*env).extract_integer.unwrap()(env, value) as usize
-        })
-    }
-}
+impl_from_lisp_for_integer!(u64);
+impl_from_lisp_for_integer!(usize);
 
 impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
     unsafe fn from_lisp(
