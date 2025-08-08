@@ -719,30 +719,43 @@ impl FromLisp for SendNotificationParameters {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<SendNotificationParameters> {
-        // todo: consider perfomance by doing converion direcly
-        // instead of this try-fail. Also, if one fails not because of wrong
-        // format, it's a waste to do it again. Also, notification is on
-        // the critical path due to edit
-        // also needed because non local exit happens
-        if let Some((uri,)) = FromLisp::from_lisp(env, value) {
-            Some(SendNotificationParameters::Uri(uri))
-        } else if let Some((uri, file_content)) =
-            FromLisp::from_lisp(env, value)
-        {
-            Some(SendNotificationParameters::UriFileContent(
-                uri,
-                file_content,
-            ))
-        } else if let Some((uri, content_changes)) =
-            FromLisp::from_lisp(env, value)
-        {
-            Some(SendNotificationParameters::UriContentChanges(
-                uri,
-                content_changes,
-            ))
-        } else {
-            logger::log_rust_debug!("no match in SendNotificationParameters");
+        // An option would be to do from_lisp directly for each variant, and if
+        // Some, then we're done. But there are some issues with that approach:
+        // - Performance waste instead of trying and failing. Since this code
+        //   is used for didChange, it is one the most critical path.
+        // - If a conversion fails, it causes a non-local exit, which is ugly
+        //   if it happens due to something which is not a bug
+        if !call_lisp_rust(env, "listp", vec![value])? {
             None
+        } else {
+            match call_lisp_rust(env, "length", vec![value])? {
+                1 => {
+                    let (uri,) = FromLisp::from_lisp(env, value)?;
+                    Some(SendNotificationParameters::Uri(uri))
+                }
+                2 => {
+                    let first = call_lisp_lisp(env, "car", vec![value])?;
+                    let second = call_lisp_lisp(env, "cadr", vec![value])?;
+                    if call_lisp_rust(env, "listp", vec![second])? {
+                        let uri = FromLisp::from_lisp(env, first)?;
+                        let content_changes = FromLisp::from_lisp(env, second)?;
+                        Some(SendNotificationParameters::UriContentChanges(
+                            uri,
+                            content_changes,
+                        ))
+                    } else {
+                        let uri = FromLisp::from_lisp(env, first)?;
+                        let file_content = FromLisp::from_lisp(env, second)?;
+                        Some(SendNotificationParameters::UriFileContent(
+                            uri,
+                            file_content,
+                        ))
+                    }
+                }
+                _ => {
+                    todo!("raise lisp error")
+                }
+            }
         }
     }
 }

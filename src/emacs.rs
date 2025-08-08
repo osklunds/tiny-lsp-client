@@ -69,7 +69,7 @@ pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> Option<()> {
 // Calling emacs functions
 
 // To be used when calling with lisp arguments and need lisp return value
-unsafe fn call_lisp_lisp<F: AsRef<str>>(
+pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
     env: *mut emacs_env,
     function_name: F,
     mut args: Vec<emacs_value>,
@@ -93,7 +93,7 @@ unsafe fn call1_rust<F: AsRef<str>, T: IntoLisp>(
 }
 
 // To be used when calling with lisp arguments but need rust return value
-unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
+pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     env: *mut emacs_env,
     func: F,
     args: Vec<emacs_value>,
@@ -204,7 +204,7 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
         // now, gamble that no non-local exists until log file has been
         // created.
         logger::log_rust_debug!("non local exit: {}", status);
-        (*env).non_local_exit_clear.unwrap()(env);
+        // (*env).non_local_exit_clear.unwrap()(env);
         None
     }
 }
@@ -425,6 +425,7 @@ macro_rules! impl_from_lisp_for_integer {
     };
 }
 
+impl_from_lisp_for_integer!(i32);
 impl_from_lisp_for_integer!(i64);
 impl_from_lisp_for_integer!(u64);
 impl_from_lisp_for_integer!(usize);
