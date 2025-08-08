@@ -422,7 +422,6 @@ macro_rules! impl_from_lisp_for_integer {
                 env: *mut emacs_env,
                 value: emacs_value,
             ) -> LispResult<Self> {
-                log_lisp_value(env, "FromLisp $t", value)?;
                 handle_non_local_exit(env, || {
                     (*env).extract_integer.unwrap()(env, value) as Self
                 })
@@ -441,15 +440,7 @@ impl<A: FromLisp> FromLisp for (A,) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<(A,)> {
-        log_lisp_value(env, "FromLisp (A,)", value)?;
-        // todo: check tuple helper
-        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return Err(());
-        }
-
-        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 1 {
-            return Err(());
-        }
+        check_tuple(env, value, 1)?;
 
         let a =
             call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
@@ -463,16 +454,7 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<(A, B)> {
-        log_lisp_value(env, "FromLisp (A,B)", value)?;
-        // todo: consider new logger, for all of these lisp conversions
-        logger::log_rust_debug!("FromLisp (A,B)");
-        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return Err(());
-        }
-
-        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 2 {
-            return Err(());
-        }
+        check_tuple(env, value, 2)?;
 
         let a =
             call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
@@ -488,14 +470,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<(A, B, C)> {
-        log_lisp_value(env, "FromLisp (A,B,C)", value)?;
-        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return Err(());
-        }
-
-        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 3 {
-            return Err(());
-        }
+        check_tuple(env, value, 3)?;
 
         let a =
             call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
@@ -514,14 +489,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<(A, B, C, D, E)> {
-        log_lisp_value(env, "FromLisp (A,B,C,D,E)", value)?;
-        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return Err(());
-        }
-
-        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 5 {
-            return Err(());
-        }
+        check_tuple(env, value, 5)?;
 
         let a =
             call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
@@ -537,12 +505,26 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
     }
 }
 
+unsafe fn check_tuple(
+    env: *mut emacs_env,
+    value: emacs_value,
+    arity: i64,
+) -> LispResult<()> {
+    if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
+        return Err(());
+    }
+
+    if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != arity {
+        return Err(());
+    }
+    Ok(())
+}
+
 impl<T: FromLisp> FromLisp for Vec<T> {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<Vec<T>> {
-        log_lisp_value(env, "FromLisp Vec", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return Err(());
         }
@@ -566,7 +548,6 @@ impl<T: FromLisp> FromLisp for Option<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<Option<T>> {
-        log_lisp_value(env, "FromLisp Option", value)?;
         if call_lisp_rust(env, "null", vec![value])? {
             Ok(None)
         } else {
