@@ -540,6 +540,15 @@ pub trait FromVecOfLisp {
         Self: Sized;
 }
 
+impl FromVecOfLisp for () {
+    unsafe fn from_vec_of_lisp(
+        _env: *mut emacs_env,
+        _vec_of_lisp: Vec<emacs_value>,
+    ) -> Option<()> {
+        Some(())
+    }
+}
+
 impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
