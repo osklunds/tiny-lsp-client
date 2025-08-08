@@ -42,7 +42,7 @@ pub unsafe fn export_function(
         data: *mut ::std::os::raw::c_void,
     ) -> emacs_value,
     symbol: &str,
-) -> LispResult<()> {
+) {
     let make_function = (*env).make_function.unwrap();
 
     let emacs_fun = handle_non_local_exit(env, || {
@@ -56,14 +56,14 @@ pub unsafe fn export_function(
             ptr::null_mut(),
             ptr::null_mut(),
         )
-    })?;
-    let symbol = intern(env, symbol)?;
-    call_lisp_lisp(env, "fset", vec![symbol, emacs_fun])?;
-    Ok(())
+    })
+    .unwrap();
+    let symbol = intern(env, symbol).unwrap();
+    call_lisp_lisp(env, "fset", vec![symbol, emacs_fun]).unwrap();
 }
 
-pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> LispResult<()> {
-    call1_rust(env, "provide", symbol("tlc-rust"))
+pub unsafe fn provide_tlc_rust(env: *mut emacs_env) {
+    call1_rust(env, "provide", symbol("tlc-rust")).unwrap();
 }
 
 // Calling emacs functions
@@ -136,8 +136,11 @@ pub unsafe fn lisp_function_in_rust<
     function_name: S,
     function: F,
 ) -> emacs_value {
-    log_args(env, nargs, args, function_name);
-    lisp_function_in_rust_no_args_log(env, nargs, args, function)
+    if log_args(env, nargs, args, function_name).is_ok() {
+        lisp_function_in_rust_no_args_log(env, nargs, args, function)
+    } else {
+        (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
+    }
 }
 
 unsafe fn log_args<S: AsRef<str>>(
@@ -161,7 +164,6 @@ unsafe fn log_args<S: AsRef<str>>(
             call_lisp_rust(env, "format", vec![format_string, list])?;
         logger::log_rust_debug!("{}", formatted);
     }
-    // todo: check return value
     Ok(())
 }
 
@@ -632,4 +634,3 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
 
 // So that "must use" warnings are emitted
 pub type LispResult<T> = Result<T, ()>;
-
