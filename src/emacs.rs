@@ -67,6 +67,9 @@ pub unsafe fn provide_tlc_rust(env: *mut emacs_env) {
 }
 
 // Calling emacs functions
+// These need to be exported because need to be used in IntoLisp/FromLisp
+// impls for Enums. However, it might be the case that those Enums are not
+// good since they mean union types from the lisp side are used.
 
 // To be used when calling with lisp arguments and need lisp return value
 pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
@@ -81,7 +84,7 @@ pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
     })
 }
 
-// To be used when calling with rust arguments and dont' care about return value
+// To be used when calling with rust arguments and don't care about return value
 unsafe fn call1_rust<F: AsRef<str>, T: IntoLisp>(
     env: *mut emacs_env,
     function_name: F,
@@ -102,8 +105,7 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     T::from_lisp(env, ret)
 }
 
-// Function API
-// todo: consider #[defun] macro
+// Lisp function in Rust
 
 pub unsafe fn lisp_function_in_rust_no_args_log<
     A: FromVecOfLisp,
@@ -245,7 +247,6 @@ impl FromLisp for Symbol {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<Symbol> {
-        // log_lisp_value(env, "FromLisp Symbol", value)?;
         let string = call_lisp_rust(env, "symbol-name", vec![value])?;
         Ok(Symbol(string))
     }
@@ -373,7 +374,6 @@ impl FromLisp for String {
         env: *mut emacs_env,
         val: emacs_value,
     ) -> LispResult<String> {
-        // log_lisp_value(env, "FromLisp String", val)?;
         let copy_string_contents = (*env).copy_string_contents.unwrap();
 
         // First find the length
@@ -410,7 +410,6 @@ impl FromLisp for bool {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> LispResult<bool> {
-        // log_lisp_value(env, "FromLisp bool", value)?;
         let null: Symbol = call_lisp_rust(env, "null", vec![value])?;
         Ok(null.0 != "t")
     }
