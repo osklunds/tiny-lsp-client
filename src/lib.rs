@@ -369,27 +369,32 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_recv_response");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        let timeout: u64 = FromLisp::from_lisp(env, args[1]).unwrap();
-        let timeout = if timeout == 0 {
-            None
-        } else {
-            Some(Duration::from_millis(timeout))
-        };
-        if let Some(recv_result) = server.try_recv_response(timeout) {
-            let result = match recv_result {
-                Some(response) => {
-                    RustCallResult::Any(handle_response::<u32>(response))
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        "tlc__rust_recv_response",
+        |(server_key, timeout): (ServerKey, u64)| {
+            handle_call_new(server_key, |server| {
+                let timeout = if timeout == 0 {
+                    None
+                } else {
+                    Some(Duration::from_millis(timeout))
+                };
+                if let Some(recv_result) = server.try_recv_response(timeout) {
+                    let result = match recv_result {
+                        Some(response) => RustCallResult::Any(
+                            handle_response::<u32>(response),
+                        ),
+                        None => RustCallResult::Symbol("no-response"),
+                    };
+                    Some(result)
+                } else {
+                    None
                 }
-                None => RustCallResult::Symbol("no-response"),
-            };
-            Some(result)
-        } else {
-            None
-        }
-    })
+            })
+        },
+    )
 }
 
 unsafe fn handle_response<A: IntoLisp>(
@@ -556,6 +561,26 @@ unsafe extern "C" fn tlc__rust_stop_server(
     })
 }
 
+fn handle_call_new<T: IntoLisp, F: Copy + FnOnce(&mut Server) -> Option<T>>(
+    server_key: ServerKey,
+    function: F,
+) -> RustCallResult<T> {
+    servers::with_servers(|servers| {
+        if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
+            if let Some(result) = function(server) {
+                RustCallResult::Any(result)
+            } else {
+                // This means it failed during handling this call
+                servers.remove(&server_key);
+                RustCallResult::Symbol("no-server")
+            }
+        } else {
+            // This means the server wasn't existing before this call
+            RustCallResult::Symbol("no-server")
+        }
+    })
+}
+
 unsafe fn handle_call<
     T: IntoLisp,
     F: Copy + FnOnce(*mut emacs_env, Vec<emacs_value>, &mut Server) -> Option<T>,
@@ -627,5 +652,28 @@ impl IntoLisp for HandleResponse {
             Self::HoverResponse(a) => a.into_lisp(env),
             Self::NullResponse => false.into_lisp(env),
         }
+    }
+}
+
+impl IntoLisp for ServerKey {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let ServerKey {
+            root_path,
+            server_cmd,
+        } = self;
+        (root_path, server_cmd).into_lisp(env)
+    }
+}
+
+impl FromLisp for ServerKey {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<ServerKey> {
+        let (root_path, server_cmd) = FromLisp::from_lisp(env, value)?;
+        Some(ServerKey {
+            root_path,
+            server_cmd,
+        })
     }
 }

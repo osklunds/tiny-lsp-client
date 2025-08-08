@@ -107,6 +107,26 @@ unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
 // todo: wrapper that takes lambda, that takes some args. the lambda is
 // safe the wrapper is unsafe
 
+pub unsafe fn lisp_function_in_rust<
+    S: AsRef<str>,
+    A: FromVecOfLisp,
+    R: IntoLisp,
+    F: FnMut(A) -> R,
+>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    function_name: S,
+    mut function: F,
+) -> emacs_value {
+    log_args(env, nargs, args, function_name);
+    let args_vec = args_pointer_to_args_vec(nargs, args);
+    let arg = FromVecOfLisp::from_vec_of_lisp(env, args_vec).unwrap();
+    let ret = function(arg).into_lisp(env).unwrap();
+
+    ret
+}
+
 pub unsafe fn log_args<S: AsRef<str>>(
     env: *mut emacs_env,
     nargs: isize,
@@ -281,6 +301,15 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
     }
 }
 
+impl<A: IntoLisp, B: IntoLisp> IntoLisp for (A, B) {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        let (a, b) = self;
+        let a = a.into_lisp(env)?;
+        let b = b.into_lisp(env)?;
+        call_lisp_lisp(env, "list", vec![a, b])
+    }
+}
+
 impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         let (a, b, c) = self;
@@ -404,11 +433,11 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
         }
 
         let a =
-            call_lisp_rust(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
+            call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
 
         let b =
-            call_lisp_rust(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
-        Some((a, b))
+            call_lisp_lisp(env, "nth", vec![1.into_lisp(env).unwrap(), value])?;
+        FromVecOfLisp::from_vec_of_lisp(env, vec![a, b])
     }
 }
 
@@ -497,5 +526,27 @@ impl<T: FromLisp> FromLisp for Option<T> {
         } else {
             T::from_lisp(env, value).map(|v| Some(v))
         }
+    }
+}
+
+// FromVecOfLisp
+
+pub trait FromVecOfLisp {
+    unsafe fn from_vec_of_lisp(
+        env: *mut emacs_env,
+        vec_of_lisp: Vec<emacs_value>,
+    ) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
+    unsafe fn from_vec_of_lisp(
+        env: *mut emacs_env,
+        vec_of_lisp: Vec<emacs_value>,
+    ) -> Option<(A, B)> {
+        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+        let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
+        Some((a, b))
     }
 }
