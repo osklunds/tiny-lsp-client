@@ -192,7 +192,7 @@ unsafe extern "C" fn tlc__rust_send_request(
             // todo: By accident, request_args are the same for all requests
             // when they no longer are, need to have an enum of the variants
             let (uri, line, character) = request_args;
-            handle_call_new(server_key, |server| {
+            handle_call(server_key, |server| {
                 let request_params = match method.as_str() {
                     "textDocument/definition" => {
                         build_text_document_definition(uri, line, character)
@@ -272,7 +272,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
         args,
         "tlc__rust_send_notification",
         |(server_key, method, request_args)| {
-            handle_call_new(server_key, |server| {
+            handle_call(server_key, |server| {
                 let notification_params = if method == "textDocument/didOpen" {
                     let (uri, file_content) = match request_args {
                         SendNotificationParameters::UriFileContent(
@@ -395,7 +395,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
         args,
         "tlc__rust_recv_response",
         |(server_key, timeout): (ServerKey, u64)| {
-            handle_call_new(server_key, |server| {
+            handle_call(server_key, |server| {
                 let timeout = if timeout == 0 {
                     None
                 } else {
@@ -578,7 +578,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
         args,
         "tlc__rust_stop_server",
         |(server_key,)| {
-            handle_call_new(server_key, |server| {
+            handle_call(server_key, |server| {
                 // could consider removing from servers, but in case the stopping fails
                 // it's good that the server remains in the list
                 server.stop_server();
@@ -588,7 +588,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
     )
 }
 
-fn handle_call_new<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
+fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     server_key: ServerKey,
     function: F,
 ) -> RustCallResult<T> {
@@ -605,35 +605,6 @@ fn handle_call_new<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
             // This means the server wasn't existing before this call
             RustCallResult::Symbol("no-server")
         }
-    })
-}
-
-unsafe fn handle_call<
-    T: IntoLisp,
-    F: Copy + FnOnce(*mut emacs_env, Vec<emacs_value>, &mut Server) -> Option<T>,
->(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    f: F,
-) -> emacs_value {
-    servers::with_servers(|servers| {
-        handle_none(env, || {
-            let args_vec = args_pointer_to_args_vec(nargs, args);
-            let server_key = get_server_key(env, &args_vec);
-            if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
-                if let Some(result) = f(env, args_vec, server) {
-                    RustCallResult::Any(result)
-                } else {
-                    // This means it failed during handling this call
-                    servers.remove(&server_key);
-                    RustCallResult::Symbol("no-server")
-                }
-            } else {
-                // This means the server wasn't existing before this call
-                RustCallResult::Symbol("no-server")
-            }
-        })
     })
 }
 
