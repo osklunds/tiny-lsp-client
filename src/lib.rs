@@ -622,7 +622,7 @@ enum RustCallResult<A: IntoLisp> {
 
 // Add derive, but perhaps these should be removed
 impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         match self {
             Self::Symbol(string) => symbol(string).into_lisp(env),
             Self::Any(value) => value.into_lisp(env),
@@ -638,7 +638,7 @@ enum HandleResponse {
 }
 
 impl IntoLisp for HandleResponse {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         match self {
             Self::DefinitionResponse(a) => a.into_lisp(env),
             Self::CompletionResponse(a) => a.into_lisp(env),
@@ -649,7 +649,7 @@ impl IntoLisp for HandleResponse {
 }
 
 impl IntoLisp for ServerKey {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let ServerKey {
             root_path,
             server_cmd,
@@ -662,9 +662,9 @@ impl FromLisp for ServerKey {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<ServerKey> {
+    ) -> LispResult<ServerKey> {
         let (root_path, server_cmd) = FromLisp::from_lisp(env, value)?;
-        Some(ServerKey {
+        Ok(ServerKey {
             root_path,
             server_cmd,
         })
@@ -691,7 +691,7 @@ impl FromLisp for SendNotificationParameters {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<SendNotificationParameters> {
+    ) -> LispResult<SendNotificationParameters> {
         // An option would be to do from_lisp directly for each variant, and if
         // Some, then we're done. But there are some issues with that approach:
         // - Performance waste instead of trying and failing. Since this code
@@ -699,12 +699,12 @@ impl FromLisp for SendNotificationParameters {
         // - If a conversion fails, it causes a non-local exit, which is ugly
         //   if it happens due to something which is not a bug
         if !call_lisp_rust(env, "listp", vec![value])? {
-            None
+            Err(())
         } else {
             match call_lisp_rust(env, "length", vec![value])? {
                 1 => {
                     let (uri,) = FromLisp::from_lisp(env, value)?;
-                    Some(SendNotificationParameters::Uri(uri))
+                    Ok(SendNotificationParameters::Uri(uri))
                 }
                 2 => {
                     let first = call_lisp_lisp(env, "car", vec![value])?;
@@ -712,14 +712,14 @@ impl FromLisp for SendNotificationParameters {
                     if call_lisp_rust(env, "listp", vec![second])? {
                         let uri = FromLisp::from_lisp(env, first)?;
                         let content_changes = FromLisp::from_lisp(env, second)?;
-                        Some(SendNotificationParameters::UriContentChanges(
+                        Ok(SendNotificationParameters::UriContentChanges(
                             uri,
                             content_changes,
                         ))
                     } else {
                         let uri = FromLisp::from_lisp(env, first)?;
                         let file_content = FromLisp::from_lisp(env, second)?;
-                        Some(SendNotificationParameters::UriFileContent(
+                        Ok(SendNotificationParameters::UriFileContent(
                             uri,
                             file_content,
                         ))
@@ -742,11 +742,11 @@ impl FromLisp for SetOptionValue {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<SetOptionValue> {
+    ) -> LispResult<SetOptionValue> {
         if call_lisp_rust(env, "stringp", vec![value])? {
-            Some(Self::FileName(FromLisp::from_lisp(env, value)?))
+            Ok(Self::FileName(FromLisp::from_lisp(env, value)?))
         } else {
-            Some(Self::Bool(FromLisp::from_lisp(env, value)?))
+            Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
         }
     }
 }

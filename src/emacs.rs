@@ -42,7 +42,7 @@ pub unsafe fn export_function(
         data: *mut ::std::os::raw::c_void,
     ) -> emacs_value,
     symbol: &str,
-) -> Option<()> {
+) -> LispResult<()> {
     let make_function = (*env).make_function.unwrap();
 
     let emacs_fun = handle_non_local_exit(env, || {
@@ -59,10 +59,10 @@ pub unsafe fn export_function(
     })?;
     let symbol = intern(env, symbol)?;
     call_lisp_lisp(env, "fset", vec![symbol, emacs_fun])?;
-    Some(())
+    Ok(())
 }
 
-pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> Option<()> {
+pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> LispResult<()> {
     call1_rust(env, "provide", symbol("tlc-rust"))
 }
 
@@ -73,7 +73,7 @@ pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
     env: *mut emacs_env,
     function_name: F,
     mut args: Vec<emacs_value>,
-) -> Option<emacs_value> {
+) -> LispResult<emacs_value> {
     let funcall = (*env).funcall.unwrap();
     let function_symbol = intern(env, function_name)?;
     handle_non_local_exit(env, || {
@@ -86,10 +86,10 @@ unsafe fn call1_rust<F: AsRef<str>, T: IntoLisp>(
     env: *mut emacs_env,
     function_name: F,
     arg1: T,
-) -> Option<()> {
+) -> LispResult<()> {
     let arg1 = arg1.into_lisp(env)?;
     call_lisp_lisp(env, function_name, vec![arg1])?;
-    Some(())
+    Ok(())
 }
 
 // To be used when calling with lisp arguments but need rust return value
@@ -97,7 +97,7 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     env: *mut emacs_env,
     func: F,
     args: Vec<emacs_value>,
-) -> Option<T> {
+) -> LispResult<T> {
     let ret = call_lisp_lisp(env, func, args)?;
     T::from_lisp(env, ret)
 }
@@ -116,8 +116,8 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
     mut function: F,
 ) -> emacs_value {
     let args_vec = args_pointer_to_args_vec(nargs, args);
-    if let Some(arg) = FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
-        if let Some(ret) = function(arg).into_lisp(env) {
+    if let Ok(arg) = FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
+        if let Ok(ret) = function(arg).into_lisp(env) {
             return ret;
         }
     }
@@ -145,7 +145,7 @@ unsafe fn log_args<S: AsRef<str>>(
     nargs: isize,
     args: *mut emacs_value,
     function_name: S,
-) -> Option<()> {
+) -> LispResult<()> {
     // logger::log_rust_debug! already knows whether to log or not. But check
     // anyway as an optimization so that lots of string and terms aren't
     // created unecessarily.
@@ -162,14 +162,14 @@ unsafe fn log_args<S: AsRef<str>>(
         logger::log_rust_debug!("{}", formatted);
     }
     // todo: check return value
-    Some(())
+    Ok(())
 }
 
 pub unsafe fn log_lisp_value<T: std::fmt::Display>(
     env: *mut emacs_env,
     tag: T,
     value: emacs_value,
-) -> Option<()> {
+) -> LispResult<()> {
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let format_string =
             format!("log_lisp_value - '{}' - '%S'", tag).into_lisp(env)?;
@@ -177,7 +177,7 @@ pub unsafe fn log_lisp_value<T: std::fmt::Display>(
             call_lisp_rust(env, "format", vec![format_string, value])?;
         logger::log_rust_debug!("{}", formatted);
     }
-    Some(())
+    Ok(())
 }
 
 unsafe fn args_pointer_to_args_vec(
@@ -194,11 +194,11 @@ unsafe fn args_pointer_to_args_vec(
 unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
     env: *mut emacs_env,
     mut func: F,
-) -> Option<R> {
+) -> LispResult<R> {
     let result = func();
     let status = (*env).non_local_exit_check.unwrap()(env);
     if status == emacs_funcall_exit_emacs_funcall_exit_return {
-        Some(result)
+        Ok(result)
     } else {
         // logger can only be called once the log file has been initialized,
         // which is not the case in emacs_module_init for example. But for
@@ -206,14 +206,14 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
         // created.
         logger::log_rust_debug!("non local exit: {}", status);
         // (*env).non_local_exit_clear.unwrap()(env);
-        None
+        Err(())
     }
 }
 
 unsafe fn intern<T: AsRef<str>>(
     env: *mut emacs_env,
     symbol: T,
-) -> Option<emacs_value> {
+) -> LispResult<emacs_value> {
     let symbol = CString::new(symbol.as_ref()).unwrap();
     handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
 }
@@ -223,7 +223,7 @@ unsafe fn intern<T: AsRef<str>>(
 // @credits: IntoLisp/FromLisp inspired by
 // https://github.com/ubolonton/emacs-module-rs
 pub trait IntoLisp {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value>;
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value>;
 }
 
 pub struct Symbol(pub String);
@@ -233,7 +233,7 @@ pub fn symbol<S: ToString>(s: S) -> Symbol {
 }
 
 impl IntoLisp for Symbol {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         intern(env, &self.0)
     }
 }
@@ -242,27 +242,27 @@ impl FromLisp for Symbol {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<Symbol> {
+    ) -> LispResult<Symbol> {
         // log_lisp_value(env, "FromLisp Symbol", value)?;
         let string = call_lisp_rust(env, "symbol-name", vec![value])?;
-        Some(Symbol(string))
+        Ok(Symbol(string))
     }
 }
 
 impl IntoLisp for String {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         AsRef::<str>::as_ref(&self).into_lisp(env)
     }
 }
 
 impl IntoLisp for &String {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         AsRef::<str>::as_ref(&self).into_lisp(env)
     }
 }
 
 impl IntoLisp for &str {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let make_string = (*env).make_string.unwrap();
         let c_string = CString::new(self).unwrap();
         let len = c_string.as_bytes().len() as isize;
@@ -277,7 +277,7 @@ macro_rules! impl_into_lisp_for_integer {
             unsafe fn into_lisp(
                 self,
                 env: *mut emacs_env,
-            ) -> Option<emacs_value> {
+            ) -> LispResult<emacs_value> {
                 handle_non_local_exit(env, || {
                     (*env).make_integer.unwrap()(env, self as i64)
                 })
@@ -292,7 +292,7 @@ impl_into_lisp_for_integer!(i64);
 impl_into_lisp_for_integer!(usize);
 
 impl IntoLisp for bool {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         if self {
             intern(env, "t")
         } else {
@@ -302,29 +302,29 @@ impl IntoLisp for bool {
 }
 
 impl<T: IntoLisp> IntoLisp for Vec<T> {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let len = self.len();
         let vec_of_lisp_objects: Vec<_> = self
             .into_iter()
-            .map_while(|element| element.into_lisp(env))
+            .map_while(|element| element.into_lisp(env).ok())
             .collect();
 
         if vec_of_lisp_objects.len() == len {
             call_lisp_lisp(env, "list", vec_of_lisp_objects)
         } else {
-            None
+            Err(())
         }
     }
 }
 
 impl IntoLisp for () {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         false.into_lisp(env)
     }
 }
 
 impl<A: IntoLisp, B: IntoLisp> IntoLisp for (A, B) {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let (a, b) = self;
         let a = a.into_lisp(env)?;
         let b = b.into_lisp(env)?;
@@ -333,7 +333,7 @@ impl<A: IntoLisp, B: IntoLisp> IntoLisp for (A, B) {
 }
 
 impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let (a, b, c) = self;
         let a = a.into_lisp(env)?;
         let b = b.into_lisp(env)?;
@@ -345,7 +345,7 @@ impl<A: IntoLisp, B: IntoLisp, C: IntoLisp> IntoLisp for (A, B, C) {
 impl<A: IntoLisp, B: IntoLisp, C: IntoLisp, D: IntoLisp> IntoLisp
     for (A, B, C, D)
 {
-    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         let (a, b, c, d) = self;
         let a = a.into_lisp(env)?;
         let b = b.into_lisp(env)?;
@@ -361,7 +361,7 @@ pub trait FromLisp {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<Self>
+    ) -> LispResult<Self>
     where
         Self: Sized;
 }
@@ -370,7 +370,7 @@ impl FromLisp for String {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         val: emacs_value,
-    ) -> Option<String> {
+    ) -> LispResult<String> {
         // log_lisp_value(env, "FromLisp String", val)?;
         let copy_string_contents = (*env).copy_string_contents.unwrap();
 
@@ -379,10 +379,10 @@ impl FromLisp for String {
         if !handle_non_local_exit(env, || {
             copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
         })? {
-            return None;
+            return Err(());
         }
         if len <= 0 {
-            return None;
+            return Err(());
         }
 
         // Then get the actual string
@@ -395,11 +395,11 @@ impl FromLisp for String {
                 &mut len,
             )
         })? {
-            return None;
+            return Err(());
         }
 
         len -= 1; // remove null-terminator
-        Some(str::from_utf8(&buf[0..len as usize]).unwrap().to_string())
+        Ok(str::from_utf8(&buf[0..len as usize]).unwrap().to_string())
     }
 }
 
@@ -407,10 +407,10 @@ impl FromLisp for bool {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<bool> {
+    ) -> LispResult<bool> {
         // log_lisp_value(env, "FromLisp bool", value)?;
         let null: Symbol = call_lisp_rust(env, "null", vec![value])?;
-        Some(null.0 != "t")
+        Ok(null.0 != "t")
     }
 }
 
@@ -420,7 +420,7 @@ macro_rules! impl_from_lisp_for_integer {
             unsafe fn from_lisp(
                 env: *mut emacs_env,
                 value: emacs_value,
-            ) -> Option<Self> {
+            ) -> LispResult<Self> {
                 log_lisp_value(env, "FromLisp $t", value)?;
                 handle_non_local_exit(env, || {
                     (*env).extract_integer.unwrap()(env, value) as Self
@@ -439,15 +439,15 @@ impl<A: FromLisp> FromLisp for (A,) {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<(A,)> {
+    ) -> LispResult<(A,)> {
         log_lisp_value(env, "FromLisp (A,)", value)?;
         // todo: check tuple helper
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return None;
+            return Err(());
         }
 
         if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 1 {
-            return None;
+            return Err(());
         }
 
         let a =
@@ -461,16 +461,16 @@ impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<(A, B)> {
+    ) -> LispResult<(A, B)> {
         log_lisp_value(env, "FromLisp (A,B)", value)?;
         // todo: consider new logger, for all of these lisp conversions
         logger::log_rust_debug!("FromLisp (A,B)");
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return None;
+            return Err(());
         }
 
         if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 2 {
-            return None;
+            return Err(());
         }
 
         let a =
@@ -486,14 +486,14 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<(A, B, C)> {
+    ) -> LispResult<(A, B, C)> {
         log_lisp_value(env, "FromLisp (A,B,C)", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return None;
+            return Err(());
         }
 
         if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 3 {
-            return None;
+            return Err(());
         }
 
         let a =
@@ -512,14 +512,14 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<(A, B, C, D, E)> {
+    ) -> LispResult<(A, B, C, D, E)> {
         log_lisp_value(env, "FromLisp (A,B,C,D,E)", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return None;
+            return Err(());
         }
 
         if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 5 {
-            return None;
+            return Err(());
         }
 
         let a =
@@ -532,7 +532,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
             call_lisp_rust(env, "nth", vec![3.into_lisp(env).unwrap(), value])?;
         let e =
             call_lisp_rust(env, "nth", vec![4.into_lisp(env).unwrap(), value])?;
-        Some((a, b, c, d, e))
+        Ok((a, b, c, d, e))
     }
 }
 
@@ -540,10 +540,10 @@ impl<T: FromLisp> FromLisp for Vec<T> {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<Vec<T>> {
+    ) -> LispResult<Vec<T>> {
         log_lisp_value(env, "FromLisp Vec", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            return None;
+            return Err(());
         }
 
         let len = call_lisp_rust::<&str, i64>(env, "length", vec![value])?;
@@ -556,7 +556,7 @@ impl<T: FromLisp> FromLisp for Vec<T> {
             vec.push(element);
         }
 
-        Some(vec)
+        Ok(vec)
     }
 }
 
@@ -564,10 +564,10 @@ impl<T: FromLisp> FromLisp for Option<T> {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
-    ) -> Option<Option<T>> {
+    ) -> LispResult<Option<T>> {
         log_lisp_value(env, "FromLisp Option", value)?;
         if call_lisp_rust(env, "null", vec![value])? {
-            Some(None)
+            Ok(None)
         } else {
             T::from_lisp(env, value).map(|v| Some(v))
         }
@@ -580,7 +580,7 @@ pub trait FromVecOfLisp {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
-    ) -> Option<Self>
+    ) -> LispResult<Self>
     where
         Self: Sized;
 }
@@ -589,8 +589,8 @@ impl FromVecOfLisp for () {
     unsafe fn from_vec_of_lisp(
         _env: *mut emacs_env,
         _vec_of_lisp: Vec<emacs_value>,
-    ) -> Option<()> {
-        Some(())
+    ) -> LispResult<()> {
+        Ok(())
     }
 }
 
@@ -598,9 +598,9 @@ impl<A: FromLisp> FromVecOfLisp for (A,) {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
-    ) -> Option<(A,)> {
+    ) -> LispResult<(A,)> {
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
-        Some((a,))
+        Ok((a,))
     }
 }
 
@@ -608,10 +608,10 @@ impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
-    ) -> Option<(A, B)> {
+    ) -> LispResult<(A, B)> {
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
         let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
-        Some((a, b))
+        Ok((a, b))
     }
 }
 
@@ -619,11 +619,17 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
-    ) -> Option<(A, B, C)> {
+    ) -> LispResult<(A, B, C)> {
         // todo: take nargs into account
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
         let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
         let c = FromLisp::from_lisp(env, vec_of_lisp[2])?;
-        Some((a, b, c))
+        Ok((a, b, c))
     }
 }
+
+// Result
+
+// So that "must use" warnings are emitted
+pub type LispResult<T> = Result<T, ()>;
+
