@@ -45,7 +45,7 @@ pub unsafe fn export_function(
 ) -> Option<()> {
     let make_function = (*env).make_function.unwrap();
 
-    let emacs_fun = handle_non_local_exit_new(env, || {
+    let emacs_fun = handle_non_local_exit(env, || {
         make_function(
             env,
             min_arity,
@@ -57,7 +57,7 @@ pub unsafe fn export_function(
             ptr::null_mut(),
         )
     })?;
-    let symbol = intern_new(env, symbol)?;
+    let symbol = intern(env, symbol)?;
     call_lisp_lisp(env, "fset", vec![symbol, emacs_fun])?;
     Some(())
 }
@@ -75,8 +75,8 @@ pub unsafe fn call_lisp_lisp<F: AsRef<str>>(
     mut args: Vec<emacs_value>,
 ) -> Option<emacs_value> {
     let funcall = (*env).funcall.unwrap();
-    let function_symbol = intern_new(env, function_name)?;
-    handle_non_local_exit_new(env, || {
+    let function_symbol = intern(env, function_name)?;
+    handle_non_local_exit(env, || {
         funcall(env, function_symbol, args.len() as isize, args.as_mut_ptr())
     })
 }
@@ -203,7 +203,7 @@ pub unsafe fn handle_none<T: IntoLisp, F: FnMut() -> T>(
     }
 }
 
-unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
+unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
     env: *mut emacs_env,
     mut func: F,
 ) -> Option<R> {
@@ -222,14 +222,12 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
     }
 }
 
-unsafe fn intern_new<T: AsRef<str>>(
+unsafe fn intern<T: AsRef<str>>(
     env: *mut emacs_env,
     symbol: T,
 ) -> Option<emacs_value> {
     let symbol = CString::new(symbol.as_ref()).unwrap();
-    handle_non_local_exit_new(env, || {
-        (*env).intern.unwrap()(env, symbol.as_ptr())
-    })
+    handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
 }
 
 // IntoLisp
@@ -248,7 +246,7 @@ pub fn symbol<S: ToString>(s: S) -> Symbol {
 
 impl IntoLisp for Symbol {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        intern_new(env, &self.0)
+        intern(env, &self.0)
     }
 }
 
@@ -281,7 +279,7 @@ impl IntoLisp for &str {
         let c_string = CString::new(self).unwrap();
         let len = c_string.as_bytes().len() as isize;
         let c_string_ptr = c_string.as_ptr();
-        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+        handle_non_local_exit(env, || make_string(env, c_string_ptr, len))
     }
 }
 
@@ -292,7 +290,7 @@ macro_rules! impl_into_lisp_for_integer {
                 self,
                 env: *mut emacs_env,
             ) -> Option<emacs_value> {
-                handle_non_local_exit_new(env, || {
+                handle_non_local_exit(env, || {
                     (*env).make_integer.unwrap()(env, self as i64)
                 })
             }
@@ -308,9 +306,9 @@ impl_into_lisp_for_integer!(usize);
 impl IntoLisp for bool {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
         if self {
-            intern_new(env, "t")
+            intern(env, "t")
         } else {
-            intern_new(env, "nil")
+            intern(env, "nil")
         }
     }
 }
@@ -390,7 +388,7 @@ impl FromLisp for String {
 
         // First find the length
         let mut len: isize = 0;
-        if !handle_non_local_exit_new(env, || {
+        if !handle_non_local_exit(env, || {
             copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
         })? {
             return None;
@@ -401,7 +399,7 @@ impl FromLisp for String {
 
         // Then get the actual string
         let mut buf = vec![0; len as usize];
-        if !handle_non_local_exit_new(env, || {
+        if !handle_non_local_exit(env, || {
             copy_string_contents(
                 env,
                 val,
@@ -436,7 +434,7 @@ macro_rules! impl_from_lisp_for_integer {
                 value: emacs_value,
             ) -> Option<Self> {
                 log_lisp_value(env, "FromLisp $t", value)?;
-                handle_non_local_exit_new(env, || {
+                handle_non_local_exit(env, || {
                     (*env).extract_integer.unwrap()(env, value) as Self
                 })
             }
