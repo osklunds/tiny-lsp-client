@@ -211,24 +211,15 @@ impl FromLisp for Symbol {
     }
 }
 
-// todo: unify IntoLisp for strings
 impl IntoLisp for String {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        let make_string = (*env).make_string.unwrap();
-        let c_string = CString::new(self.as_str()).unwrap();
-        let len = c_string.as_bytes().len() as isize;
-        let c_string_ptr = c_string.as_ptr();
-        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+        AsRef::<str>::as_ref(&self).into_lisp(env)
     }
 }
 
 impl IntoLisp for &String {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
-        let make_string = (*env).make_string.unwrap();
-        let c_string = CString::new(self.as_str()).unwrap();
-        let len = c_string.as_bytes().len() as isize;
-        let c_string_ptr = c_string.as_ptr();
-        handle_non_local_exit_new(env, || make_string(env, c_string_ptr, len))
+        AsRef::<str>::as_ref(&self).into_lisp(env)
     }
 }
 
