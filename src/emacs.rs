@@ -45,7 +45,7 @@ pub unsafe fn export_function(
 ) -> Option<()> {
     let make_function = (*env).make_function.unwrap();
 
-    let emacs_fun = handle_non_local_exit(env, || {
+    let emacs_fun = handle_non_local_exit_new(env, || {
         make_function(
             env,
             min_arity,
@@ -56,8 +56,9 @@ pub unsafe fn export_function(
             ptr::null_mut(),
             ptr::null_mut(),
         )
-    });
-    call_lisp_lisp(env, "fset", vec![intern(env, symbol), emacs_fun])?;
+    })?;
+    let symbol = intern_new(env, symbol)?;
+    call_lisp_lisp(env, "fset", vec![symbol, emacs_fun])?;
     Some(())
 }
 
@@ -70,17 +71,13 @@ pub unsafe fn provide_tlc_rust(env: *mut emacs_env) -> Option<()> {
 // To be used when calling with lisp arguments and need lisp return value
 unsafe fn call_lisp_lisp<F: AsRef<str>>(
     env: *mut emacs_env,
-    func: F,
+    function_name: F,
     mut args: Vec<emacs_value>,
 ) -> Option<emacs_value> {
     let funcall = (*env).funcall.unwrap();
+    let function_symbol = intern_new(env, function_name)?;
     handle_non_local_exit_new(env, || {
-        funcall(
-            env,
-            intern(env, func.as_ref()),
-            args.len() as isize,
-            args.as_mut_ptr(),
-        )
+        funcall(env, function_symbol, args.len() as isize, args.as_mut_ptr())
     })
 }
 
@@ -103,32 +100,6 @@ unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
 ) -> Option<T> {
     let ret = call_lisp_lisp(env, func, args)?;
     T::from_lisp(env, ret)
-}
-
-unsafe fn intern(env: *mut emacs_env, symbol: &str) -> emacs_value {
-    let symbol = CString::new(symbol).unwrap();
-    handle_non_local_exit(env, || (*env).intern.unwrap()(env, symbol.as_ptr()))
-}
-
-unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
-    env: *mut emacs_env,
-    mut func: F,
-) -> R {
-    // Consider better way of handling non local exit than trying again
-    loop {
-        let result = func();
-        let status = (*env).non_local_exit_check.unwrap()(env);
-        if status == emacs_funcall_exit_emacs_funcall_exit_return {
-            return result;
-        } else {
-            // logger can only be called once the log file has been initialized,
-            // which is not the case in emacs_module_init for example. But for
-            // now, gamble that no non-local exists until log file has been
-            // created.
-            logger::log_rust_debug!("non local exit: {}", status);
-            (*env).non_local_exit_clear.unwrap()(env);
-        }
-    }
 }
 
 // Function API
@@ -202,8 +173,11 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
     }
 }
 
-unsafe fn intern_new(env: *mut emacs_env, symbol: &str) -> Option<emacs_value> {
-    let symbol = CString::new(symbol).unwrap();
+unsafe fn intern_new<T: AsRef<str>>(
+    env: *mut emacs_env,
+    symbol: T,
+) -> Option<emacs_value> {
+    let symbol = CString::new(symbol.as_ref()).unwrap();
     handle_non_local_exit_new(env, || {
         (*env).intern.unwrap()(env, symbol.as_ptr())
     })
