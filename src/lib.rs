@@ -266,32 +266,47 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_send_notification");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        let request_type = String::from_lisp(env, args[1]).unwrap();
-        let request_args = args[2];
-
-        let notification_params = if request_type == "textDocument/didOpen" {
-            let (uri, file_content) =
-                FromLisp::from_lisp(env, request_args).unwrap();
-            build_text_document_did_open(uri, file_content, server)
-        } else if request_type == "textDocument/didChange" {
-            let (uri, content_changes) =
-                FromLisp::from_lisp(env, request_args).unwrap();
-            build_text_document_did_change(uri, content_changes, server)
-        } else if request_type == "textDocument/didClose" {
-            // todo: 1-tuple instead
-            let uris: Vec<String> =
-                FromLisp::from_lisp(env, request_args).unwrap();
-            build_text_document_did_close(uris[0].clone())
-        } else {
-            panic!("Incorrect request type")
-        };
-        server
-            .send_notification(request_type, notification_params)
-            .map(|_| symbol("ok"))
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        "tlc__rust_send_notification",
+        |(server_key, method, request_args)| {
+            handle_call_new(server_key, |server| {
+                let notification_params = if method == "textDocument/didOpen" {
+                    let (uri, file_content) = match request_args {
+                        SendNotificationParameters::UriFileContent(
+                            uri,
+                            file_content,
+                        ) => Some((uri, file_content)),
+                        _ => None,
+                    }?;
+                    build_text_document_did_open(uri, file_content, server)
+                } else if method == "textDocument/didChange" {
+                    let (uri, content_changes) = match request_args {
+                        SendNotificationParameters::UriContentChanges(
+                            uri,
+                            content_changes,
+                        ) => Some((uri, content_changes)),
+                        _ => None,
+                    }?;
+                    build_text_document_did_change(uri, content_changes, server)
+                } else if method == "textDocument/didClose" {
+                    // todo: lisp error if None
+                    let uri = match request_args {
+                        SendNotificationParameters::Uri(uri) => Some(uri),
+                        _ => None,
+                    }?;
+                    build_text_document_did_close(uri)
+                } else {
+                    panic!("Incorrect request type")
+                };
+                server
+                    .send_notification(method, notification_params)
+                    .map(|_| symbol("ok"))
+            })
+        },
+    )
 }
 
 fn build_text_document_did_open(
@@ -680,5 +695,54 @@ impl FromLisp for ServerKey {
             root_path,
             server_cmd,
         })
+    }
+}
+
+enum SendNotificationParameters {
+    Uri(String),
+    UriFileContent(String, String),
+    UriContentChanges(
+        String,
+        // todo: struct for ContentChange
+        Vec<(
+            String,
+            Option<usize>,
+            Option<usize>,
+            Option<usize>,
+            Option<usize>,
+        )>,
+    ),
+}
+
+impl FromLisp for SendNotificationParameters {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<SendNotificationParameters> {
+        // todo: consider perfomance by doing converion direcly
+        // instead of this try-fail. Also, if one fails not because of wrong
+        // format, it's a waste to do it again. Also, notification is on
+        // the critical path due to edit
+        // also needed because non local exit happens
+        if let Some((uri,)) = FromLisp::from_lisp(env, value) {
+            Some(SendNotificationParameters::Uri(uri))
+        } else if let Some((uri, file_content)) =
+            FromLisp::from_lisp(env, value)
+        {
+            Some(SendNotificationParameters::UriFileContent(
+                uri,
+                file_content,
+            ))
+        } else if let Some((uri, content_changes)) =
+            FromLisp::from_lisp(env, value)
+        {
+            Some(SendNotificationParameters::UriContentChanges(
+                uri,
+                content_changes,
+            ))
+        } else {
+            logger::log_rust_debug!("no match in SendNotificationParameters");
+            None
+        }
     }
 }

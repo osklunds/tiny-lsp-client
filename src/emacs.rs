@@ -152,6 +152,21 @@ pub unsafe fn log_args<S: AsRef<str>>(
     Some(())
 }
 
+pub unsafe fn log_lisp_value<T: std::fmt::Display>(
+    env: *mut emacs_env,
+    tag: T,
+    value: emacs_value,
+) -> Option<()> {
+    if logger::is_log_enabled!(LOG_RUST_DEBUG) {
+        let format_string =
+            format!("log_lisp_value - '{}' - '%S'", tag).into_lisp(env)?;
+        let formatted: String =
+            call_lisp_rust(env, "format", vec![format_string, value])?;
+        logger::log_rust_debug!("{}", formatted);
+    }
+    Some(())
+}
+
 pub unsafe fn args_pointer_to_args_vec(
     nargs: isize,
     args: *mut emacs_value,
@@ -188,7 +203,8 @@ unsafe fn handle_non_local_exit_new<F: FnMut() -> R, R>(
         // which is not the case in emacs_module_init for example. But for
         // now, gamble that no non-local exists until log file has been
         // created.
-        // logger::log_rust_debug!("non local exit: {}", status);
+        logger::log_rust_debug!("non local exit: {}", status);
+        (*env).non_local_exit_clear.unwrap()(env);
         None
     }
 }
@@ -228,6 +244,7 @@ impl FromLisp for Symbol {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Symbol> {
+        // log_lisp_value(env, "FromLisp Symbol", value)?;
         let string = call_lisp_rust(env, "symbol-name", vec![value])?;
         Some(Symbol(string))
     }
@@ -349,6 +366,7 @@ impl FromLisp for String {
         env: *mut emacs_env,
         val: emacs_value,
     ) -> Option<String> {
+        // log_lisp_value(env, "FromLisp String", val)?;
         let copy_string_contents = (*env).copy_string_contents.unwrap();
 
         // First find the length
@@ -385,19 +403,9 @@ impl FromLisp for bool {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<bool> {
+        // log_lisp_value(env, "FromLisp bool", value)?;
         let null: Symbol = call_lisp_rust(env, "null", vec![value])?;
         Some(null.0 != "t")
-    }
-}
-
-impl FromLisp for i64 {
-    unsafe fn from_lisp(
-        env: *mut emacs_env,
-        value: emacs_value,
-    ) -> Option<i64> {
-        handle_non_local_exit_new(env, || {
-            (*env).extract_integer.unwrap()(env, value)
-        })
     }
 }
 
@@ -408,6 +416,7 @@ macro_rules! impl_from_lisp_for_integer {
                 env: *mut emacs_env,
                 value: emacs_value,
             ) -> Option<Self> {
+                log_lisp_value(env, "FromLisp $t", value)?;
                 handle_non_local_exit_new(env, || {
                     (*env).extract_integer.unwrap()(env, value) as Self
                 })
@@ -416,14 +425,40 @@ macro_rules! impl_from_lisp_for_integer {
     };
 }
 
+impl_from_lisp_for_integer!(i64);
 impl_from_lisp_for_integer!(u64);
 impl_from_lisp_for_integer!(usize);
+
+impl<A: FromLisp> FromLisp for (A,) {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<(A,)> {
+        log_lisp_value(env, "FromLisp (A,)", value)?;
+        // todo: check tuple helper
+        if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
+            return None;
+        }
+
+        if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != 1 {
+            return None;
+        }
+
+        let a =
+            call_lisp_lisp(env, "nth", vec![0.into_lisp(env).unwrap(), value])?;
+
+        FromVecOfLisp::from_vec_of_lisp(env, vec![a])
+    }
+}
 
 impl<A: FromLisp, B: FromLisp> FromLisp for (A, B) {
     unsafe fn from_lisp(
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B)> {
+        log_lisp_value(env, "FromLisp (A,B)", value)?;
+        // todo: consider new logger, for all of these lisp conversions
+        logger::log_rust_debug!("FromLisp (A,B)");
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
@@ -446,6 +481,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromLisp for (A, B, C) {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C)> {
+        log_lisp_value(env, "FromLisp (A,B,C)", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
@@ -471,6 +507,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<(A, B, C, D, E)> {
+        log_lisp_value(env, "FromLisp (A,B,C,D,E)", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
@@ -498,6 +535,7 @@ impl<T: FromLisp> FromLisp for Vec<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Vec<T>> {
+        log_lisp_value(env, "FromLisp Vec", value)?;
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
             return None;
         }
@@ -521,6 +559,7 @@ impl<T: FromLisp> FromLisp for Option<T> {
         env: *mut emacs_env,
         value: emacs_value,
     ) -> Option<Option<T>> {
+        log_lisp_value(env, "FromLisp Option", value)?;
         if call_lisp_rust(env, "null", vec![value])? {
             Some(None)
         } else {
@@ -549,13 +588,28 @@ impl FromVecOfLisp for () {
     }
 }
 
+impl<A: FromLisp> FromVecOfLisp for (A,) {
+    unsafe fn from_vec_of_lisp(
+        env: *mut emacs_env,
+        vec_of_lisp: Vec<emacs_value>,
+    ) -> Option<(A,)> {
+        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+        Some((a,))
+    }
+}
+
 impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
     unsafe fn from_vec_of_lisp(
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
     ) -> Option<(A, B)> {
+        logger::log_rust_debug!("1FromVecOfLisp (A,B)");
+        log_lisp_value(env, "FromVecOfLisp", vec_of_lisp[0])?;
+        log_lisp_value(env, "FromVecOfLisp", vec_of_lisp[1])?;
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+        logger::log_rust_debug!("2FromVecOfLisp (A,B)");
         let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
+        logger::log_rust_debug!("3FromVecOfLisp (A,B)");
         Some((a, b))
     }
 }
