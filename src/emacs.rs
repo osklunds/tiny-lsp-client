@@ -581,8 +581,12 @@ impl<A: FromLisp> FromVecOfLisp for (A,) {
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
     ) -> LispResult<(A,)> {
-        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
-        Ok((a,))
+        if vec_of_lisp.len() == 1 {
+            let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+            Ok((a,))
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -591,9 +595,13 @@ impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
     ) -> LispResult<(A, B)> {
-        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
-        let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
-        Ok((a, b))
+        if vec_of_lisp.len() == 2 {
+            let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+            let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
+            Ok((a, b))
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -602,11 +610,15 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
     ) -> LispResult<(A, B, C)> {
-        // todo: take nargs into account
-        let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
-        let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
-        let c = FromLisp::from_lisp(env, vec_of_lisp[2])?;
-        Ok((a, b, c))
+        if vec_of_lisp.len() == 3 {
+            let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
+            let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
+            let c = FromLisp::from_lisp(env, vec_of_lisp[2])?;
+            Ok((a, b, c))
+        } else {
+            // If this happens, unclear if a good error message happens
+            Err(())
+        }
     }
 }
 
