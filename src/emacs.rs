@@ -140,7 +140,7 @@ pub unsafe fn lisp_function_in_rust<
     lisp_function_in_rust_no_args_log(env, nargs, args, function)
 }
 
-pub unsafe fn log_args<S: AsRef<str>>(
+unsafe fn log_args<S: AsRef<str>>(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
@@ -180,7 +180,7 @@ pub unsafe fn log_lisp_value<T: std::fmt::Display>(
     Some(())
 }
 
-pub unsafe fn args_pointer_to_args_vec(
+unsafe fn args_pointer_to_args_vec(
     nargs: isize,
     args: *mut emacs_value,
 ) -> Vec<emacs_value> {
@@ -189,18 +189,6 @@ pub unsafe fn args_pointer_to_args_vec(
         args_list.push(*args.offset(i));
     }
     args_list
-}
-
-pub unsafe fn handle_none<T: IntoLisp, F: FnMut() -> T>(
-    env: *mut emacs_env,
-    mut func: F,
-) -> emacs_value {
-    let value = func();
-    if let Some(value) = value.into_lisp(env) {
-        value
-    } else {
-        todo!()
-    }
 }
 
 unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
