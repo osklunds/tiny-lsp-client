@@ -572,13 +572,20 @@ unsafe extern "C" fn tlc__rust_stop_server(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_stop_server");
-    handle_call(env, nargs, args, |_env, _args, server| {
-        // could consider removing from servers, but in case the stopping fails
-        // it's good that the server remains in the list
-        server.stop_server();
-        Some(symbol("ok"))
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        "tlc__rust_stop_server",
+        |(server_key,)| {
+            handle_call_new(server_key, |server| {
+                // could consider removing from servers, but in case the stopping fails
+                // it's good that the server remains in the list
+                server.stop_server();
+                Some(symbol("ok"))
+            })
+        },
+    )
 }
 
 fn handle_call_new<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
