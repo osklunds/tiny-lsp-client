@@ -116,31 +116,26 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    // todo: due to lifetime, with_servers needs to be the outermost. Not
-    // optimal since I want lisp_function_in_rust to be the outermost for all,
-    // well, lisp functions implemented in rust.
-    servers::with_servers(|servers| {
-        lisp_function_in_rust(
-            env,
-            nargs,
-            args,
-            "tlc__rust_all_server_info",
-            |()| {
-                let mut server_info_list = Vec::new();
-                let mut servers: Vec<_> = servers.iter().collect();
-                servers.sort_by_key(|(&ref server_key, _server)| server_key);
+    lisp_function_in_rust(env, nargs, args, "tlc__rust_all_server_info", |()| {
+        servers::with_servers(|servers| {
+            let mut server_info_list = Vec::new();
+            let mut servers: Vec<_> = servers.iter().collect();
+            servers.sort_by_key(|(&ref server_key, _server)| server_key);
 
-                for (server_key, server) in servers.iter() {
-                    let info = (
-                        &server_key.root_path,
-                        &server_key.server_cmd,
-                        server.get_server_process_id() as i64,
-                    );
-                    server_info_list.push(info);
-                }
-                server_info_list
-            },
-        )
+            for (server_key, server) in servers.iter() {
+                let info = (
+                    // The cloning can be avoided by having
+                    // servers::with_servers come before
+                    // lisp_function_in_rust. But tlc__rust_all_server_info is
+                    // not on the critical path
+                    server_key.root_path.clone(),
+                    server_key.server_cmd.clone(),
+                    server.get_server_process_id() as i64,
+                );
+                server_info_list.push(info);
+            }
+            server_info_list
+        })
     })
 }
 
