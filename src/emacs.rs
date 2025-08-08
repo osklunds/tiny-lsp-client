@@ -103,9 +103,26 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
 }
 
 // Function API
+// todo: consider #[defun] macro
 
-// todo: wrapper that takes lambda, that takes some args. the lambda is
-// safe the wrapper is unsafe
+pub unsafe fn lisp_function_in_rust_no_args_log<
+    A: FromVecOfLisp,
+    R: IntoLisp,
+    F: FnMut(A) -> R,
+>(
+    env: *mut emacs_env,
+    nargs: isize,
+    args: *mut emacs_value,
+    mut function: F,
+) -> emacs_value {
+    let args_vec = args_pointer_to_args_vec(nargs, args);
+    if let Some(arg) = FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
+        if let Some(ret) = function(arg).into_lisp(env) {
+            return ret;
+        }
+    }
+    (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
+}
 
 pub unsafe fn lisp_function_in_rust<
     S: AsRef<str>,
@@ -117,14 +134,10 @@ pub unsafe fn lisp_function_in_rust<
     nargs: isize,
     args: *mut emacs_value,
     function_name: S,
-    mut function: F,
+    function: F,
 ) -> emacs_value {
     log_args(env, nargs, args, function_name);
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let arg = FromVecOfLisp::from_vec_of_lisp(env, args_vec).unwrap();
-    let ret = function(arg).into_lisp(env).unwrap();
-
-    ret
+    lisp_function_in_rust_no_args_log(env, nargs, args, function)
 }
 
 pub unsafe fn log_args<S: AsRef<str>>(
@@ -315,6 +328,12 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
         } else {
             None
         }
+    }
+}
+
+impl IntoLisp for () {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> Option<emacs_value> {
+        false.into_lisp(env)
     }
 }
 
@@ -604,13 +623,8 @@ impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
         env: *mut emacs_env,
         vec_of_lisp: Vec<emacs_value>,
     ) -> Option<(A, B)> {
-        logger::log_rust_debug!("1FromVecOfLisp (A,B)");
-        log_lisp_value(env, "FromVecOfLisp", vec_of_lisp[0])?;
-        log_lisp_value(env, "FromVecOfLisp", vec_of_lisp[1])?;
         let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
-        logger::log_rust_debug!("2FromVecOfLisp (A,B)");
         let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
-        logger::log_rust_debug!("3FromVecOfLisp (A,B)");
         Some((a, b))
     }
 }

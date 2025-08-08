@@ -272,6 +272,8 @@ unsafe extern "C" fn tlc__rust_send_notification(
         |(server_key, method, request_args)| {
             handle_call(server_key, |server| {
                 let notification_params = if method == "textDocument/didOpen" {
+                    // todo: the ? here are incorrect, because it leads
+                    // to no-server. It should be lisp error
                     let (uri, file_content) = match request_args {
                         SendNotificationParameters::UriFileContent(
                             uri,
@@ -517,36 +519,45 @@ unsafe fn handle_hover_response(response: HoverResult) -> String {
 #[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_set_option(
     env: *mut emacs_env,
-    _nargs: isize,
+    nargs: isize,
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
-    let symbol: Symbol = FromLisp::from_lisp(env, *args.offset(0)).unwrap();
-    let value = *args.offset(1);
-
-    if symbol.0 == "tlc-log-file" {
-        let path = String::from_lisp(env, value).unwrap();
-        logger::set_log_file_name(path);
-    } else {
-        let value = bool::from_lisp(env, value).unwrap();
-        if symbol.0 == "tlc-log-io" {
-            logger::LOG_IO.store(value, Ordering::Relaxed)
-        } else if symbol.0 == "tlc-log-stderr" {
-            logger::LOG_STDERR.store(value, Ordering::Relaxed)
-        } else if symbol.0 == "tlc-log-rust-debug" {
-            logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
-        } else if symbol.0 == "tlc-log-to-stdio" {
-            logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
-        } else if symbol.0 == "tlc-stop-server-on-stderr" {
-            server::STOP_SERVER_ON_STDERR.store(value, Ordering::Relaxed)
-        } else {
-            panic!("Incorrect log symbol")
-        };
-    }
-
-    false.into_lisp(env).unwrap()
+    lisp_function_in_rust_no_args_log(
+        env,
+        nargs,
+        args,
+        |(symbol, value): (Symbol, SetOptionValue)| {
+            if symbol.0 == "tlc-log-file" {
+                let file_name = match value {
+                    SetOptionValue::FileName(file_name) => file_name,
+                    _ => todo!("raise lisp error"),
+                };
+                logger::set_log_file_name(file_name);
+            } else {
+                let value = match value {
+                    SetOptionValue::Bool(value) => value,
+                    _ => todo!("raise lisp error")
+                };
+                if symbol.0 == "tlc-log-io" {
+                    logger::LOG_IO.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-stderr" {
+                    logger::LOG_STDERR.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-rust-debug" {
+                    logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-to-stdio" {
+                    logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-stop-server-on-stderr" {
+                    server::STOP_SERVER_ON_STDERR
+                        .store(value, Ordering::Relaxed)
+                } else {
+                    panic!("Incorrect log symbol")
+                };
+            };
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -720,6 +731,24 @@ impl FromLisp for SendNotificationParameters {
                     todo!("raise lisp error")
                 }
             }
+        }
+    }
+}
+
+enum SetOptionValue {
+    Bool(bool),
+    FileName(String),
+}
+
+impl FromLisp for SetOptionValue {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> Option<SetOptionValue> {
+        if call_lisp_rust(env, "stringp", vec![value])? {
+            Some(Self::FileName(FromLisp::from_lisp(env, value)?))
+        } else {
+            Some(Self::Bool(FromLisp::from_lisp(env, value)?))
         }
     }
 }
