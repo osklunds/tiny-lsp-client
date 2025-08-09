@@ -85,14 +85,17 @@
 
   (message "Starting server")
 
-  (assert-error "unknown rust-level error"
+  ;; todo: cl-letf when IntoLisp
+
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server 'hello))
 
-  (assert-error "unknown rust-level error"
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server "hello"))
 
   (assert-error "In check_tuple, exp_arity: 2, arity: 1"
     (tlc--rust-start-server '("hello")))
+
   (assert-error 'stringp
     (tlc--rust-start-server '("hello" hello)))
 

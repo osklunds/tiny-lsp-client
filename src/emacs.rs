@@ -540,6 +540,10 @@ unsafe fn check_tuple(
     exp_arity: i64,
 ) -> LispResult<()> {
     if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
+        signal(
+            env,
+            format!("In check_tuple, exp_arity: {}, but not a list", exp_arity),
+        );
         return Err(());
     }
 
