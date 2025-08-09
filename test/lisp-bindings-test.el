@@ -92,6 +92,9 @@
   (assert-error 'stringp                   (tlc--rust-start-server '(hello "hello")))
   (assert-error "unknown rust-level error" (tlc--rust-start-server '(hello "hello" "hello")))
 
+  (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
+    (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
+
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))
