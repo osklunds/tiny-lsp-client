@@ -545,6 +545,7 @@ unsafe fn check_tuple(
             env,
             format!("In check_tuple, exp_arity: {}, but not a list", exp_arity),
         );
+        // todo: instead of signal, put the message in Err
         return Err(());
     }
 
