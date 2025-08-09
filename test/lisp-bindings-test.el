@@ -85,28 +85,37 @@
 
   (message "Starting server")
 
-  ;; todo: cl-letf when IntoLisp
-
+  ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server 'hello))
 
+  ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server "hello"))
 
+  ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 1"
     (tlc--rust-start-server '("hello")))
 
+  ;; FromLisp, error in called lisp function
   (assert-error 'stringp
     (tlc--rust-start-server '("hello" hello)))
 
+  ;; FromLisp, error in called lisp function
   (assert-error 'stringp
     (tlc--rust-start-server '(hello "hello")))
 
+  ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 3"
     (tlc--rust-start-server '(hello "hello" "hello")))
 
+  ;; FromLisp, error in called lisp function
   (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
     (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
+
+  ;; IntoLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _) (error "abc"))))
+    (assert-error "abc" (tlc--rust-start-server '("hello" "hello"))))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
 
