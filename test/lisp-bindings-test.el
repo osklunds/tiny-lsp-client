@@ -156,6 +156,27 @@
                   (insert-file-contents file-path)
                   (buffer-string)))
 
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, arity: 4"
+    (tlc--rust-send-notification '("hi" "hi" "hi" "hi") "hi" '("hi" "hi")))
+
+  ;; FromLisp, manually raised error
+  (assert-error "FromLisp for SendNotificationParameters. Wrong length 0"
+    (tlc--rust-send-notification '("hi" "hi") "hi" '()))
+
+  ;; FromLisp, manually raised error
+  (assert-error "FromLisp for SendNotificationParameters. Wrong length 3"
+    (tlc--rust-send-notification '("hi" "hi") "hi" '("hi" "hi" "hi")))
+
+  ;; FromLisp, manually raised error
+  (assert-error "FromLisp for SendNotificationParameters. Not a list"
+    (tlc--rust-send-notification '("hi" "hi") "hi" "hi"))
+
+  ;; FromLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
+    (assert-error "error-in-nth"
+      (tlc--rust-send-notification '("hi" "hi") "hi" '(1 2 3 4 5))))
+
   (assert-equal 'ok (tlc--rust-send-notification
                      (list root-path server-cmd)
                      "textDocument/didOpen"

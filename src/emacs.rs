@@ -168,6 +168,7 @@ pub unsafe fn lisp_function_in_rust<
     function: F,
 ) -> emacs_value {
     if log_args(env, nargs, args, function_name).is_ok() {
+        // todo: log return
         lisp_function_in_rust_no_args_log(env, nargs, args, function)
     } else {
         (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
@@ -567,6 +568,9 @@ impl<T: FromLisp> FromLisp for Vec<T> {
         value: emacs_value,
     ) -> LispResult<Vec<T>> {
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
+            // Not tested. Triggering error in listp causes too many
+            // other errors
+            signal(env, "FromLisp for Vec, error in listp");
             return Err(());
         }
 

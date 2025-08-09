@@ -300,6 +300,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
                     }?;
                     build_text_document_did_close(uri)
                 } else {
+                    // todo: test case
                     panic!("Incorrect request type")
                 };
                 server
@@ -701,6 +702,7 @@ impl FromLisp for SendNotificationParameters {
         // - If a conversion fails, it causes a non-local exit, which is ugly
         //   if it happens due to something which is not a bug
         if !call_lisp_rust(env, "listp", vec![value])? {
+            signal(env, "FromLisp for SendNotificationParameters. Not a list");
             Err(())
         } else {
             match call_lisp_rust(env, "length", vec![value])? {
@@ -727,8 +729,15 @@ impl FromLisp for SendNotificationParameters {
                         ))
                     }
                 }
-                _ => {
-                    todo!("raise lisp error")
+                len => {
+                    signal(
+                        env,
+                        format!(
+                            "FromLisp for SendNotificationParameters. Wrong length {}",
+                            len
+                        )
+                    );
+                    Err(())
                 }
             }
         }
