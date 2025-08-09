@@ -85,7 +85,12 @@
 
   (message "Starting server")
 
-  (assert-error "unknown rust-level error" (tlc--rust-start-server 'hej))
+  (assert-error "unknown rust-level error" (tlc--rust-start-server 'hello))
+  (assert-error "unknown rust-level error" (tlc--rust-start-server "hello"))
+  (assert-error "unknown rust-level error" (tlc--rust-start-server '("hello")))
+  (assert-error 'stringp                   (tlc--rust-start-server '("hello" hello)))
+  (assert-error 'stringp                   (tlc--rust-start-server '(hello "hello")))
+  (assert-error "unknown rust-level error" (tlc--rust-start-server '(hello "hello" "hello")))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
 
