@@ -85,6 +85,8 @@
 
   (message "Starting server")
 
+  (assert-error "unknown rust-level error" (tlc--rust-start-server 'hej))
+
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))

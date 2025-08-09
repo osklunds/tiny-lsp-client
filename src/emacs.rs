@@ -120,9 +120,29 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
     let args_vec = args_pointer_to_args_vec(nargs, args);
     if let Ok(arg) = FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
         if let Ok(ret) = function(arg).into_lisp(env) {
+            // If everything went Ok, return that value
+            // todo: check if non local exit
             return ret;
         }
     }
+    // If not Ok, check the status code. Err(()) can be returned either because
+    // a call to emacs failed, in which case there is a status, handled
+    // automatically by handle_non_local_exit(). But it can also happen manually
+    // if e.g. the number of elements in a list is detected to be wrong. In the
+    // manual cases a signal should be raised, but if due to sloppiness it
+    // hasn't been done, raise one here.
+
+    let status = (*env).non_local_exit_check.unwrap()(env);
+    if status == emacs_funcall_exit_emacs_funcall_exit_return {
+        if let Ok(error_symbol) = (symbol("error")).into_lisp(env) {
+            if let Ok(data) = vec!["unknown rust-level error"].into_lisp(env) {
+                (*env).non_local_exit_signal.unwrap()(env, error_symbol, data);
+            }
+        }
+    }
+    // If the two calls above failed, a signal is raised anyway
+
+    // This return value doesn't matter since a signal is raised
     (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
 }
 

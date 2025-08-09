@@ -48,6 +48,11 @@
 (defun assert (act &optional label)
   (assert-equal t (not (not act)) label))
 
+(defmacro assert-error (exp-msg &rest expr)
+  (declare (indent defun))
+  `(assert-equal ,exp-msg
+                 (cadr (should-error ,@expr :type 'error))))
+
 (cl-defmacro run-until (times sleep &rest expr)
   (declare (indent defun))
   `(run-until-1 ,times ,sleep (lambda () ,@expr)))

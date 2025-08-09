@@ -90,6 +90,7 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(env, 2, 2, tlc__rust_set_option, "tlc--rust-set-option");
 
+    // todo: test in lisp-bindings-test
     export_function(
         env,
         1,
