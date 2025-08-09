@@ -114,8 +114,10 @@
     (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
 
   ;; IntoLisp, error in called lisp function
-  (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _) (error "abc"))))
-    (assert-error "abc" (tlc--rust-start-server '("hello" "hello"))))
+  (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _)
+                                               (error "error-in-symbol-name"))))
+    (assert-error "error-in-symbol-name"
+      (tlc--rust-start-server '("hello" "hello"))))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
 
@@ -123,6 +125,10 @@
 
   (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
 
+
+  ;; Can't trigger any errors for tlc--rust-all-server-info. No
+  ;; parameters. "list" is the only function called, and if that returns error,
+  ;; segmentation fault happens
   (pcase (tlc--rust-all-server-info)
     (`((,r ,command ,process-id))
      (assert-equal root-path r)
