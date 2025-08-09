@@ -105,6 +105,15 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     T::from_lisp(env, ret)
 }
 
+pub unsafe fn signal<S: AsRef<str>>(env: *mut emacs_env, data: S) {
+    if let Ok(error_symbol) = (symbol("error")).into_lisp(env) {
+        if let Ok(data) = vec![data.as_ref()].into_lisp(env) {
+            (*env).non_local_exit_signal.unwrap()(env, error_symbol, data)
+        }
+    }
+    // todo: log
+}
+
 // Lisp function in Rust
 
 pub unsafe fn lisp_function_in_rust_no_args_log<
@@ -528,13 +537,21 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp, D: FromLisp, E: FromLisp> FromLisp
 unsafe fn check_tuple(
     env: *mut emacs_env,
     value: emacs_value,
-    arity: i64,
+    exp_arity: i64,
 ) -> LispResult<()> {
     if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
         return Err(());
     }
 
-    if call_lisp_rust::<&str, i64>(env, "length", vec![value])? != arity {
+    let arity = call_lisp_rust::<&str, i64>(env, "length", vec![value])?;
+    if exp_arity != arity {
+        signal(
+            env,
+            format!(
+                "In check_tuple, exp_arity: {}, arity: {}",
+                exp_arity, arity
+            ),
+        );
         return Err(());
     }
     Ok(())

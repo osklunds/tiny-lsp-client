@@ -85,12 +85,22 @@
 
   (message "Starting server")
 
-  (assert-error "unknown rust-level error" (tlc--rust-start-server 'hello))
-  (assert-error "unknown rust-level error" (tlc--rust-start-server "hello"))
-  (assert-error "unknown rust-level error" (tlc--rust-start-server '("hello")))
-  (assert-error 'stringp                   (tlc--rust-start-server '("hello" hello)))
-  (assert-error 'stringp                   (tlc--rust-start-server '(hello "hello")))
-  (assert-error "unknown rust-level error" (tlc--rust-start-server '(hello "hello" "hello")))
+  (assert-error "unknown rust-level error"
+    (tlc--rust-start-server 'hello))
+
+  (assert-error "unknown rust-level error"
+    (tlc--rust-start-server "hello"))
+
+  (assert-error "In check_tuple, exp_arity: 2, arity: 1"
+    (tlc--rust-start-server '("hello")))
+  (assert-error 'stringp
+    (tlc--rust-start-server '("hello" hello)))
+
+  (assert-error 'stringp
+    (tlc--rust-start-server '(hello "hello")))
+
+  (assert-error "In check_tuple, exp_arity: 2, arity: 3"
+    (tlc--rust-start-server '(hello "hello" "hello")))
 
   (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
     (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
