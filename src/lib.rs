@@ -616,6 +616,7 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     })
 }
 
+// todo: improve
 enum RustCallResult<A: IntoLisp> {
     Symbol(&'static str),
     Any(A),
