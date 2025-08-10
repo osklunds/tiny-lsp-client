@@ -142,6 +142,12 @@
 (defun number-of-null-results ()
   (count-in-log-file "\"result\": null"))
 
+(defun number-of-arguments-conversion-failed ()
+  (count-in-log-file "lisp_function_in_rust_no_args_log, arguments conversion failed, error message:"))
+
+(defun number-of-non-local-exit ()
+  (count-in-log-file "non local exit:"))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
                      (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
