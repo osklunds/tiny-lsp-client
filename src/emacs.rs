@@ -127,12 +127,26 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
                 {
                     return ret
                 }
-                // todo: log and test log entry
-                Err(error_message) => error_message,
+
+                Err(error_message) => {
+                    logger::log_rust_debug!(
+                        "lisp_function_in_rust_no_args_log, \
+                         return value conversion failed, error message: {}",
+                        error_message
+                    );
+                    error_message
+                }
             }
         }
         // todo: log and test log entry
-        Err(error_message) => error_message,
+        Err(error_message) => {
+            logger::log_rust_debug!(
+                "lisp_function_in_rust_no_args_log, \
+                 arguments conversion failed, error message: {}",
+                error_message
+            );
+            error_message
+        }
     };
     // If not Ok, check the status code. Err() can be returned either because a
     // call to emacs failed, in which case there is a status, handled
