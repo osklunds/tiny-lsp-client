@@ -155,7 +155,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         |(server_key,)| {
             servers::with_servers(|servers| {
                 if servers.contains_key(&server_key) {
-                    return symbol("already-started");
+                    return Symbol("already-started".to_string());
                 } else {
                     logger::log_rust_debug!("Need to start new");
                 }
@@ -164,11 +164,11 @@ unsafe extern "C" fn tlc__rust_start_server(
                     Some(mut server) => match server.initialize() {
                         Some(()) => {
                             servers.insert(server_key, server);
-                            symbol("started")
+                            Symbol("started".to_string())
                         }
-                        None => symbol("start-failed"),
+                        None => Symbol("start-failed".to_string()),
                     },
-                    None => symbol("start-failed"),
+                    None => Symbol("start-failed".to_string()),
                 }
             })
         },
@@ -305,7 +305,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
                 };
                 server
                     .send_notification(method, notification_params)
-                    .map(|_| symbol("ok"))
+                    .map(|_| Symbol("ok".to_string()))
             })
         },
     )
@@ -591,7 +591,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
                 // could consider removing from servers, but in case the stopping fails
                 // it's good that the server remains in the list
                 server.stop_server();
-                Some(symbol("ok"))
+                Some(Symbol("ok".to_string()))
             })
         },
     )
@@ -627,7 +627,7 @@ enum RustCallResult<A: IntoLisp> {
 impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         match self {
-            Self::Symbol(string) => symbol(string).into_lisp(env),
+            Self::Symbol(string) => Symbol(string.to_string()).into_lisp(env),
             Self::Any(value) => value.into_lisp(env),
         }
     }

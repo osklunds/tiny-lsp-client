@@ -63,7 +63,7 @@ pub unsafe fn export_function(
 }
 
 pub unsafe fn provide_tlc_rust(env: *mut emacs_env) {
-    call1_rust(env, "provide", symbol("tlc-rust")).unwrap();
+    call1_rust(env, "provide", Symbol("tlc-rust".to_string())).unwrap();
 }
 
 // Calling emacs functions
@@ -158,7 +158,7 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
 
     let status = (*env).non_local_exit_check.unwrap()(env);
     if status == emacs_funcall_exit_emacs_funcall_exit_return {
-        if let Ok(error_symbol) = (symbol("error")).into_lisp(env) {
+        if let Ok(error_symbol) = (Symbol("error".to_string())).into_lisp(env) {
             if let Ok(data) = vec![error_message].into_lisp(env) {
                 (*env).non_local_exit_signal.unwrap()(env, error_symbol, data);
             }
@@ -275,10 +275,6 @@ pub trait IntoLisp {
 }
 
 pub struct Symbol(pub String);
-
-pub fn symbol<S: ToString>(s: S) -> Symbol {
-    Symbol(s.to_string())
-}
 
 impl IntoLisp for Symbol {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
