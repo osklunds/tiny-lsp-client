@@ -120,65 +120,22 @@ pub unsafe fn lisp_function_in_rust<
     function_name: S,
     mut function: F,
 ) -> emacs_value {
-    // todo: use ?
-    let log_result = if log_args_ret {
-        log_args(env, nargs, args, &function_name)
-    } else {
-        Ok(())
-    };
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let error_message = match log_result {
-        Ok(()) => {
-            match FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
-                Ok(arg) => {
-                    match function(arg).into_lisp(env) {
-                        Ok(ret) =>
-                        // If everything went Ok, return that value
-                        {
-                            let log_ret_result = if log_args_ret {
-                                log_lisp_value(
-                                    env,
-                                    format!(
-                                        "{} return value: '%S'",
-                                        &function_name
-                                    ),
-                                    ret,
-                                )
-                            } else {
-                                Ok(())
-                            };
-                            match log_ret_result {
-                                Ok(()) => {
-                                    return ret;
-                                }
-                                Err(error_message) => error_message,
-                            }
-                        }
-
-                        Err(error_message) => {
-                            logger::log_rust_debug!(
-                                "lisp_function_in_rust_no_args_log, \
-                         return value conversion failed, error message: {}",
-                                error_message
-                            );
-                            error_message
-                        }
-                    }
-                }
-                // No test coverage on this line. I haven't found a way to trigger
-                // an error in IntoLisp code
-                Err(error_message) => {
-                    logger::log_rust_debug!(
-                        "lisp_function_in_rust_no_args_log, \
-                 arguments conversion failed, error message: {}",
-                        error_message
-                    );
-                    error_message
-                }
-            }
+    let res: LispResult<_> = (|| {
+        if log_args_ret {
+            log_args(env, nargs, args, &function_name)?;
         }
-        Err(error_message) => error_message,
-    };
+        let args_vec = args_pointer_to_args_vec(nargs, args);
+        let arg = FromVecOfLisp::from_vec_of_lisp(env, args_vec)?;
+        let ret = function(arg).into_lisp(env)?;
+        if log_args_ret {
+            log_lisp_value(
+                env,
+                format!("{} return value: '%S'", &function_name),
+                ret,
+            )?;
+        }
+        Ok(ret)
+    })();
     // If not Ok, check the status code. Err() can be returned either because a
     // call to emacs failed, in which case there is a status, handled
     // automatically by handle_non_local_exit(). But it can also happen manually
@@ -187,18 +144,29 @@ pub unsafe fn lisp_function_in_rust<
     // string. handle_non_local_exit() is the only placed allowed to use
     // Err(""), i.e. empty stirng, because an error is already present.
 
-    let status = (*env).non_local_exit_check.unwrap()(env);
-    if status == emacs_funcall_exit_emacs_funcall_exit_return {
-        if let Ok(error_symbol) = (Symbol("error".to_string())).into_lisp(env) {
-            if let Ok(data) = vec![error_message].into_lisp(env) {
-                (*env).non_local_exit_signal.unwrap()(env, error_symbol, data);
+    match res {
+        Ok(ret) => ret,
+        Err(error_message) => {
+            let status = (*env).non_local_exit_check.unwrap()(env);
+            if status == emacs_funcall_exit_emacs_funcall_exit_return {
+                if let Ok(error_symbol) =
+                    (Symbol("error".to_string())).into_lisp(env)
+                {
+                    if let Ok(data) = vec![error_message].into_lisp(env) {
+                        (*env).non_local_exit_signal.unwrap()(
+                            env,
+                            error_symbol,
+                            data,
+                        );
+                    }
+                }
             }
+            // If the two calls above failed, a signal is raised anyway
+
+            // This return value doesn't matter since a signal is raised
+            (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
         }
     }
-    // If the two calls above failed, a signal is raised anyway
-
-    // This return value doesn't matter since a signal is raised
-    (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
 }
 
 unsafe fn log_args<S: AsRef<str>>(
