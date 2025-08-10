@@ -147,8 +147,19 @@
 
   (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))
 
-  (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
-
+  (let* ((number-of-args (lambda ()
+                           (count-in-log-file
+                            (format
+                             "tlc__rust_start_server arguments (1) : ((%S %S))"
+                             root-path server-cmd))))
+         (number-of-rets (lambda ()
+                           (count-in-log-file
+                            "tlc__rust_start_server return value: 'started'"))))
+    (assert-equal 0 (funcall number-of-args))
+    (assert-equal 0 (funcall number-of-rets))
+    (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
+    (assert-equal 1 (funcall number-of-args) "arg")
+    (assert-equal 1 (funcall number-of-rets) "ret"))
 
   ;; Can't trigger any errors for tlc--rust-all-server-info. No
   ;; parameters. "list" is the only function called, and if that returns error,
