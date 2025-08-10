@@ -117,27 +117,34 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    lisp_function_in_rust(env, nargs, args, "tlc__rust_all_server_info", |()| {
-        servers::with_servers(|servers| {
-            let mut server_info_list = Vec::new();
-            let mut servers: Vec<_> = servers.iter().collect();
-            servers.sort_by_key(|(&ref server_key, _server)| server_key);
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_all_server_info",
+        |()| {
+            servers::with_servers(|servers| {
+                let mut server_info_list = Vec::new();
+                let mut servers: Vec<_> = servers.iter().collect();
+                servers.sort_by_key(|(&ref server_key, _server)| server_key);
 
-            for (server_key, server) in servers.iter() {
-                let info = (
-                    // The cloning can be avoided by having
-                    // servers::with_servers come before
-                    // lisp_function_in_rust. But tlc__rust_all_server_info is
-                    // not on the critical path
-                    server_key.root_path.clone(),
-                    server_key.server_cmd.clone(),
-                    server.get_server_process_id() as i64,
-                );
-                server_info_list.push(info);
-            }
-            server_info_list
-        })
-    })
+                for (server_key, server) in servers.iter() {
+                    let info = (
+                        // The cloning can be avoided by having
+                        // servers::with_servers come before
+                        // lisp_function_in_rust. But tlc__rust_all_server_info is
+                        // not on the critical path
+                        server_key.root_path.clone(),
+                        server_key.server_cmd.clone(),
+                        server.get_server_process_id() as i64,
+                    );
+                    server_info_list.push(info);
+                }
+                server_info_list
+            })
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -151,6 +158,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         env,
         nargs,
         args,
+        true,
         "tlc__rust_start_server",
         |(server_key,)| {
             servers::with_servers(|servers| {
@@ -186,6 +194,7 @@ unsafe extern "C" fn tlc__rust_send_request(
         env,
         nargs,
         args,
+        true,
         "tlc__rust_send_request",
         |(server_key, method, request_args): (ServerKey, String, (_, _, _))| {
             // todo: By accident, request_args are the same for all requests
@@ -269,6 +278,7 @@ unsafe extern "C" fn tlc__rust_send_notification(
         env,
         nargs,
         args,
+        true,
         "tlc__rust_send_notification",
         |(server_key, method, request_args)| {
             handle_call(server_key, |server| {
@@ -395,6 +405,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
         env,
         nargs,
         args,
+        true,
         "tlc__rust_recv_response",
         |(server_key, timeout): (ServerKey, u64)| {
             handle_call(server_key, |server| {
@@ -527,10 +538,12 @@ unsafe extern "C" fn tlc__rust_set_option(
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
-    lisp_function_in_rust_no_args_log(
+    lisp_function_in_rust(
         env,
         nargs,
         args,
+        false,
+        "tlc__rust_set_option",
         |(symbol, value): (Symbol, SetOptionValue)| {
             if symbol.0 == "tlc-log-file" {
                 let file_name = match value {
@@ -569,9 +582,16 @@ unsafe extern "C" fn tlc__rust_log_emacs_debug(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    lisp_function_in_rust_no_args_log(env, nargs, args, |(msg,): (String,)| {
-        logger::log_emacs_debug!("{}", msg);
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        false,
+        "tlc__rust_log_emacs_debug",
+        |(msg,): (String,)| {
+            logger::log_emacs_debug!("{}", msg);
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -585,6 +605,7 @@ unsafe extern "C" fn tlc__rust_stop_server(
         env,
         nargs,
         args,
+        true,
         "tlc__rust_stop_server",
         |(server_key,)| {
             handle_call(server_key, |server| {

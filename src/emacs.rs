@@ -107,46 +107,77 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
 
 // Lisp function in Rust
 
-pub unsafe fn lisp_function_in_rust_no_args_log<
+pub unsafe fn lisp_function_in_rust<
     A: FromVecOfLisp,
     R: IntoLisp,
     F: FnMut(A) -> R,
+    S: AsRef<str> + std::fmt::Display,
 >(
     env: *mut emacs_env,
     nargs: isize,
     args: *mut emacs_value,
+    log_args_ret: bool,
+    function_name: S,
     mut function: F,
 ) -> emacs_value {
+    // todo: use ?
+    let log_result = if log_args_ret {
+        log_args(env, nargs, args, &function_name)
+    } else {
+        Ok(())
+    };
     let args_vec = args_pointer_to_args_vec(nargs, args);
-    let error_message = match FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
-        Ok(arg) => {
-            match function(arg).into_lisp(env) {
-                Ok(ret) =>
-                // If everything went Ok, return that value
-                {
-                    return ret
-                }
+    let error_message = match log_result {
+        Ok(()) => {
+            match FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
+                Ok(arg) => {
+                    match function(arg).into_lisp(env) {
+                        Ok(ret) =>
+                        // If everything went Ok, return that value
+                        {
+                            let log_ret_result = if log_args_ret {
+                                log_lisp_value(
+                                    env,
+                                    format!(
+                                        "{} return value: '%S'",
+                                        &function_name
+                                    ),
+                                    ret,
+                                )
+                            } else {
+                                Ok(())
+                            };
+                            match log_ret_result {
+                                Ok(()) => {
+                                    return ret;
+                                }
+                                Err(error_message) => error_message,
+                            }
+                        }
 
+                        Err(error_message) => {
+                            logger::log_rust_debug!(
+                                "lisp_function_in_rust_no_args_log, \
+                         return value conversion failed, error message: {}",
+                                error_message
+                            );
+                            error_message
+                        }
+                    }
+                }
+                // No test coverage on this line. I haven't found a way to trigger
+                // an error in IntoLisp code
                 Err(error_message) => {
                     logger::log_rust_debug!(
                         "lisp_function_in_rust_no_args_log, \
-                         return value conversion failed, error message: {}",
+                 arguments conversion failed, error message: {}",
                         error_message
                     );
                     error_message
                 }
             }
         }
-        // No test coverage on this line. I haven't found a way to trigger
-        // an error in IntoLisp code
-        Err(error_message) => {
-            logger::log_rust_debug!(
-                "lisp_function_in_rust_no_args_log, \
-                 arguments conversion failed, error message: {}",
-                error_message
-            );
-            error_message
-        }
+        Err(error_message) => error_message,
     };
     // If not Ok, check the status code. Err() can be returned either because a
     // call to emacs failed, in which case there is a status, handled
@@ -170,26 +201,6 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
     (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
 }
 
-pub unsafe fn lisp_function_in_rust<
-    S: AsRef<str>,
-    A: FromVecOfLisp,
-    R: IntoLisp,
-    F: FnMut(A) -> R,
->(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    function_name: S,
-    function: F,
-) -> emacs_value {
-    if log_args(env, nargs, args, function_name).is_ok() {
-        // todo: log return
-        lisp_function_in_rust_no_args_log(env, nargs, args, function)
-    } else {
-        (*env).intern.unwrap()(env, "nil".as_ptr() as *const i8)
-    }
-}
-
 unsafe fn log_args<S: AsRef<str>>(
     env: *mut emacs_env,
     nargs: isize,
@@ -201,6 +212,7 @@ unsafe fn log_args<S: AsRef<str>>(
     // created unecessarily.
     // Idea: pass lambda that is lazily called. So can do a general
     // optimization without macros
+    // todo: use log_lisp_value
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call_lisp_lisp(env, "list", args_list)?;
@@ -214,16 +226,14 @@ unsafe fn log_args<S: AsRef<str>>(
     Ok(())
 }
 
-pub unsafe fn log_lisp_value<T: std::fmt::Display>(
+unsafe fn log_lisp_value<S: IntoLisp>(
     env: *mut emacs_env,
-    tag: T,
+    string: S,
     value: emacs_value,
 ) -> LispResult<()> {
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
-        let format_string =
-            format!("log_lisp_value - '{}' - '%S'", tag).into_lisp(env)?;
         let formatted: String =
-            call_lisp_rust(env, "format", vec![format_string, value])?;
+            call_lisp_rust(env, "format", vec![string.into_lisp(env)?, value])?;
         logger::log_rust_debug!("{}", formatted);
     }
     Ok(())
