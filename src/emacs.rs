@@ -123,7 +123,6 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
             match function(arg).into_lisp(env) {
                 Ok(ret) =>
                 // If everything went Ok, return that value
-                // todo: check if non local exit
                 {
                     return ret
                 }
@@ -138,7 +137,8 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
                 }
             }
         }
-        // todo: log and test log entry
+        // No test coverage on this line. I haven't found a way to trigger
+        // an error in IntoLisp code
         Err(error_message) => {
             logger::log_rust_debug!(
                 "lisp_function_in_rust_no_args_log, \
