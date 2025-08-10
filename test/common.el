@@ -142,6 +142,9 @@
 (defun number-of-null-results ()
   (count-in-log-file "\"result\": null"))
 
+(defun number-of-top-level-fails ()
+  (count-in-log-file "lisp_function_in_rust failed, error message:"))
+
 (defun number-of-non-local-exit ()
   (count-in-log-file "non local exit:"))
 

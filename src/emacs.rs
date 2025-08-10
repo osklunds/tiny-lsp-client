@@ -147,6 +147,9 @@ pub unsafe fn lisp_function_in_rust<
     match res {
         Ok(ret) => ret,
         Err(error_message) => {
+            logger::log_rust_debug!(
+                "lisp_function_in_rust failed, error message:"
+            );
             let status = (*env).non_local_exit_check.unwrap()(env);
             if status == emacs_funcall_exit_emacs_funcall_exit_return {
                 if let Ok(error_symbol) =

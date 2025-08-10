@@ -85,43 +85,54 @@
 
   (message "Starting server")
 
-  ;; As of this commit, I was too lazy to test all error cases
+  ;; Note how both manually raised errors and errors in called lisp functions
+  ;; increase number-of-top-level-fails, but only the latter
+  ;; increases number-of-non-local-exit.
+  ;; Also, as of this commit, I was too lazy to test all error cases
+  (assert-equal 0 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server 'hello))
   (sleep-for 1)
+  (assert-equal 1 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
     (tlc--rust-start-server "hello"))
+  (assert-equal 2 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 1"
     (tlc--rust-start-server '("hello")))
+  (assert-equal 3 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (assert-error 'stringp
     (tlc--rust-start-server '("hello" hello)))
+  (assert-equal 4 (number-of-top-level-fails))
   (assert-equal 1 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (assert-error 'stringp
     (tlc--rust-start-server '(hello "hello")))
+  (assert-equal 5 (number-of-top-level-fails))
   (assert-equal 2 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 3"
     (tlc--rust-start-server '(hello "hello" "hello")))
+  (assert-equal 6 (number-of-top-level-fails))
   (assert-equal 2 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
     (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
+  (assert-equal 7 (number-of-top-level-fails))
   (assert-equal 3 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
@@ -129,6 +140,7 @@
                                                (error "error-in-symbol-name"))))
     (assert-error "error-in-symbol-name"
       (tlc--rust-start-server '("hello" "hello"))))
+  (assert-equal 8 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
   (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
@@ -182,27 +194,32 @@
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 4"
     (tlc--rust-send-notification '("hi" "hi" "hi" "hi") "hi" '("hi" "hi")))
+  (assert-equal 9 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "FromLisp for SendNotificationParameters. Wrong length 0"
     (tlc--rust-send-notification '("hi" "hi") "hi" '()))
+  (assert-equal 10 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "FromLisp for SendNotificationParameters. Wrong length 3"
     (tlc--rust-send-notification '("hi" "hi") "hi" '("hi" "hi" "hi")))
+  (assert-equal 11 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "FromLisp for SendNotificationParameters. Not a list"
     (tlc--rust-send-notification '("hi" "hi") "hi" "hi"))
+  (assert-equal 12 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
     (assert-error "error-in-nth"
       (tlc--rust-send-notification '("hi" "hi") "hi" '(1 2 3 4 5))))
+  (assert-equal 13 (number-of-top-level-fails))
   (assert-equal 5 (number-of-non-local-exit))
 
   (assert-equal 'ok (tlc--rust-send-notification
