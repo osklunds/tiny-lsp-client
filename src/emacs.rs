@@ -189,10 +189,7 @@ unsafe fn log_args<S: AsRef<str>>(
         let list = call_lisp_lisp(env, "list", args_list)?;
         let format_string =
             format!("{} arguments ({}) : %S", function_name.as_ref(), nargs);
-        let format_string = format_string.into_lisp(env)?;
-        let formatted: String =
-            call_lisp_rust(env, "format", vec![format_string, list])?;
-        logger::log_rust_debug!("{}", formatted);
+        log_lisp_value(env, format_string, list)?;
     }
     Ok(())
 }
