@@ -183,7 +183,6 @@ unsafe fn log_args<S: AsRef<str>>(
     // created unecessarily.
     // Idea: pass lambda that is lazily called. So can do a general
     // optimization without macros
-    // todo: use log_lisp_value
     if logger::is_log_enabled!(LOG_RUST_DEBUG) {
         let args_list = args_pointer_to_args_vec(nargs, args);
         let list = call_lisp_lisp(env, "list", args_list)?;
