@@ -105,15 +105,6 @@ pub unsafe fn call_lisp_rust<F: AsRef<str>, T: FromLisp>(
     T::from_lisp(env, ret)
 }
 
-pub unsafe fn signal<S: AsRef<str>>(env: *mut emacs_env, data: S) {
-    if let Ok(error_symbol) = (symbol("error")).into_lisp(env) {
-        if let Ok(data) = vec![data.as_ref()].into_lisp(env) {
-            (*env).non_local_exit_signal.unwrap()(env, error_symbol, data)
-        }
-    }
-    // todo: log
-}
-
 // Lisp function in Rust
 
 pub unsafe fn lisp_function_in_rust_no_args_log<
@@ -127,24 +118,34 @@ pub unsafe fn lisp_function_in_rust_no_args_log<
     mut function: F,
 ) -> emacs_value {
     let args_vec = args_pointer_to_args_vec(nargs, args);
-    if let Ok(arg) = FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
-        if let Ok(ret) = function(arg).into_lisp(env) {
-            // If everything went Ok, return that value
-            // todo: check if non local exit
-            return ret;
+    let error_message = match FromVecOfLisp::from_vec_of_lisp(env, args_vec) {
+        Ok(arg) => {
+            match function(arg).into_lisp(env) {
+                Ok(ret) =>
+                // If everything went Ok, return that value
+                // todo: check if non local exit
+                {
+                    return ret
+                }
+                // todo: log and test log entry
+                Err(error_message) => error_message,
+            }
         }
-    }
-    // If not Ok, check the status code. Err(()) can be returned either because
-    // a call to emacs failed, in which case there is a status, handled
+        // todo: log and test log entry
+        Err(error_message) => error_message,
+    };
+    // If not Ok, check the status code. Err() can be returned either because a
+    // call to emacs failed, in which case there is a status, handled
     // automatically by handle_non_local_exit(). But it can also happen manually
     // if e.g. the number of elements in a list is detected to be wrong. In the
-    // manual cases a signal should be raised, but if due to sloppiness it
-    // hasn't been done, raise one here.
+    // manual cases a signal should be raised using the provided error message
+    // string. handle_non_local_exit() is the only placed allowed to use
+    // Err(""), i.e. empty stirng, because an error is already present.
 
     let status = (*env).non_local_exit_check.unwrap()(env);
     if status == emacs_funcall_exit_emacs_funcall_exit_return {
         if let Ok(error_symbol) = (symbol("error")).into_lisp(env) {
-            if let Ok(data) = vec!["unknown rust-level error"].into_lisp(env) {
+            if let Ok(data) = vec![error_message].into_lisp(env) {
                 (*env).non_local_exit_signal.unwrap()(env, error_symbol, data);
             }
         }
@@ -239,8 +240,7 @@ unsafe fn handle_non_local_exit<F: FnMut() -> R, R>(
         // now, gamble that no non-local exists until log file has been
         // created.
         logger::log_rust_debug!("non local exit: {}", status);
-        // (*env).non_local_exit_clear.unwrap()(env);
-        Err(())
+        Err("".to_string())
     }
 }
 
@@ -345,7 +345,7 @@ impl<T: IntoLisp> IntoLisp for Vec<T> {
         if vec_of_lisp_objects.len() == len {
             call_lisp_lisp(env, "list", vec_of_lisp_objects)
         } else {
-            Err(())
+            Err("IntoLisp for Vec failed".to_string())
         }
     }
 }
@@ -411,10 +411,10 @@ impl FromLisp for String {
         if !handle_non_local_exit(env, || {
             copy_string_contents(env, val, ptr::null_mut::<i8>(), &mut len)
         })? {
-            return Err(());
+            return Err("Find length FromLisp for String".to_string());
         }
         if len <= 0 {
-            return Err(());
+            return Err("Length < 0 FromLisp for String".to_string());
         }
 
         // Then get the actual string
@@ -427,7 +427,7 @@ impl FromLisp for String {
                 &mut len,
             )
         })? {
-            return Err(());
+            return Err("Get actual string FromLisp for String".to_string());
         }
 
         len -= 1; // remove null-terminator
@@ -541,24 +541,18 @@ unsafe fn check_tuple(
     exp_arity: i64,
 ) -> LispResult<()> {
     if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-        signal(
-            env,
-            format!("In check_tuple, exp_arity: {}, but not a list", exp_arity),
-        );
-        // todo: instead of signal, put the message in Err
-        return Err(());
+        return Err(format!(
+            "In check_tuple, exp_arity: {}, but not a list",
+            exp_arity
+        ));
     }
 
     let arity = call_lisp_rust::<&str, i64>(env, "length", vec![value])?;
     if exp_arity != arity {
-        signal(
-            env,
-            format!(
-                "In check_tuple, exp_arity: {}, arity: {}",
-                exp_arity, arity
-            ),
-        );
-        return Err(());
+        return Err(format!(
+            "In check_tuple, exp_arity: {}, arity: {}",
+            exp_arity, arity
+        ));
     }
     Ok(())
 }
@@ -569,10 +563,7 @@ impl<T: FromLisp> FromLisp for Vec<T> {
         value: emacs_value,
     ) -> LispResult<Vec<T>> {
         if !call_lisp_rust::<&str, bool>(env, "listp", vec![value])? {
-            // Not tested. Triggering error in listp causes too many
-            // other errors
-            signal(env, "FromLisp for Vec, error in listp");
-            return Err(());
+            return Err("FromLisp for Vec, error in listp".to_string());
         }
 
         let len = call_lisp_rust::<&str, i64>(env, "length", vec![value])?;
@@ -631,7 +622,7 @@ impl<A: FromLisp> FromVecOfLisp for (A,) {
             let a = FromLisp::from_lisp(env, vec_of_lisp[0])?;
             Ok((a,))
         } else {
-            Err(())
+            Err("FromVecOfLisp for (A,)".to_string())
         }
     }
 }
@@ -646,7 +637,7 @@ impl<A: FromLisp, B: FromLisp> FromVecOfLisp for (A, B) {
             let b = FromLisp::from_lisp(env, vec_of_lisp[1])?;
             Ok((a, b))
         } else {
-            Err(())
+            Err("FromVecOfLisp for (A,B)".to_string())
         }
     }
 }
@@ -662,8 +653,7 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
             let c = FromLisp::from_lisp(env, vec_of_lisp[2])?;
             Ok((a, b, c))
         } else {
-            // If this happens, unclear if a good error message happens
-            Err(())
+            Err("FromVecOfLisp for (A,B,C)".to_string())
         }
     }
 }
@@ -671,4 +661,4 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
 // Result
 
 // So that "must use" warnings are emitted
-pub type LispResult<T> = Result<T, ()>;
+pub type LispResult<T> = Result<T, String>;

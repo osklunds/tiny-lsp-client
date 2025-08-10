@@ -702,8 +702,8 @@ impl FromLisp for SendNotificationParameters {
         // - If a conversion fails, it causes a non-local exit, which is ugly
         //   if it happens due to something which is not a bug
         if !call_lisp_rust(env, "listp", vec![value])? {
-            signal(env, "FromLisp for SendNotificationParameters. Not a list");
-            Err(())
+            Err("FromLisp for SendNotificationParameters. Not a list"
+                .to_string())
         } else {
             match call_lisp_rust(env, "length", vec![value])? {
                 1 => {
@@ -729,16 +729,10 @@ impl FromLisp for SendNotificationParameters {
                         ))
                     }
                 }
-                len => {
-                    signal(
-                        env,
-                        format!(
-                            "FromLisp for SendNotificationParameters. Wrong length {}",
-                            len
-                        )
-                    );
-                    Err(())
-                }
+                len => Err(format!(
+                    "FromLisp for SendNotificationParameters. Wrong length {}",
+                    len
+                )),
             }
         }
     }
