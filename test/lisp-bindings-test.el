@@ -135,7 +135,7 @@
   (assert-equal 7 (number-of-arguments-conversion-failed))
   (assert-equal 3 (number-of-non-local-exit))
 
-  ;; IntoLisp, error in called lisp function
+  ;; FromLisp, error in called lisp function
   (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _)
                                                (error "error-in-symbol-name"))))
     (assert-error "error-in-symbol-name"
