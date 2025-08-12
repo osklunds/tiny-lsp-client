@@ -90,6 +90,7 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(env, 2, 2, tlc__rust_set_option, "tlc--rust-set-option");
 
+    // todo: test in lisp-bindings-test
     export_function(
         env,
         1,
@@ -100,7 +101,7 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(env, 1, 1, tlc__rust_stop_server, "tlc--rust-stop-server");
 
-    call(env, "provide", vec![intern(env, "tlc-rust")]);
+    provide_tlc_rust(env);
 
     0
 }
@@ -112,27 +113,34 @@ unsafe extern "C" fn tlc__rust_all_server_info(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_all_server_info");
-    let mut server_info_list = Vec::new();
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_all_server_info",
+        |()| {
+            servers::with_servers(|servers| {
+                let mut server_info_list = Vec::new();
+                let mut servers: Vec<_> = servers.iter().collect();
+                servers.sort_by_key(|(&ref server_key, _server)| server_key);
 
-    servers::with_servers(|servers| {
-        let mut servers: Vec<_> = servers.iter().collect();
-        servers.sort_by_key(|(&ref server_key, _server)| server_key);
-
-        for (server_key, server) in servers.iter() {
-            let info = call(
-                env,
-                "list",
-                vec![
-                    make_string(env, &server_key.root_path),
-                    make_string(env, &server_key.server_cmd),
-                    make_integer(env, server.get_server_process_id() as i64),
-                ],
-            );
-            server_info_list.push(info);
-        }
-        call(env, "list", server_info_list)
-    })
+                for (server_key, server) in servers.iter() {
+                    let info = (
+                        // The cloning can be avoided by having
+                        // servers::with_servers come before
+                        // lisp_function_in_rust. But tlc__rust_all_server_info is
+                        // not on the critical path
+                        server_key.root_path.clone(),
+                        server_key.server_cmd.clone(),
+                        server.get_server_process_id() as i64,
+                    );
+                    server_info_list.push(info);
+                }
+                server_info_list
+            })
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -142,27 +150,33 @@ unsafe extern "C" fn tlc__rust_start_server(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_start_server");
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let server_key = get_server_key(env, &args_vec);
-
-    servers::with_servers(|servers| {
-        if servers.contains_key(&server_key) {
-            return intern(env, "already-started");
-        } else {
-            logger::log_rust_debug!("Need to start new");
-        }
-        match Server::new(&server_key.root_path, &server_key.server_cmd) {
-            Some(mut server) => match server.initialize() {
-                Some(()) => {
-                    servers.insert(server_key, server);
-                    intern(env, "started")
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_start_server",
+        |(server_key,)| {
+            servers::with_servers(|servers| {
+                if servers.contains_key(&server_key) {
+                    return Symbol("already-started".to_string());
+                } else {
+                    logger::log_rust_debug!("Need to start new");
                 }
-                None => intern(env, "start-failed"),
-            },
-            None => intern(env, "start-failed"),
-        }
-    })
+                match Server::new(&server_key.root_path, &server_key.server_cmd)
+                {
+                    Some(mut server) => match server.initialize() {
+                        Some(()) => {
+                            servers.insert(server_key, server);
+                            Symbol("started".to_string())
+                        }
+                        None => Symbol("start-failed".to_string()),
+                    },
+                    None => Symbol("start-failed".to_string()),
+                }
+            })
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -172,93 +186,80 @@ unsafe extern "C" fn tlc__rust_send_request(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_send_request");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        let request_type = extract_string(env, args[1]);
-        let request_args = args[2];
-
-        let request_params = match request_type.as_str() {
-            "textDocument/definition" => {
-                build_text_document_definition(env, request_args, server)
-            }
-            "textDocument/completion" => {
-                build_text_document_completion(env, request_args, server)
-            }
-            "textDocument/hover" => {
-                build_text_document_hover(env, request_args, server)
-            }
-            _ => {
-                panic!("Incorrect request type")
-            }
-        };
-        server
-            .send_request(request_type, request_params)
-            .map(|id| make_integer(env, id as i64))
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_send_request",
+        |(server_key, method, request_args): (ServerKey, String, (_, _, _))| {
+            // todo: By accident, request_args are the same for all requests
+            // when they no longer are, need to have an enum of the variants
+            let (uri, line, character) = request_args;
+            handle_call(server_key, |server| {
+                let request_params = match method.as_str() {
+                    "textDocument/definition" => {
+                        build_text_document_definition(uri, line, character)
+                    }
+                    "textDocument/completion" => {
+                        build_text_document_completion(uri, line, character)
+                    }
+                    "textDocument/hover" => {
+                        build_text_document_hover(uri, line, character)
+                    }
+                    _ => {
+                        // todo: emacs error instead
+                        panic!("Incorrect method")
+                    }
+                };
+                server.send_request(method, request_params)
+            })
+        },
+    )
 }
 
-#[allow(non_snake_case)]
-unsafe fn build_text_document_definition(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+fn build_text_document_definition(
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::DefinitionParams(DefinitionParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
     })
 }
 
 #[allow(non_snake_case)]
-unsafe fn build_text_document_completion(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+fn build_text_document_completion(
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::CompletionParams(CompletionParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
         context: CompletionContext { trigger_kind: 1 },
     })
 }
 
 #[allow(non_snake_case)]
-unsafe fn build_text_document_hover(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
+fn build_text_document_hover(
+    uri: String,
+    line: i64,
+    character: i64,
 ) -> RequestParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let line = nth(env, 1, request_args);
-    let line = extract_integer(env, line) as usize;
-
-    let character = nth(env, 2, request_args);
-    let character = extract_integer(env, character) as usize;
-
     RequestParams::HoverParams(HoverParams {
         text_document: TextDocumentIdentifier { uri },
-        position: Position { line, character },
+        position: Position {
+            line: line as usize,
+            character: character as usize,
+        },
     })
 }
 
@@ -269,37 +270,59 @@ unsafe extern "C" fn tlc__rust_send_notification(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_send_notification");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        let request_type = extract_string(env, args[1]);
-        let request_args = args[2];
-
-        let notification_params = if request_type == "textDocument/didOpen" {
-            build_text_document_did_open(env, request_args, server)
-        } else if request_type == "textDocument/didChange" {
-            build_text_document_did_change(env, request_args, server)
-        } else if request_type == "textDocument/didClose" {
-            build_text_document_did_close(env, request_args, server)
-        } else {
-            panic!("Incorrect request type")
-        };
-        server
-            .send_notification(request_type, notification_params)
-            .map(|_| intern(env, "ok"))
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_send_notification",
+        |(server_key, method, request_args)| {
+            handle_call(server_key, |server| {
+                let notification_params = if method == "textDocument/didOpen" {
+                    // todo: the ? here do not lead to lisp error (not that they
+                    // should it's just that I thought so as I wrote the code).
+                    // So need test coverage when wrong method+arg combination
+                    // and maybe also a new return value rather than no-server.
+                    let (uri, file_content) = match request_args {
+                        SendNotificationParameters::UriFileContent(
+                            uri,
+                            file_content,
+                        ) => Some((uri, file_content)),
+                        _ => None,
+                    }?;
+                    build_text_document_did_open(uri, file_content, server)
+                } else if method == "textDocument/didChange" {
+                    let (uri, content_changes) = match request_args {
+                        SendNotificationParameters::UriContentChanges(
+                            uri,
+                            content_changes,
+                        ) => Some((uri, content_changes)),
+                        _ => None,
+                    }?;
+                    build_text_document_did_change(uri, content_changes, server)
+                } else if method == "textDocument/didClose" {
+                    let uri = match request_args {
+                        SendNotificationParameters::Uri(uri) => Some(uri),
+                        _ => None,
+                    }?;
+                    build_text_document_did_close(uri)
+                } else {
+                    // todo: test case
+                    panic!("Incorrect request type")
+                };
+                server
+                    .send_notification(method, notification_params)
+                    .map(|_| Symbol("ok".to_string()))
+            })
+        },
+    )
 }
 
-unsafe fn build_text_document_did_open(
-    env: *mut emacs_env,
-    request_args: emacs_value,
+fn build_text_document_did_open(
+    uri: String,
+    file_content: String,
     server: &mut Server,
 ) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let file_content = extract_string(env, nth(env, 1, request_args));
-
     NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri,
@@ -310,50 +333,39 @@ unsafe fn build_text_document_did_open(
     })
 }
 
-unsafe fn build_text_document_did_change(
-    env: *mut emacs_env,
-    request_args: emacs_value,
+fn build_text_document_did_change(
+    uri: String,
+    content_changes: Vec<(
+        String,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+    )>,
     server: &mut Server,
 ) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
-    let content_changes = nth(env, 1, request_args);
-    let content_changes_len = call(env, "length", vec![content_changes]);
-    let content_changes_len = extract_integer(env, content_changes_len);
-
     let mut json_content_changes = Vec::new();
 
-    for i in 0..content_changes_len {
-        let content_change = nth(env, i, content_changes);
+    for content_change in content_changes {
+        let (text, start_line, start_character, end_line, end_character) =
+            content_change;
 
-        let text = extract_string(env, nth(env, 0, content_change));
-        let content_change_len =
-            extract_integer(env, call(env, "length", vec![content_change]));
-
-        // len 1 means full change, so the other elements don't exist
-        let json_content_change = if content_change_len == 1 {
+        let json_content_change = if start_line.is_none() {
             TextDocumentContentChangeEvent::TextDocumentContentChangeEventFull(
                 TextDocumentContentChangeEventFull { text },
             )
         } else {
-            let start_line = nth(env, 1, content_change);
-            let start_character = nth(env, 2, content_change);
-            let end_line = nth(env, 3, content_change);
-            let end_character = nth(env, 4, content_change);
-
             TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                // todo: test coverage for unwraps here
                 TextDocumentContentChangeEventIncremental {
                     range: Range {
                         start: Position {
-                            line: extract_integer(env, start_line) as usize,
-                            character: extract_integer(env, start_character)
-                                as usize,
+                            line: start_line.unwrap(),
+                            character: start_character.unwrap()
                         },
                         end: Position {
-                            line: extract_integer(env, end_line) as usize,
-                            character: extract_integer(env, end_character)
-                                as usize,
+                            line: end_line.unwrap(),
+                            character: end_character.unwrap()
                         },
                     },
                     text,
@@ -374,14 +386,7 @@ unsafe fn build_text_document_did_change(
     )
 }
 
-unsafe fn build_text_document_did_close(
-    env: *mut emacs_env,
-    request_args: emacs_value,
-    _server: &mut Server,
-) -> NotificationParams {
-    let uri = nth(env, 0, request_args);
-    let uri = extract_string(env, uri);
-
+fn build_text_document_did_close(uri: String) -> NotificationParams {
     NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
         text_document: TextDocumentIdentifier { uri },
     })
@@ -394,86 +399,89 @@ unsafe extern "C" fn tlc__rust_recv_response(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_recv_response");
-
-    handle_call(env, nargs, args, |env, args, server| {
-        let timeout = extract_integer(env, args[1]);
-        let timeout = if timeout == 0 {
-            None
-        } else {
-            Some(Duration::from_millis(timeout as u64))
-        };
-        if let Some(recv_result) = server.try_recv_response(timeout) {
-            let result = match recv_result {
-                Some(response) => handle_response(env, response),
-                None => intern(env, "no-response"),
-            };
-            Some(result)
-        } else {
-            None
-        }
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_recv_response",
+        |(server_key, timeout): (ServerKey, u64)| {
+            handle_call(server_key, |server| {
+                let timeout = if timeout == 0 {
+                    None
+                } else {
+                    Some(Duration::from_millis(timeout))
+                };
+                if let Some(recv_result) = server.try_recv_response(timeout) {
+                    let result = match recv_result {
+                        Some(response) => RustCallResult::Any(
+                            handle_response::<u32>(response),
+                        ),
+                        None => RustCallResult::Symbol("no-response"),
+                    };
+                    Some(result)
+                } else {
+                    None
+                }
+            })
+        },
+    )
 }
 
-unsafe fn handle_response(
-    env: *mut emacs_env,
+fn handle_response<A: IntoLisp>(
     response: Response,
-) -> emacs_value {
-    let id = make_integer(env, response.id as i64);
+) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
     if let Some(result) = response.result {
         if let Result::Untyped(_) = result {
             logger::log_rust_debug!(
                 "Non-supported response received: {:?}",
                 result
             );
-            intern(env, "error-response")
+            RustCallResult::Symbol("error-response")
         } else {
             let return_value = match result {
                 Result::TextDocumentDefinitionResult(definition_result) => {
-                    handle_definition_response(env, definition_result)
+                    HandleResponse::DefinitionResponse(
+                        handle_definition_response(definition_result),
+                    )
                 }
                 Result::TextDocumentCompletionResult(completion_result) => {
-                    handle_completion_response(env, completion_result)
+                    HandleResponse::CompletionResponse(
+                        handle_completion_response(completion_result),
+                    )
                 }
                 Result::TextDocumentHoverResult(hover_result) => {
-                    handle_hover_response(env, hover_result)
+                    HandleResponse::HoverResponse(handle_hover_response(
+                        hover_result,
+                    ))
                 }
                 _ => panic!("case already handled"),
             };
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, true),
-                    return_value,
-                ],
-            )
+            RustCallResult::Any((
+                RustCallResult::<A>::Symbol("response"),
+                response.id,
+                true,
+                return_value,
+            ))
         }
     } else {
         if response.error.is_some() {
-            intern(env, "error-response")
+            RustCallResult::Symbol("error-response")
         } else {
             // Happens e.g. when rust-analyzer doesn't send any completion result
-            call(
-                env,
-                "list",
-                vec![
-                    intern(env, "response"),
-                    id,
-                    make_bool(env, false),
-                    make_bool(env, false),
-                ],
-            )
+            RustCallResult::Any((
+                RustCallResult::Symbol("response"),
+                response.id,
+                false,
+                HandleResponse::NullResponse,
+            ))
         }
     }
 }
 
-unsafe fn handle_definition_response(
-    env: *mut emacs_env,
+fn handle_definition_response(
     response: DefinitionResult,
-) -> emacs_value {
+) -> Vec<(String, usize, usize)> {
     let location_list = match response {
         DefinitionResult::LocationList(location_list) => location_list,
         DefinitionResult::LocationLinks(location_link_list) => {
@@ -486,27 +494,17 @@ unsafe fn handle_definition_response(
     let mut lisp_location_list_vec = Vec::new();
 
     for location in location_list {
-        let uri = &location.uri;
-        let range = &location.range;
-
-        let lisp_location = call(
-            env,
-            "list",
-            vec![
-                make_string(env, uri),
-                make_integer(env, range.start.line as i64),
-                make_integer(env, range.start.character as i64),
-            ],
-        );
+        let Location { uri, range } = location;
+        let lisp_location =
+            (uri, range.start.line, range.start.character);
         lisp_location_list_vec.push(lisp_location);
     }
-    call(env, "list", lisp_location_list_vec)
+    lisp_location_list_vec
 }
 
-unsafe fn handle_completion_response(
-    env: *mut emacs_env,
+fn handle_completion_response(
     response: CompletionResult,
-) -> emacs_value {
+) -> Vec<String> {
     let mut completion_list_vec = Vec::new();
 
     let items = match response {
@@ -515,68 +513,80 @@ unsafe fn handle_completion_response(
     };
 
     for item in items {
-        completion_list_vec
-            .push(make_string(env, str::trim_start(item.get_text())));
+        // todo: don't clone. Need to trim without reallocating.
+        completion_list_vec.push(str::trim_start(item.get_text()).to_string());
     }
 
-    call(env, "list", completion_list_vec)
+    completion_list_vec
 }
 
-unsafe fn handle_hover_response(
-    env: *mut emacs_env,
-    response: HoverResult,
-) -> emacs_value {
-    make_string(env, response.contents.value)
+fn handle_hover_response(response: HoverResult) -> String {
+    response.contents.value
 }
 
 #[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_set_option(
     env: *mut emacs_env,
-    _nargs: isize,
+    nargs: isize,
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
     // Don't log args so that log file can change location before
     // any logging takes place
-    let symbol = *args.offset(0);
-    let symbol = extract_string(env, call(env, "symbol-name", vec![symbol]));
-    let value = *args.offset(1);
-
-    if symbol == "tlc-log-file" {
-        let path = extract_string(env, value);
-        logger::set_log_file_name(path);
-    } else {
-        let value = extract_bool(env, value);
-        if symbol == "tlc-log-io" {
-            logger::LOG_IO.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-stderr" {
-            logger::LOG_STDERR.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-rust-debug" {
-            logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-log-to-stdio" {
-            logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
-        } else if symbol == "tlc-stop-server-on-stderr" {
-            server::STOP_SERVER_ON_STDERR.store(value, Ordering::Relaxed)
-        } else {
-            panic!("Incorrect log symbol")
-        };
-    }
-
-    intern(env, "nil")
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        false,
+        "tlc__rust_set_option",
+        |(symbol, value): (Symbol, SetOptionValue)| {
+            if symbol.0 == "tlc-log-file" {
+                let file_name = match value {
+                    SetOptionValue::FileName(file_name) => file_name,
+                    _ => todo!("raise lisp error"),
+                };
+                logger::set_log_file_name(file_name);
+            } else {
+                let value = match value {
+                    SetOptionValue::Bool(value) => value,
+                    _ => todo!("raise lisp error"),
+                };
+                if symbol.0 == "tlc-log-io" {
+                    logger::LOG_IO.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-stderr" {
+                    logger::LOG_STDERR.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-rust-debug" {
+                    logger::LOG_RUST_DEBUG.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-log-to-stdio" {
+                    logger::LOG_TO_STDIO.store(value, Ordering::Relaxed)
+                } else if symbol.0 == "tlc-stop-server-on-stderr" {
+                    server::STOP_SERVER_ON_STDERR
+                        .store(value, Ordering::Relaxed)
+                } else {
+                    panic!("Incorrect log symbol")
+                };
+            };
+        },
+    )
 }
 
 #[allow(non_snake_case)]
 unsafe extern "C" fn tlc__rust_log_emacs_debug(
     env: *mut emacs_env,
-    _nargs: isize,
+    nargs: isize,
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    let msg = *args.offset(0);
-    let msg = extract_string(env, msg);
-    logger::log_emacs_debug!("{}", msg);
-
-    intern(env, "nil")
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        false,
+        "tlc__rust_log_emacs_debug",
+        |(msg,): (String,)| {
+            logger::log_emacs_debug!("{}", msg);
+        },
+    )
 }
 
 #[allow(non_snake_case)]
@@ -586,98 +596,178 @@ unsafe extern "C" fn tlc__rust_stop_server(
     args: *mut emacs_value,
     _data: *mut raw::c_void,
 ) -> emacs_value {
-    log_args(env, nargs, args, "tlc__rust_stop_server");
-    handle_call(env, nargs, args, |env, _args, server| {
-        // could consider removing from servers, but in case the stopping fails
-        // it's good that the server remains in the list
-        server.stop_server();
-        Some(intern(env, "ok"))
-    })
+    lisp_function_in_rust(
+        env,
+        nargs,
+        args,
+        true,
+        "tlc__rust_stop_server",
+        |(server_key,)| {
+            handle_call(server_key, |server| {
+                // could consider removing from servers, but in case the stopping fails
+                // it's good that the server remains in the list
+                server.stop_server();
+                Some(Symbol("ok".to_string()))
+            })
+        },
+    )
 }
 
-unsafe fn log_args<S: AsRef<str>>(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    function_name: S,
-) {
-    // logger::log_rust_debug! already knows whether to log or not. But check
-    // anyway as an optimization so that lots of string and terms aren't
-    // created unecessarily.
-    // Idea: pass lambda that is lazily called. So can do a general
-    // optimization without macros
-    if logger::is_log_enabled!(LOG_RUST_DEBUG) {
-        let args_list = args_pointer_to_args_vec(nargs, args);
-        let list = call(env, "list", args_list);
-        let format_string = make_string(
-            env,
-            format!("{} arguments ({}) : %S", function_name.as_ref(), nargs),
-        );
-        let formatted = call(env, "format", vec![format_string, list]);
-        let formatted = extract_string(env, formatted);
-        logger::log_rust_debug!("{}", formatted);
-    }
-}
-
-unsafe fn handle_call<
-    F: FnOnce(
-        *mut emacs_env,
-        Vec<emacs_value>,
-        &mut Server,
-    ) -> Option<emacs_value>,
->(
-    env: *mut emacs_env,
-    nargs: isize,
-    args: *mut emacs_value,
-    f: F,
-) -> emacs_value {
-    let args_vec = args_pointer_to_args_vec(nargs, args);
-    let server_key = get_server_key(env, &args_vec);
+fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
+    server_key: ServerKey,
+    function: F,
+) -> RustCallResult<T> {
     servers::with_servers(|servers| {
         if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
-            if let Some(result) = f(env, args_vec, server) {
-                result
+            if let Some(result) = function(server) {
+                RustCallResult::Any(result)
             } else {
                 // This means it failed during handling this call
                 servers.remove(&server_key);
-                intern(env, "no-server")
+                RustCallResult::Symbol("no-server")
             }
         } else {
             // This means the server wasn't existing before this call
-            intern(env, "no-server")
+            RustCallResult::Symbol("no-server")
         }
     })
 }
 
-unsafe fn args_pointer_to_args_vec(
-    nargs: isize,
-    args: *mut emacs_value,
-) -> Vec<emacs_value> {
-    let mut args_list = Vec::new();
-    for i in 0..nargs {
-        args_list.push(*args.offset(i));
-    }
-    args_list
+// To handle these in a more elegant and generic way, could use "Either"
+// "Either3" and so on, to handle the union types. But the problem is FromLisp.
+// See the comment in FromLisp::from_lisp for SendNotificationParameters.
+enum RustCallResult<A: IntoLisp> {
+    Symbol(&'static str),
+    Any(A),
 }
 
-unsafe fn get_server_key(
-    env: *mut emacs_env,
-    args: &[emacs_value],
-) -> ServerKey {
-    let server_key = args[0];
-    // Asserts because if not fulfilled, endless loop is entered, which is
-    // harder to debug. The loop happens due to non-local exit handling in
-    // emacs.rs.
-    // Todo: Could consider to have limited retries in that loop.
-    assert!(extract_bool(env, call(env, "listp", vec![server_key])));
-    assert_eq!(
-        extract_integer(env, call(env, "length", vec![server_key])),
-        2
-    );
-    let root_path = extract_string(env, nth(env, 0, server_key));
-    let server_cmd = extract_string(env, nth(env, 1, server_key));
-    ServerKey {
-        root_path,
-        server_cmd,
+impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
+        match self {
+            Self::Symbol(string) => Symbol(string.to_string()).into_lisp(env),
+            Self::Any(value) => value.into_lisp(env),
+        }
+    }
+}
+
+enum HandleResponse {
+    DefinitionResponse(Vec<(String, usize, usize)>),
+    CompletionResponse(Vec<String>),
+    HoverResponse(String),
+    NullResponse,
+}
+
+impl IntoLisp for HandleResponse {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
+        match self {
+            Self::DefinitionResponse(a) => a.into_lisp(env),
+            Self::CompletionResponse(a) => a.into_lisp(env),
+            Self::HoverResponse(a) => a.into_lisp(env),
+            Self::NullResponse => false.into_lisp(env),
+        }
+    }
+}
+
+impl IntoLisp for ServerKey {
+    unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
+        let ServerKey {
+            root_path,
+            server_cmd,
+        } = self;
+        (root_path, server_cmd).into_lisp(env)
+    }
+}
+
+impl FromLisp for ServerKey {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> LispResult<ServerKey> {
+        let (root_path, server_cmd) = FromLisp::from_lisp(env, value)?;
+        Ok(ServerKey {
+            root_path,
+            server_cmd,
+        })
+    }
+}
+
+enum SendNotificationParameters {
+    Uri(String),
+    UriFileContent(String, String),
+    UriContentChanges(
+        String,
+        Vec<(
+            String,
+            Option<usize>,
+            Option<usize>,
+            Option<usize>,
+            Option<usize>,
+        )>,
+    ),
+}
+
+impl FromLisp for SendNotificationParameters {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> LispResult<SendNotificationParameters> {
+        // An option would be to do from_lisp directly for each variant, and if
+        // Some, then we're done. But there are some issues with that approach:
+        // - Performance waste instead of trying and failing. Since this code
+        //   is used for didChange, it is one the most critical path.
+        // - If a conversion fails, it causes a non-local exit, which is ugly
+        //   if it happens due to something which is not a bug
+        if !call_lisp_rust(env, "listp", vec![value])? {
+            Err("FromLisp for SendNotificationParameters. Not a list"
+                .to_string())
+        } else {
+            match call_lisp_rust(env, "length", vec![value])? {
+                1 => {
+                    let (uri,) = FromLisp::from_lisp(env, value)?;
+                    Ok(SendNotificationParameters::Uri(uri))
+                }
+                2 => {
+                    let first = call_lisp_lisp(env, "car", vec![value])?;
+                    let second = call_lisp_lisp(env, "cadr", vec![value])?;
+                    if call_lisp_rust(env, "listp", vec![second])? {
+                        let uri = FromLisp::from_lisp(env, first)?;
+                        let content_changes = FromLisp::from_lisp(env, second)?;
+                        Ok(SendNotificationParameters::UriContentChanges(
+                            uri,
+                            content_changes,
+                        ))
+                    } else {
+                        let uri = FromLisp::from_lisp(env, first)?;
+                        let file_content = FromLisp::from_lisp(env, second)?;
+                        Ok(SendNotificationParameters::UriFileContent(
+                            uri,
+                            file_content,
+                        ))
+                    }
+                }
+                len => Err(format!(
+                    "FromLisp for SendNotificationParameters. Wrong length {}",
+                    len
+                )),
+            }
+        }
+    }
+}
+
+enum SetOptionValue {
+    Bool(bool),
+    FileName(String),
+}
+
+impl FromLisp for SetOptionValue {
+    unsafe fn from_lisp(
+        env: *mut emacs_env,
+        value: emacs_value,
+    ) -> LispResult<SetOptionValue> {
+        if call_lisp_rust(env, "stringp", vec![value])? {
+            Ok(Self::FileName(FromLisp::from_lisp(env, value)?))
+        } else {
+            Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
+        }
     }
 }

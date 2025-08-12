@@ -396,9 +396,8 @@ obvious that they happen."
                                                   start-character
                                                   end-line
                                                   end-character)
-  (let ((content-change (if start-line
-                            `(,text ,start-line ,start-character ,end-line ,end-character)
-                          `(,text))))
+  (let ((content-change 
+         `(,text ,start-line ,start-character ,end-line ,end-character)))
     (tlc--send-notification
      "textDocument/didChange"
      (list (tlc--buffer-uri)
@@ -488,10 +487,14 @@ as usual."
       ;; alternative but valid case - some error response
       ;; For now, just print a message, because so far I've only encountered it
       ;; for temporary issues. In the future, consider passing code and msg.
-      ('error-response (user-error
-                        (concat "Got error response from LSP server."
-                                "It might be a temporary issue."
-                                "But if it keeps happening, you can check the IO logs")))
+      ('error-response (progn
+                         (tlc--log
+                          "error-response in tlc--wait-for-response '%s' '%s'"
+                          request-id server-key)
+                         (user-error
+                          (concat "Got error response from LSP server."
+                                  "It might be a temporary issue."
+                                  "But if it keeps happening, you can check the IO logs"))))
 
       ;; alternative but valid case - server crashed/stopped while waiting
       ;; for response. After server maybe restarted, exit.

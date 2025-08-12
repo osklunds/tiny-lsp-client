@@ -23,7 +23,6 @@
 (require 'ert)
 
 (setq load-prefer-newer t)
-(setq debug-on-error t)
 
 (defun assert-equal (exp act &optional label)
   (when (not (equal exp act))
@@ -32,8 +31,8 @@
     (message "")
     (message "-----------------------------------------------------------------------------")
     (message "Assert failed. label: '%s'" label)
-    (message "Exp: '%s'" exp)
-    (message "Act: '%s'" act)
+    (message "Exp: '%S'" exp)
+    (message "Act: '%S'" act)
     (message "-----------------------------------------------------------------------------")
     (message "")
     (message "")
@@ -47,6 +46,17 @@
 
 (defun assert (act &optional label)
   (assert-equal t (not (not act)) label))
+
+(cl-defmacro assert-error (exp-msg &rest expr)
+  (declare (indent defun))
+  `(assert-equal ,exp-msg
+                 (cadr (should-error ,@expr :type 'error))))
+
+(cl-defmacro assert-error-label (exp-msg label &rest expr)
+  (declare (indent defun))
+  `(assert-equal ,exp-msg
+                 (cadr (should-error ,@expr :type 'error))
+                 ,label))
 
 (cl-defmacro run-until (times sleep &rest expr)
   (declare (indent defun))
@@ -132,9 +142,16 @@
 (defun number-of-null-results ()
   (count-in-log-file "\"result\": null"))
 
+(defun number-of-top-level-fails ()
+  (count-in-log-file "lisp_function_in_rust failed, error message:"))
+
+(defun number-of-non-local-exit ()
+  (count-in-log-file "non local exit:"))
+
 (defun count-in-log-file (pattern)
   (string-to-number (shell-command-to-string
-                     (format "cat %s | grep '%s' | wc -l" log-file-name pattern))))
+                     (concat "cat " log-file-name " | grep "
+                             (shell-quote-argument pattern)" | wc -l"))))
 
 (defun current-buffer-string ()
   (buffer-substring-no-properties (point-min) (point-max)))
@@ -231,6 +248,7 @@ this common file. Is used to differentiate log file names.")
   (concat (cargo-target-dir) "/release/libtiny_lsp_client.so"))
 
 (defun common-setup ()
+  (setq debug-on-error t)
   (require 'tlc-rust (debug-rust-module))
   (require 'tiny-lsp-client (relative-repo-root "tiny-lsp-client"))
 

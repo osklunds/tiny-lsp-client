@@ -144,8 +144,8 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     };
 
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
+    // todo: consider drop if None
     let log_file_info = locked_log_file_info.as_mut().unwrap();
-
     // No file because nothing has been logged yet or because nothing
     // has been logged since last time it was changed
     if log_file_info.file.is_none() {
