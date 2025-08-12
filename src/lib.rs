@@ -233,7 +233,7 @@ fn build_text_document_definition(
 }
 
 #[allow(non_snake_case)]
-unsafe fn build_text_document_completion(
+fn build_text_document_completion(
     uri: String,
     line: i64,
     character: i64,
@@ -249,7 +249,7 @@ unsafe fn build_text_document_completion(
 }
 
 #[allow(non_snake_case)]
-unsafe fn build_text_document_hover(
+fn build_text_document_hover(
     uri: String,
     line: i64,
     character: i64,
@@ -428,7 +428,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
     )
 }
 
-unsafe fn handle_response<A: IntoLisp>(
+fn handle_response<A: IntoLisp>(
     response: Response,
 ) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
     if let Some(result) = response.result {
@@ -479,7 +479,7 @@ unsafe fn handle_response<A: IntoLisp>(
     }
 }
 
-unsafe fn handle_definition_response(
+fn handle_definition_response(
     response: DefinitionResult,
 ) -> Vec<(String, usize, usize)> {
     let location_list = match response {
@@ -502,7 +502,7 @@ unsafe fn handle_definition_response(
     lisp_location_list_vec
 }
 
-unsafe fn handle_completion_response(
+fn handle_completion_response(
     response: CompletionResult,
 ) -> Vec<String> {
     let mut completion_list_vec = Vec::new();
@@ -520,7 +520,7 @@ unsafe fn handle_completion_response(
     completion_list_vec
 }
 
-unsafe fn handle_hover_response(response: HoverResult) -> String {
+fn handle_hover_response(response: HoverResult) -> String {
     response.contents.value
 }
 
