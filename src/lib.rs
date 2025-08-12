@@ -493,12 +493,9 @@ unsafe fn handle_definition_response(
     let mut lisp_location_list_vec = Vec::new();
 
     for location in location_list {
-        let uri = &location.uri;
-        let range = &location.range;
-
-        // todo: don't clone
+        let Location { uri, range } = location;
         let lisp_location =
-            (uri.clone(), range.start.line, range.start.character);
+            (uri, range.start.line, range.start.character);
         lisp_location_list_vec.push(lisp_location);
     }
     lisp_location_list_vec
@@ -515,7 +512,7 @@ unsafe fn handle_completion_response(
     };
 
     for item in items {
-        // todo: don't clone
+        // todo: don't clone. Need to trim without reallocating.
         completion_list_vec.push(str::trim_start(item.get_text()).to_string());
     }
 
