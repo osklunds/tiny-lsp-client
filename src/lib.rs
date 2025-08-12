@@ -695,7 +695,6 @@ enum SendNotificationParameters {
     UriFileContent(String, String),
     UriContentChanges(
         String,
-        // todo: struct for ContentChange
         Vec<(
             String,
             Option<usize>,
