@@ -603,6 +603,7 @@ as usual."
 ;; -----------------------------------------------------------------------------
 
 (defun tlc-eldoc-function (_callback)
+  ;; todo: test coverage
   (when tlc-mode
     (let* ((uri (tlc--buffer-uri))
            (pos (tlc--pos-to-lsp-pos))
@@ -610,6 +611,7 @@ as usual."
            (character (nth 1 pos))
            ;; As a simplification, don't have hover requests "in the background".
            ;; If cursor moves, abort.
+           ;; todo: handle error-response in a more systematic way
            (response (ignore-errors (tlc--request
                                      "textDocument/hover"
                                      (list uri line character)
