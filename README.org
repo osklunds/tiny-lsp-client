@@ -252,7 +252,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
                   - Unit tests if possible
                   - test what happens if =tlc-log-file= is never set
       - Lower priority
-            - Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait?
+            - Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait? Maybe emacs-module-rs does it in a smart way?
             - Understand how LSP processes are killed even if not same process group. It happens even when wrong process id in initialize message.
             - Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
             - Remove duplicate completions in Rust code
