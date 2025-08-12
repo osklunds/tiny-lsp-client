@@ -1539,6 +1539,18 @@ short other_function(int arg)" (get-eldoc-msg)))
     )
   )
 
+(tlc-deftest eldoc-mode-disabled-test ()
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+
+  (re-search-forward "other_function" nil nil 2)
+
+  (tlc-mode -1)
+  (assert-equal '(tlc-eldoc-function t) eldoc-documentation-functions)
+  (assert eldoc-mode)
+  (assert-not (get-eldoc-msg))
+  (assert (= 0 (number-of-hover-requests)))
+  )
+
 (tlc-deftest lisp-compile-warnings-test ()
   (find-file (relative-repo-root "tiny-lsp-client.el"))
 
