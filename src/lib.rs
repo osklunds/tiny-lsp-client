@@ -356,6 +356,7 @@ fn build_text_document_did_change(
             )
         } else {
             TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
+                // todo: test coverage for unwraps here
                 TextDocumentContentChangeEventIncremental {
                     range: Range {
                         start: Position {
