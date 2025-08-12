@@ -485,16 +485,12 @@ as usual."
          (funcall continue)))
 
       ;; alternative but valid case - some error response
-      ;; For now, just print a message, because so far I've only encountered it
-      ;; for temporary issues. In the future, consider passing code and msg.
+      ;; For now, just return nil, because all 3 callers can handle it.
       ('error-response (progn
                          (tlc--log
                           "error-response in tlc--wait-for-response '%s' '%s'"
                           request-id server-key)
-                         (user-error
-                          (concat "Got error response from LSP server."
-                                  "It might be a temporary issue."
-                                  "But if it keeps happening, you can check the IO logs"))))
+                         nil))
 
       ;; alternative but valid case - server crashed/stopped while waiting
       ;; for response. After server maybe restarted, exit.
@@ -613,14 +609,13 @@ as usual."
            (character (nth 1 pos))
            ;; As a simplification, don't have hover requests "in the background".
            ;; If cursor moves, abort.
-           ;; todo: handle error-response in a more systematic way
-           (response (ignore-errors (tlc--request
-                                     "textDocument/hover"
-                                     (list uri line character)
-                                     ;; Use 0ms rust timeout since want to be able to interrupt
-                                     ;; as soon as the user moves. Use 0.1s as emacs timeout
-                                     ;; because unlike capf, eldoc is not timing critical.
-                                     0 0.1 'interruptible))))
+           (response (tlc--request
+                      "textDocument/hover"
+                      (list uri line character)
+                      ;; Use 0ms rust timeout since want to be able to interrupt
+                      ;; as soon as the user moves. Use 0.1s as emacs timeout
+                      ;; because unlike capf, eldoc is not timing critical.
+                      0 0.1 'interruptible)))
       (tlc--log "eldoc response: %s" response)
       (unless (eq response 'interrupted)
         response))
