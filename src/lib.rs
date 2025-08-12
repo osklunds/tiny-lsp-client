@@ -279,8 +279,10 @@ unsafe extern "C" fn tlc__rust_send_notification(
         |(server_key, method, request_args)| {
             handle_call(server_key, |server| {
                 let notification_params = if method == "textDocument/didOpen" {
-                    // todo: the ? here are incorrect, because it leads
-                    // to no-server. It should be lisp error
+                    // todo: the ? here do not lead to lisp error (not that they
+                    // should it's just that I thought so as I wrote the code).
+                    // So need test coverage when wrong method+arg combination
+                    // and maybe also a new return value rather than no-server.
                     let (uri, file_content) = match request_args {
                         SendNotificationParameters::UriFileContent(
                             uri,
@@ -299,7 +301,6 @@ unsafe extern "C" fn tlc__rust_send_notification(
                     }?;
                     build_text_document_did_change(uri, content_changes, server)
                 } else if method == "textDocument/didClose" {
-                    // todo: lisp error if None
                     let uri = match request_args {
                         SendNotificationParameters::Uri(uri) => Some(uri),
                         _ => None,
