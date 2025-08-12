@@ -649,3 +649,4 @@ impl<A: FromLisp, B: FromLisp, C: FromLisp> FromVecOfLisp for (A, B, C) {
 
 // So that "must use" warnings are emitted
 pub type LispResult<T> = Result<T, String>;
+

@@ -101,8 +101,6 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(env, 1, 1, tlc__rust_stop_server, "tlc--rust-stop-server");
 
-    // todo: Improve RustCallResult. Maybe symbol should be something
-    // separate.
     provide_tlc_rust(env);
 
     0
@@ -636,13 +634,14 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     })
 }
 
-// todo: improve
+// To handle these in a more elegant and generic way, could use "Either"
+// "Either3" and so on, to handle the union types. But the problem is FromLisp.
+// See the comment in FromLisp::from_lisp for SendNotificationParameters.
 enum RustCallResult<A: IntoLisp> {
     Symbol(&'static str),
     Any(A),
 }
 
-// Add derive, but perhaps these should be removed
 impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         match self {
