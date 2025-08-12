@@ -574,6 +574,7 @@ abc(123);
   (assert-equal 2 (number-of-completion-requests))
   )
 
+;; todo: sometimes unstable
 (tlc-deftest capf-all-completions-test ()
   (find-file (relative-repo-root "test" "clangd" "completion.cpp"))
   (assert-equal '(tlc-completion-at-point t) completion-at-point-functions)
@@ -1545,10 +1546,10 @@ short other_function(int arg)" (get-eldoc-msg)))
   (re-search-forward "other_function" nil nil 2)
 
   (tlc-mode -1)
-  (assert-equal '(tlc-eldoc-function t) eldoc-documentation-functions)
-  (assert eldoc-mode)
-  (assert-not (get-eldoc-msg))
-  (assert (= 0 (number-of-hover-requests)))
+  (assert-equal '(tlc-eldoc-function t) eldoc-documentation-functions "eldoc funs")
+  (assert eldoc-mode "eldoc mode")
+  (assert-not (get-eldoc-msg) "eldoc msg")
+  (assert (= 0 (number-of-hover-requests)) "number hover")
   )
 
 (tlc-deftest lisp-compile-warnings-test ()
