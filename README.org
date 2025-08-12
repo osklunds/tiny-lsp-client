@@ -140,6 +140,17 @@ There is one =Server= object per project, and =lib.rs= stores a map of =(root pa
 
 =tiny-lsp-client.el= is where =tiny-lsp-client= is integrated into. This is where =tlc-mode=, the minor mode for =tiny-lsp-client= is implemented, as well as the =xref= backend and =completion-at-point-functions=.
 
+** Conversion between LISP and Rust values, and error handling
+
+When calling a LISP function implemented in Rust (in =lib.rs=), the arguments need to be converted from LISP to Rust, and the return value needs to be converted from Rust to LISP. =emacs.rs= provides the traits =FromLisp= and =IntoLisp= for this. These traits have been implemented for common types, such as =String=, =Vec= and integers. =emacs.rs= also provides =lisp_function_in_rust()=, a wrapper to which the user (=lib.rs=) passes a /safe/ closure that takes a =FromLisp= argument and returns an =IntoLisp= value. In other words, the wrapper shields unsafe and LISP related things from the caller.
+
+In the conversion between LISP and Rust, there's a need for error handling for these reasons:
+
+1. The called LISP function might return an error, e.g., wrong types.
+2. The Rust value is a tuple of arity 3, but the passed value has arity 2.
+
+For these reasons, =FromLisp= and =IntoLisp= return =pub type LispResult<T> = Result<T, String>;=. If case 1 happens, =emacs::handle_non_local_exit()= automatically returns an =Err= value with a reason. If case 2 happens, the implementation if =FromLisp= or =IntoLisp= must return an =Err= value themselves. As soon as case 1 has happened, according to emacs documentation, the API functions no longer return meaningful values. So in the Rust code, if =Err= has happened, it's propaged up all the way the the Rust function returns and throws a LISP level error.
+
 * Testing
 
 Tests are located in =test/=. Change directory to =test/= and use =run_tests.sh=:
