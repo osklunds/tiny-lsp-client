@@ -196,7 +196,7 @@ Also, =lisp-bindings-test.el= is the only suite run with =cargo build --release=
 
 *** Rust unit tests
 
-Some of the Rust layer is tested in unit tests, that can be run with =cargo test=. Of special interest is =server/tests.rs=, which uses the Rust layer direcly towards an LSP server, without involving any lisp. This was mainly useful when creating the basic of =tiny-lsp-client=, but is also useful now when something basic breaks. There's no plan to add more tests to it as more LSP messages are supported. However, other unit tests might be added.
+Some of the Rust layer is tested in unit tests, that can be run with =cargo test=. Of special interest is =server/tests.rs=, which uses the Rust layer directly towards an LSP server, without involving any lisp. This was mainly useful when creating the basic of =tiny-lsp-client=, but is also useful now when something basic breaks. There's no plan to add more tests to it as more LSP messages are supported. However, other unit tests might be added.
 
 * Garbage collection test
 
@@ -242,6 +242,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
 - Bugs
       - Higher priority
       - Lower priority
+            - When =jdtls= failed to start, a line with a log file path was printed when running =jdtls= directly in the terminal but was not shown in the STDERR log.
       - Hard to reproduce
             - when doing completions in c++ test file, clangd complained about non opened document
             - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
