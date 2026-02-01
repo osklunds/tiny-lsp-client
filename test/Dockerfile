@@ -16,7 +16,7 @@ RUN wget "https://github.com/erlang-ls/erlang_ls/releases/download/1.1.0/erlang_
     && mv erlang_ls /usr/local/bin/
 
 # Java
-RUN wget "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.46.0/jdt-language-server-1.46.0-202503271314.tar.gz" -O jdtls.tar.gz \
+RUN wget "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.56.0/jdt-language-server-1.56.0-202601291528.tar.gz" -O jdtls.tar.gz \
     && mkdir /jdtls \
     && tar -xzvf jdtls.tar.gz -C /jdtls || true \
     && ln -s /jdtls/bin/jdtls /usr/local/bin/jdtls
