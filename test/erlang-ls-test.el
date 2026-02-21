@@ -228,6 +228,8 @@ other_function_hej(Arg) ->
   (setq tlc-collection-fun (get-tlc-collection-fun))
   (assert-equal 1 (number-of-completion-requests))
 
+  ;; Race condition where "o" is sometimes included
+  (sleep-for 0.1)
   (let ((result (funcall tlc-collection-fun "" nil t)))
     (assert-equal 2 (number-of-completion-requests))
     ;; erlang_ls seems to return stuff even with "o"
