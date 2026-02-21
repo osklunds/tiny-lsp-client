@@ -1,5 +1,6 @@
 
-FROM opensuse/tumbleweed:latest
+# Latest as of 2026-02-21 09:00 CET
+FROM opensuse/tumbleweed@sha256:8f32bc622fd59c6d07a11bd783310f2e48dfec01955944eefd089a5a2df604e8
 
 ENV CARGO_TARGET_DIR=/tiny-lsp-client/target_docker
 
