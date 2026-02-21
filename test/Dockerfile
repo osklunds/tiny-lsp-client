@@ -4,7 +4,7 @@ FROM opensuse/tumbleweed:latest
 ENV CARGO_TARGET_DIR=/tiny-lsp-client/target_docker
 
 # Common
-RUN zypper --non-interactive in rustup emacs clang git cmake libstdc++-devel \
+RUN zypper --non-interactive in rustup emacs clang21 git cmake libstdc++-devel \
     erlang wget java-25-openjdk-devel
 
 # Rust
