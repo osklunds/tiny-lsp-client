@@ -219,6 +219,7 @@ No copyright infringement intended. If you see an issue, I'm more than happy to 
                   - Could be that =tlc-server-cmds= should be removed, and general hook per major/minor mode that starts a server
 - Bugs
       - Higher priority
+            - =eldoc= for =jdtls= doesn't work after upgrading =jdtls= from 1.46.0 to 1.56.0.
       - Lower priority
             - When =jdtls= failed to start, a line with a log file path was printed when running =jdtls= directly in the terminal but was not shown in the STDERR log.
       - Hard to reproduce
