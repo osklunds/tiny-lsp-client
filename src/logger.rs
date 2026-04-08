@@ -138,7 +138,9 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
         // The response to intialize can be long, but is always of interest
         && !formatted.contains("\"id\": 0,")
     {
-        format!("{}...TRUNCATED\n", &formatted[0..MAX_LOG_ENTRY_LEN_BYTES])
+        // To handle unicode boundary, will panic otherwise
+        let boundary = formatted.floor_char_boundary(MAX_LOG_ENTRY_LEN_BYTES);
+        format!("{}...TRUNCATED\n", &formatted[0..boundary])
     } else {
         formatted
     };

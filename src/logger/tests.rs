@@ -64,7 +64,7 @@ fn millisecond_padding() {
 // TODO: there is a lot more to test, like if a log is enabled or not, changing
 // log file, etc
 #[test]
-fn log_test() {
+fn log() {
     set_log_file_name(TEST_LOG_FILE_NAME);
     log_io!("abc");
     log_stderr!("def");
@@ -88,6 +88,23 @@ fn log_test() {
         r"IO[^^]*STDERR[^^]*RUST_DEBUG[^^]*EMACS_DEBUG",
         &log_file_content,
     );
+}
+
+#[test]
+fn unicode_truncation() {
+    set_log_file_name(TEST_LOG_FILE_NAME);
+
+    // To force split at unicode boundary
+    for i in 0..4 {
+        let mut log_entry = "a".repeat(MAX_LOG_ENTRY_LEN_BYTES / 2 + i);
+        log_entry.push_str(&"あ".repeat(MAX_LOG_ENTRY_LEN_BYTES / 2));
+
+        log_io!("{}", log_entry);
+
+        let log_file_content = fs::read_to_string(TEST_LOG_FILE_NAME).unwrap();
+
+        match_regex(r"a+あ+\.\.\.TRUNCATED\n$", &log_file_content);
+    }
 }
 
 fn match_regex(regex: &str, subject: &str) {
