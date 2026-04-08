@@ -5,7 +5,9 @@ FROM opensuse/tumbleweed@sha256:8f32bc622fd59c6d07a11bd783310f2e48dfec01955944ee
 ENV CARGO_TARGET_DIR=/tiny-lsp-client/target_docker
 
 # Common
-RUN zypper --non-interactive in rustup emacs clang21 git cmake libstdc++-devel \
+# Need gcc16-c++ otherwise clang++ doesn't find header files. However, if emacs
+# is not installed, the issue doesn't appear.
+RUN zypper --non-interactive in rustup emacs clang21 git cmake gcc16-c++ \
     erlang wget java-25-openjdk-devel
 
 # Rust
