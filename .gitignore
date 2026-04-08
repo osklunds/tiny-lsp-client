@@ -2,3 +2,4 @@
 /target_docker
 erl_crash.dump
 *.elc
+panic*.log

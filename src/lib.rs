@@ -33,10 +33,17 @@ use crate::message::*;
 use crate::server::Server;
 use crate::servers::ServerKey;
 
+use std::backtrace::Backtrace;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::os::raw;
+use std::panic;
+use std::process;
 use std::str;
 use std::sync::atomic::Ordering;
+use std::thread;
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -46,6 +53,8 @@ pub static plugin_is_GPL_compatible: libc::c_int = 0;
 pub unsafe extern "C" fn emacs_module_init(
     ert: *mut emacs_runtime,
 ) -> libc::c_int {
+    set_panic_hook();
+
     let env = (*ert).get_environment.unwrap()(ert);
 
     export_function(
@@ -495,16 +504,13 @@ fn handle_definition_response(
 
     for location in location_list {
         let Location { uri, range } = location;
-        let lisp_location =
-            (uri, range.start.line, range.start.character);
+        let lisp_location = (uri, range.start.line, range.start.character);
         lisp_location_list_vec.push(lisp_location);
     }
     lisp_location_list_vec
 }
 
-fn handle_completion_response(
-    response: CompletionResult,
-) -> Vec<String> {
+fn handle_completion_response(response: CompletionResult) -> Vec<String> {
     let mut completion_list_vec = Vec::new();
 
     let items = match response {
@@ -770,4 +776,33 @@ impl FromLisp for SetOptionValue {
             Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
         }
     }
+}
+
+pub fn set_panic_hook() {
+    let default = panic::take_hook();
+    // So that crashes are easier to debug
+    panic::set_hook(Box::new(move |info| {
+        // Capture a backtrace regardless of RUST_BACKTRACE
+        let bt = Backtrace::force_capture();
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let thread = thread::current();
+        let thread_name = thread.name();
+        let pid = process::id();
+        let file_name = format!("panic_{}_{:?}_{}.log", pid, thread_name, now);
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&file_name)
+            .unwrap();
+
+        writeln!(file, "Panic occurred: {info}").ok();
+        writeln!(file, "Backtrace:\n{bt}").ok();
+        // Call default too, useful to have in stderr for unit tests
+        default(info);
+    }));
 }

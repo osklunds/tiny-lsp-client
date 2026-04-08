@@ -124,7 +124,8 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
             },
         ),
     );
-
+    // To avoid unstable test case
+    thread::sleep(Duration::from_secs(5));
     // textDocument/definition after textDocument/didChange
     let id = server
         .send_request(
