@@ -676,6 +676,6 @@ fn close_thread_actions(server_process: Arc<Mutex<Child>>, thread_name: &str) {
 // The design of this module is that threads should never crash, and if they do,
 // it indicates a big problem so that everything should crash.
 // Maybe too offensive coding, but let's see how it turns out in practice.
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_,T> {
     mutex.lock().unwrap()
 }
