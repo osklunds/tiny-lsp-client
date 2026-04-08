@@ -11,7 +11,7 @@ RUN zypper --non-interactive in rustup emacs clang21 git cmake gcc16-c++ \
     erlang wget java-25-openjdk-devel
 
 # Rust
-RUN rustup toolchain install 1.86 && rustup component add rust-analyzer
+RUN rustup toolchain install 1.93 && rustup component add rust-analyzer
 
 # Erlang
 RUN wget "https://github.com/erlang-ls/erlang_ls/releases/download/1.1.0/erlang_ls-linux-27.tar.gz" \
