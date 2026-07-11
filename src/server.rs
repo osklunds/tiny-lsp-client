@@ -639,8 +639,31 @@ impl Server {
         for thread in std::mem::take(&mut self.threads) {
             let thread_name = thread.thread().name().map(|s| s.to_string());
             logger::log_rust_debug!("Waiting for '{:?}'", thread_name);
-            thread.join().unwrap();
-            logger::log_rust_debug!("Done waiting for '{:?}'", thread_name);
+
+            // TODO: Maybe this is a bug
+            // TODO: add test case
+            // For robustness, if one of stdout, stdin, stderr closes, but not
+            // the others, this will deadlock entire emacs if hanging on join().
+            let mut succ = false;
+            for i in 0..500 {
+                if thread.is_finished() {
+                    thread.join().unwrap();
+                    logger::log_rust_debug!(
+                        "Done waiting for '{:?}' after {:?} checks",
+                        thread_name,
+                        i
+                    );
+                    succ = true;
+                    break;
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
+            if !succ {
+                logger::log_rust_debug!(
+                    "Gave up on waiting for '{:?}'",
+                    thread_name
+                );
+            }
         }
     }
 }
