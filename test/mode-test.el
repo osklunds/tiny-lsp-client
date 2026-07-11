@@ -1041,13 +1041,15 @@ void last_function() {
   (assert tlc-mode)
 
   ;; Act
-  (setq error-message
-        (condition-case err
-            (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) nil)))
-              (non-interactive-xref-find-definitions))
-          (error (error-message-string err))))
-  (assert-equal "You chose not the restart the LSP server. Disabling tlc-mode."
-                error-message)
+  (let* ((msg nil))
+    (ignore-errors
+      (cl-letf (
+                ((symbol-function 'message) (lambda (m) (setq msg m)))
+                ((symbol-function 'y-or-n-p) (lambda (_prompt) nil))
+                )
+        (non-interactive-xref-find-definitions)))
+    (assert-equal "You chose not the restart the LSP server. Disabling tlc-mode."
+                  msg))
 
   ;; Assert
   ;; tlc-mode disabled

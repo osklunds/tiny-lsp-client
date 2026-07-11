@@ -723,7 +723,9 @@ as usual."
   (if (y-or-n-p "The LSP server has crashed since it was started. Want to restart it?")
       (tlc--start-server)
     (tlc-mode -1)
-    (user-error "You chose not the restart the LSP server. Disabling tlc-mode.")))
+    ;; Don't use user-error, because if fails, major-mode of buffer is also
+    ;; not activated, which is a bad user experience.
+    (message "You chose not the restart the LSP server. Disabling tlc-mode.")))
 
 (defun tlc--log (format-string &rest objects)
   (when tlc-log-emacs-debug
