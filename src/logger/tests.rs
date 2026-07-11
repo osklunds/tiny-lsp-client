@@ -104,6 +104,7 @@ fn unicode_truncation() {
         let log_file_content = fs::read_to_string(TEST_LOG_FILE_NAME).unwrap();
 
         match_regex(r"a+あ+\.\.\.TRUNCATED\n$", &log_file_content);
+        assert_eq!(i+1, log_file_content.matches("TRUNCATED").count());
     }
 }
 
