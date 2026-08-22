@@ -237,15 +237,19 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 
 - [Functionality] Support lsp rename
 - [Functionality] erlang-language-platform related: take common part of insertText and label if insertTextFormat is snippet, becuase erlang-language-platform doesn't seem to honor that client only supports plaintext format.
+- [Functionality] Adjustable =MAX_LOG_ENTRY_LEN_BYTES=, because when debugging, sometimes the full message needs to be seen.
 
 *** Low priority
 
 - [Functionality] Signature help in eldoc
 - [Code quality] Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait? Maybe emacs-module-rs does it in a smart way?
 - [Code quality] Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
-- [Performance] Remove duplicate completions in Rust code
+- [Performance] Remove duplicate completions in Rust code.
+- [Performance] Improve the =servers::with_servers()= API to not call =server::is_working()= on all servers, only for the =ServerKey= requested, to prevent linear slow down when many servers.
 - [Robustness] Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
 - [Robustness] In general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
+- [Robustness] Time out for all calls towards rust. Or at least, make sure all existing calls return quickly and can't freeze. Starting a new server can freeze if the server cmd never sends an initialize response.
+- [Test] Test when server cmd of LSP server not found.
 - [Test] Log tests
       - Unit tests if possible
       - test what happens if =tlc-log-file= is never set
@@ -253,6 +257,9 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 - [Test] More unit tests of things in general, where it makes sense
 - [Test] Test error during xref or capf
 - [Test] Some tests are unstable, especially when running all
+- [Test] Test coverage for "(? ms)" in log, i.e. id not found
+- [Test] In general, check that all variants of all messages are tested. For example, all of label, insertText and textEdit of CompletionItem. Can do it by counting in log file.
+- [Test] Test too big id in response from server.
 - [Investigation] consider if utf-16 actions need to be taken for xref, like =eglot= seems to do
 - [Investigation] Error cases
       - Handle, test and understand error responses from LSP servers better
