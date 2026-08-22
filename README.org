@@ -215,6 +215,7 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** High priority
 
 - =eldoc= for =jdtls= doesn't work after upgrading =jdtls= from 1.46.0 to 1.56.0.
+- erlang-language-platform related: the LSP server can send requests to the client. Such requests are incorrectly decoded as responses, and the expected request id is too big when the client later sends and waits for response.
 
 *** Low priority
 
@@ -226,6 +227,7 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** Hard to reproduce
 
 - once, when jump to defintion while starting rust analyzer, seemed to get stuck in infinite loop with 0 wait between try recv response. Lot's of RAM was being consumed. But it might be fixed once a request timeout is being used.
+- erlang-language-platform: sometimes completion respones doesn't decode successfully. The result field is None.
 
 *** Under observation
 
@@ -234,6 +236,7 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** High priority
 
 - [Functionality] Support lsp rename
+- [Functionality] erlang-language-platform related: take common part of insertText and label if insertTextFormat is snippet, becuase erlang-language-platform doesn't seem to honor that client only supports plaintext format.
 
 *** Low priority
 
