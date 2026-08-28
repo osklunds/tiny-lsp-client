@@ -214,6 +214,7 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 
 *** High priority
 
+- =jdtls= doesn't start, so =jdtls= tests are broken.
 - =eldoc= for =jdtls= doesn't work after upgrading =jdtls= from 1.46.0 to 1.56.0.
 - erlang-language-platform related: the LSP server can send requests to the client. Such requests are incorrectly decoded as responses, and the expected request id is too big when the client later sends and waits for response.
 
@@ -249,6 +250,7 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 - [Robustness] Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
 - [Robustness] In general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
 - [Robustness] Time out for all calls towards rust. Or at least, make sure all existing calls return quickly and can't freeze. Starting a new server can freeze if the server cmd never sends an initialize response.
+- [Test] Consider to use zypper's ghc and cabal.
 - [Test] Test when server cmd of LSP server not found.
 - [Test] Log tests
       - Unit tests if possible
