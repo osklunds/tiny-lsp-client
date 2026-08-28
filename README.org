@@ -162,6 +162,8 @@ There are 4 types of test suites:
 
 For each language server inside =tlc-server-cmds= there's one corresponding test file, e.g., =clangd-test.el= for =clangd=. Those language specific test files aim to test each LSP message type towards each language server. This typically means a few test cases that open a file, edit it, jump to defintion, and use completion. The idea is for the tests to act as a compatibility test towards the LSP server.
 
+Note: over time, it turns out that even with a Docker image, it's problematic to keep the servers from starting at all, and keep the test stable due to small changes in behavior. Once tests start to break, I might consider only keeping the most core serves, i.e. =clangd= and =rust-analyzer=.
+
 *** mode-test.el
 
 =mode-test.el= has tests that are language-agnostic and are more related to =tlc-mode= and the emacs lisp layer. So for example testing that =start-server-hooks= are run then =tlc-mode= is enabled, that unicode works, and more thorough =xref= and =capf= tests with edge cases. One could argue some of these things should be tested for each LSP, but hopefully a few basic tests per LSP is enough.
