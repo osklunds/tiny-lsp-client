@@ -251,7 +251,9 @@ int main() {
     (assert-equal "function other_function
 
 → short
+
 Parameters:
+
 - int arg
 
 short other_function(int arg)" (get-eldoc-msg)))

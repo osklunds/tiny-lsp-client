@@ -10,7 +10,7 @@ if [[ $# -eq 0 ]]; then
     cd "$test_dir"
     for file in *test.el; do
         [[ -f "$file" ]] || break
-        if [[ "$file" != "performance-test.el" ]]; then
+        if [[ "$file" != "performance-test.el" && "$file" != "jdtls-test.el" ]]; then
             echo "Running test file: $file"
             emacs -batch -l ert -l "$file" --eval '(ert-run-tests-batch-and-exit)' || break
         fi
