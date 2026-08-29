@@ -322,6 +322,24 @@ fn decode_response_with_result() {
 }
 
 #[test]
+fn decode_response_with_null_result() {
+    let json: serde_json::Value = json!({
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": null
+    });
+
+    let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(Result::NullResult),
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
+
+#[test]
 fn decode_response_with_error() {
     let json: serde_json::Value = json!({
         "id": 1,

@@ -41,8 +41,23 @@ pub struct RawMessage {
     pub params: Option<Params>,
 
     // Response
-    pub result: Option<Result>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    // None if missing
+    // Some(None) if null
+    pub result: Option<Option<Result>>,
     pub error: Option<ResponseError>,
+}
+
+// @credits: https://github.com/serde-rs/serde/issues/984#issuecomment-314143738
+// Any value that is present is considered Some value, including null.
+fn deserialize_some<'de, T, D>(
+    deserializer: D,
+) -> std::result::Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
 }
 
 #[derive(PartialEq, Debug, Serialize, Clone)]
@@ -115,6 +130,12 @@ impl<'d> Deserialize<'d> for Message {
                 error,
                 ..
             } => {
+                let result = if let Some(result) = result {
+                    result
+                } else {
+                    Result::NullResult
+                };
+
                 let response = Response {
                     jsonrpc,
                     id,
@@ -224,6 +245,7 @@ pub enum Result {
     TextDocumentDefinitionResult(DefinitionResult),
     TextDocumentCompletionResult(CompletionResult),
     TextDocumentHoverResult(HoverResult),
+    NullResult,
     Untyped(serde_json::Value),
 }
 
