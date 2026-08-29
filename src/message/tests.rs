@@ -22,7 +22,7 @@ use serde_json::json;
 #[test]
 fn completion_item_label() {
     let json: serde_json::Value = json!({
-        "jsonrpc": 2.0,
+        "jsonrpc": "2.0".to_string(),
         "id": 123,
         "result": {
             "items": [
@@ -60,7 +60,7 @@ fn assert_json_decodes_into(json: serde_json::Value, exp_decoded: Message) {
 #[test]
 fn completion_item_label_and_insert_text() {
     let json: serde_json::Value = json!({
-        "jsonrpc": 2.0,
+        "jsonrpc": "2.0".to_string(),
         "id": 123,
         "result": {
             "items": [
@@ -93,7 +93,7 @@ fn completion_item_label_and_insert_text() {
 #[test]
 fn completion_item_label_and_insert_text_and_text_edit() {
     let json: serde_json::Value = json!({
-        "jsonrpc": 2.0,
+        "jsonrpc": "2.0".to_string(),
         "id": 123,
         "result": {
             "items": [
