@@ -374,3 +374,23 @@ fn decode_response_with_result_and_error() {
 
     assert_json_decodes_into(json, decoded);
 }
+
+#[test]
+fn decode_request_without_params() {
+    let json: serde_json::Value = json!({
+      "id": 1,
+      "jsonrpc": "2.0",
+      "method": "workspace/codeLens/refresh"
+    });
+
+    let decoded = Message::Unknown(RawMessage {
+        jsonrpc: "2.0".to_string(),
+        id: Some(1),
+        method: Some("workspace/codeLens/refresh".to_string()),
+        params: None,
+        result: None,
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
