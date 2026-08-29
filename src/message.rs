@@ -60,8 +60,6 @@ impl<'d> Deserialize<'d> for Message {
         D: Deserializer<'d>,
     {
         // todo: add comment why
-        // todo: Add unit tests and example of why this special deserialize
-        // is needed
         let raw_message = RawMessage::deserialize(deserializer)?;
 
         match raw_message {
