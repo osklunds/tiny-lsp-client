@@ -189,7 +189,7 @@ fn message_request_response_notification_variants() {
 }
 
 #[test]
-fn decode_request_ok() {
+fn decode_request() {
     let request_json: serde_json::Value = json!({
       "jsonrpc": "2.0",
       "id": 1,
@@ -223,7 +223,7 @@ fn decode_request_ok() {
 }
 
 #[test]
-fn decode_notification_ok() {
+fn decode_notification() {
     let request_json: serde_json::Value = json!({
       "jsonrpc": "2.0",
       "method": "textDocument/didOpen",
@@ -253,7 +253,7 @@ fn decode_notification_ok() {
 }
 
 #[test]
-fn decode_response_with_result_ok() {
+fn decode_response_with_result() {
     let json: serde_json::Value = json!({
       "id": 1,
       "jsonrpc": "2.0",
@@ -299,7 +299,7 @@ fn decode_response_with_result_ok() {
 }
 
 #[test]
-fn decode_response_with_error_ok() {
+fn decode_response_with_error() {
     let json: serde_json::Value = json!({
         "id": 1,
         "jsonrpc": "2.0",
@@ -313,6 +313,59 @@ fn decode_response_with_error_ok() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         result: None,
+        error: Some(ResponseError {
+            code: -32801,
+            message: "msg".to_string(),
+        }),
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
+
+#[test]
+fn decode_response_with_result_and_error() {
+    let json: serde_json::Value = json!({
+      "id": 1,
+      "jsonrpc": "2.0",
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 20,
+              "line": 4
+            },
+            "start": {
+              "character": 6,
+              "line": 4
+            }
+          },
+          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+        }
+      ],
+        "error": {
+      "code": -32801,
+      "message": "msg"
+    }
+    });
+
+    let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(Result::TextDocumentDefinitionResult(
+            DefinitionResult::LocationList(vec![Location {
+                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
+                range: Range {
+                    start: Position {
+                        line: 4,
+                        character: 6,
+                    },
+                    end: Position {
+                        line: 4,
+                        character: 20,
+                    },
+                },
+            }]),
+        )),
         error: Some(ResponseError {
             code: -32801,
             message: "msg".to_string(),
