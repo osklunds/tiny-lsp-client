@@ -107,10 +107,9 @@
   (add-hook 'completion-at-point-functions 'tlc-completion-at-point nil t)
   (add-hook 'eldoc-documentation-functions #'tlc-eldoc-function nil t))
 
-;; Since this should always be 0, it's hard to know if it's working
-;; properly
-(defun number-of-STDERR ()
-  (count-in-log-file "STDERR"))
+;; Since this should always be 0, it's hard to know if working properly
+(defun number-of-too-big-id ()
+  (count-in-log-file "too big id"))
 
 (defun number-of-did-open ()
   (count-in-log-file "\"method\": \"textDocument/didOpen\","))
@@ -207,6 +206,12 @@ this common file. Is used to differentiate log file names.")
   (customize-set-variable 'tlc-after-start-server-hook nil)
   )
 
+(defun after-each-test (test-case-name)
+  ;; run-until unfortunetly hides faults.
+  ;; This fault happened for erlang-langauge-platform, so check for it like this.
+  (assert-equal 0 (number-of-too-big-id) "too big id")
+  )
+
 (defun cleanup-previous-test ()
   ;; One drawback of running in the same emacs instance with ERT is that
   ;; this clean up in the end is needed.
@@ -234,6 +239,7 @@ this common file. Is used to differentiate log file names.")
      (ert-deftest ,name ()
        (before-each-test ',name)
        ,@body
+       (after-each-test ',name)
        )))
 
 (defun cargo-target-dir ()
