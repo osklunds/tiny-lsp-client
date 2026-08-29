@@ -284,48 +284,55 @@ impl Server {
 
                 // Only care about response so far, i.e. drop
                 // notifications about e.g. diagnostics
-                if let Message::Response(response) = msg {
-                    let id = response.id;
+                let message_type = match msg {
+                    Message::Response(response) => {
+                        let id = response.id;
 
-                    // Only touch the mutex if IO is logged
-                    if logger::is_log_enabled!(LOG_IO) {
-                        let mut seq_num_timestamps =
-                            lock(&seq_num_timestamps_recv);
-                        logger::log_rust_debug!(
-                            "recv thread has '{}' timestamps: '{:?}'",
-                            seq_num_timestamps.len(),
-                            seq_num_timestamps
-                        );
+                        // Only touch the mutex if IO is logged
+                        if logger::is_log_enabled!(LOG_IO) {
+                            let mut seq_num_timestamps =
+                                lock(&seq_num_timestamps_recv);
+                            logger::log_rust_debug!(
+                                "recv thread has '{}' timestamps: '{:?}'",
+                                seq_num_timestamps.len(),
+                                seq_num_timestamps
+                            );
 
-                        if let Some(ts) = seq_num_timestamps.get(&id) {
-                            duration = Some(Some(ts.elapsed().as_millis()));
-                            seq_num_timestamps.remove(&id);
-                        } else {
-                            duration = Some(None);
+                            if let Some(ts) = seq_num_timestamps.get(&id) {
+                                duration = Some(Some(ts.elapsed().as_millis()));
+                                seq_num_timestamps.remove(&id);
+                            } else {
+                                duration = Some(None);
+                            }
+                            drop(seq_num_timestamps);
                         }
-                        drop(seq_num_timestamps);
+
+                        if let Ok(()) = stdout_tx.send(response) {
+                        } else {
+                            break;
+                        }
+
+                        // For testing purposes, the below can be used to simulate
+                        // a slow server.
+                        // let new_stdout_tx = stdout_tx.clone();
+
+                        // thread::spawn(move || {
+                        //     match response.result {
+                        //         Some(Result::TextDocumentCompletionResult(_)) => {
+                        //             std::thread::sleep(Duration::from_millis(2000))
+                        //         }
+                        //         _ => (),
+                        //     }
+
+                        //     if let Ok(()) = new_stdout_tx.send(response) {}
+                        // });
+
+                        "Response".to_string()
                     }
-
-                    if let Ok(()) = stdout_tx.send(response) {
-                    } else {
-                        break;
-                    }
-
-                    // For testing purposes, the below can be used to simulate
-                    // a slow server.
-                    // let new_stdout_tx = stdout_tx.clone();
-
-                    // thread::spawn(move || {
-                    //     match response.result {
-                    //         Some(Result::TextDocumentCompletionResult(_)) => {
-                    //             std::thread::sleep(Duration::from_millis(2000))
-                    //         }
-                    //         _ => (),
-                    //     }
-
-                    //     if let Ok(()) = new_stdout_tx.send(response) {}
-                    // });
-                }
+                    Message::Request(_) => "Request".to_string(),
+                    Message::Notification(_) => "Notification".to_string(),
+                    Message::Unknown(_) => "Unknown".to_string(),
+                };
 
                 if logger::is_log_enabled!(LOG_IO) {
                     // Decode as serde_json::Value too, to be able
@@ -354,8 +361,10 @@ impl Server {
                         // Notification
                         None => format!(""),
                     };
+                    // todo: add test coverage
                     logger::log_io!(
-                        "Received: {}{}",
+                        "Received: ({}) {}{}",
+                        message_type,
                         duration_part,
                         pretty_json
                     );
