@@ -59,6 +59,7 @@ impl<'d> Deserialize<'d> for Message {
     where
         D: Deserializer<'d>,
     {
+        // todo: add comment why
         let raw_message = RawMessage::deserialize(deserializer)?;
 
         match raw_message {
