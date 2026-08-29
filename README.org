@@ -218,7 +218,6 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 
 - =jdtls= doesn't start, so =jdtls= tests are broken.
 - =eldoc= for =jdtls= doesn't work after upgrading =jdtls= from 1.46.0 to 1.56.0.
-- erlang-language-platform related: the LSP server can send requests to the client. Such requests are incorrectly decoded as responses, and the expected request id is too big when the client later sends and waits for response.
 
 *** Low priority
 
