@@ -59,7 +59,20 @@ impl<'d> Deserialize<'d> for Message {
     where
         D: Deserializer<'d>,
     {
-        // todo: add comment why
+        // elp sends messages like below TO the client
+        // {
+        //   "id": 5,
+        //   "jsonrpc": "2.0",
+        //   "method": "workspace/codeLens/refresh"
+        // }
+        // Before, the serde deserializer incorrectly interpreted that as a
+        // Response with None result and None error.  That in turn caused "too
+        // big id" error.  But the above is a request, not a response, so we
+        // need to distinguish them, and only deserialize as response if result
+        // OR error is Some.
+        // Note: The above is deserialized as unknown, because the params
+        // field of Request is (perhaps incorrectly) mandatory.
+
         let raw_message = RawMessage::deserialize(deserializer)?;
 
         match raw_message {
