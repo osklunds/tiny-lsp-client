@@ -259,14 +259,17 @@ fn decode_notification() {
     let decoded = Message::Notification(Notification {
         jsonrpc: "2.0".to_string(),
         method: "textDocument/didOpen".to_string(),
-        params: Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
-            text_document: TextDocumentItem {
-                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
-                language_id: "languageId".to_string(),
-                version: 0,
-                text: "hej".to_string(),
+        params: Some(Params::DidOpenTextDocumentParams(
+            DidOpenTextDocumentParams {
+                text_document: TextDocumentItem {
+                    uri: "file:///tiny-lsp-client/test/clangd/main.cpp"
+                        .to_string(),
+                    language_id: "languageId".to_string(),
+                    version: 0,
+                    text: "hej".to_string(),
+                },
             },
-        }),
+        )),
     });
 
     assert_json_decodes_into(json, decoded);
@@ -394,4 +397,3 @@ fn decode_response_with_result_and_error() {
 
     assert_json_decodes_into(json, decoded);
 }
-

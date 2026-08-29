@@ -576,7 +576,7 @@ impl Server {
         let notification = Notification {
             jsonrpc: "2.0".to_string(),
             method,
-            params,
+            params: Some(params),
         };
         match self.sender.send(Some(Message::Notification(notification))) {
             Ok(()) => Some(()),

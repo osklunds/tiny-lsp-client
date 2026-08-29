@@ -86,7 +86,7 @@ impl<'d> Deserialize<'d> for Message {
                     jsonrpc,
                     id,
                     method,
-                    params
+                    params,
                 };
                 Ok(Message::Request(request))
             }
@@ -96,7 +96,7 @@ impl<'d> Deserialize<'d> for Message {
                 jsonrpc,
                 id: None,
                 method: Some(method),
-                params: Some(params),
+                params,
                 ..
             } => {
                 let notification = Notification {
@@ -309,7 +309,7 @@ pub struct Range {
 pub struct Notification {
     pub jsonrpc: String,
     pub method: String,
-    pub params: Params,
+    pub params: Option<Params>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
