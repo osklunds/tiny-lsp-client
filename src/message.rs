@@ -39,14 +39,7 @@ struct RawMessage {
 
     // Request and Notification
     pub method: Option<String>,
-
-    // Request
-    #[serde(rename = "params")]
-    pub request_params: Option<RequestParams>,
-
-    // Notification
-    #[serde(rename = "params")]
-    pub notification_params: Option<NotificationParams>,
+    pub params: Option<Params>,
 
     // Response
     pub result: Option<Result>,
@@ -73,7 +66,7 @@ impl<'d> Deserialize<'d> for Message {
                 jsonrpc,
                 id: Some(id),
                 method: Some(method),
-                request_params: Some(params),
+                params: Some(params),
                 ..
             } => {
                 let request = Request {
@@ -83,6 +76,20 @@ impl<'d> Deserialize<'d> for Message {
                     params,
                 };
                 Ok(Message::Request(request))
+            }
+            RawMessage {
+                jsonrpc,
+                id: None,
+                method: Some(method),
+                params: Some(params),
+                ..
+            } => {
+                let notification = Notification {
+                    jsonrpc,
+                    method,
+                    params,
+                };
+                Ok(Message::Notification(notification))
             }
             RawMessage {
                 jsonrpc,
@@ -109,15 +116,22 @@ pub struct Request {
     pub jsonrpc: String,
     pub id: u32,
     pub method: String,
-    pub params: RequestParams,
+    pub params: Params,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-pub enum RequestParams {
+pub enum Params {
+    // Request
     DefinitionParams(DefinitionParams),
     CompletionParams(CompletionParams),
     HoverParams(HoverParams),
+
+    // Notification
+    DidOpenTextDocumentParams(DidOpenTextDocumentParams),
+    DidChangeTextDocumentParams(DidChangeTextDocumentParams),
+    DidCloseTextDocumentParams(DidCloseTextDocumentParams),
+
     Untyped(serde_json::Value),
 }
 
@@ -259,16 +273,7 @@ pub struct Range {
 pub struct Notification {
     pub jsonrpc: String,
     pub method: String,
-    pub params: NotificationParams,
-}
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum NotificationParams {
-    DidOpenTextDocumentParams(DidOpenTextDocumentParams),
-    DidChangeTextDocumentParams(DidChangeTextDocumentParams),
-    DidCloseTextDocumentParams(DidCloseTextDocumentParams),
-    Untyped(serde_json::Value),
+    pub params: Params,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]

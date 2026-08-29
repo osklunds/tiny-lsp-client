@@ -48,16 +48,14 @@ fn did_open_change_close_and_definition() {
     // textDocument/didOpen
     server.send_notification(
         "textDocument/didOpen".to_string(),
-        NotificationParams::DidOpenTextDocumentParams(
-            DidOpenTextDocumentParams {
-                text_document: TextDocumentItem {
-                    uri: uri.clone(),
-                    language_id: LANGUAGE_ID.to_string(),
-                    version: 0,
-                    text: fs::read_to_string(&dummy_file_path).unwrap(),
-                },
+        Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: uri.clone(),
+                language_id: LANGUAGE_ID.to_string(),
+                version: 0,
+                text: fs::read_to_string(&dummy_file_path).unwrap(),
             },
-        ),
+        }),
     );
 
     // textDocument/definition
@@ -99,13 +97,12 @@ fn did_open_change_close_and_definition() {
     // textDocument/didChange
     server.send_notification(
         "textDocument/didChange".to_string(),
-        NotificationParams::DidChangeTextDocumentParams(
-            DidChangeTextDocumentParams {
-                text_document: VersionedTextDocumentIdentifier {
-                    uri: uri.clone(),
-                    version: 3,
-                },
-                content_changes: vec![
+        Params::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier {
+                uri: uri.clone(),
+                version: 3,
+            },
+            content_changes: vec![
 TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
                         TextDocumentContentChangeEventIncremental {
                             range: Range {
@@ -121,8 +118,7 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
                         text: "\n".to_string(),
                     }),
                 ],
-            },
-        ),
+        }),
     );
     // To avoid unstable test case
     thread::sleep(Duration::from_secs(5));
@@ -130,7 +126,7 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
     let id = server
         .send_request(
             "textDocument/definition".to_string(),
-            RequestParams::DefinitionParams(DefinitionParams {
+            Params::DefinitionParams(DefinitionParams {
                 text_document: TextDocumentIdentifier { uri: uri.clone() },
                 position: Position {
                     character: 4,
@@ -159,7 +155,7 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
     let id = server
         .send_request(
             "textDocument/definition".to_string(),
-            RequestParams::DefinitionParams(DefinitionParams {
+            Params::DefinitionParams(DefinitionParams {
                 text_document: TextDocumentIdentifier { uri: uri.clone() },
                 position: Position {
                     character: 4,
@@ -188,13 +184,12 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
     // rust-analyzer's view matches the file system
     server.send_notification(
         "textDocument/didChange".to_string(),
-        NotificationParams::DidChangeTextDocumentParams(
-            DidChangeTextDocumentParams {
-                text_document: VersionedTextDocumentIdentifier {
-                    uri: uri.clone(),
-                    version: 4,
-                },
-                content_changes: vec![
+        Params::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier {
+                uri: uri.clone(),
+                version: 4,
+            },
+            content_changes: vec![
 TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
                         TextDocumentContentChangeEventIncremental {
                             range: Range {
@@ -210,18 +205,15 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
                         text: "".to_string(),
                     }),
                 ],
-            },
-        ),
+        }),
     );
 
     // textDocument/didClose
     server.send_notification(
         "textDocument/didClose".to_string(),
-        NotificationParams::DidCloseTextDocumentParams(
-            DidCloseTextDocumentParams {
-                text_document: TextDocumentIdentifier { uri: uri.clone() },
-            },
-        ),
+        Params::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
+        }),
     );
 
     // Do a definition again to ensure that rust-analyzer did not crash due to
@@ -231,23 +223,21 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
     // textDocument/didOpen
     server.send_notification(
         "textDocument/didOpen".to_string(),
-        NotificationParams::DidOpenTextDocumentParams(
-            DidOpenTextDocumentParams {
-                text_document: TextDocumentItem {
-                    uri: uri.clone(),
-                    language_id: LANGUAGE_ID.to_string(),
-                    version: 0,
-                    text: fs::read_to_string(&dummy_file_path).unwrap(),
-                },
+        Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: uri.clone(),
+                language_id: LANGUAGE_ID.to_string(),
+                version: 0,
+                text: fs::read_to_string(&dummy_file_path).unwrap(),
             },
-        ),
+        }),
     );
 
     // textDocument/definition
     let id = server
         .send_request(
             "textDocument/definition".to_string(),
-            RequestParams::DefinitionParams(DefinitionParams {
+            Params::DefinitionParams(DefinitionParams {
                 text_document: TextDocumentIdentifier { uri: uri.clone() },
                 position: Position {
                     character: 4,
@@ -295,7 +285,7 @@ fn receive_until_definition_response_with_one_location_1(
     let id = server
         .send_request(
             "textDocument/definition".to_string(),
-            RequestParams::DefinitionParams(request_params.clone()),
+            Params::DefinitionParams(request_params.clone()),
         )
         .unwrap();
     assert_eq!(current_id, id);

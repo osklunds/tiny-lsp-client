@@ -209,13 +209,43 @@ fn decode_request_ok() {
         jsonrpc: "2.0".to_string(),
         id: 1,
         method: "textDocument/definition".to_string(),
-        params: RequestParams::DefinitionParams(DefinitionParams {
+        params: Params::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
             },
             position: Position {
                 line: 10,
                 character: 18,
+            },
+        }),
+    });
+    assert_json_decodes_into(request_json, request_decoded);
+}
+
+#[test]
+fn decode_notification_ok() {
+    let request_json: serde_json::Value = json!({
+      "jsonrpc": "2.0",
+      "method": "textDocument/didOpen",
+      "params": {
+        "textDocument": {
+          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp",
+          "languageId": "languageId",
+          "version": 0,
+          "text": "hej"
+        }
+      }
+    });
+
+    let request_decoded = Message::Notification(Notification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
+                language_id: "languageId".to_string(),
+                version: 0,
+                text: "hej".to_string(),
             },
         }),
     });

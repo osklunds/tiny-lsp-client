@@ -82,7 +82,7 @@ Starting from the right in the diagram: for each project active, there's one LSP
 send_request(
     "textDocument/definition".to_string(),
     Message::Request(
-        RequestParams::DefinitionParams(DefinitionParams {
+        Params::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: "/some/path/file.rs" },
             position: Position {
                 character: 4,

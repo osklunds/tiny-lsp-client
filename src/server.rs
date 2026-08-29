@@ -521,14 +521,14 @@ impl Server {
         });
         self.send_request(
             "initialize".to_string(),
-            RequestParams::Untyped(initialize_params),
+            Params::Untyped(initialize_params),
         )?;
 
         self.recv_response()?;
 
         self.send_notification(
             "initialized".to_string(),
-            NotificationParams::Untyped(json!({})),
+            Params::Untyped(json!({})),
         )?;
 
         Some(())
@@ -539,7 +539,7 @@ impl Server {
     pub fn send_request(
         &mut self,
         method: String,
-        params: RequestParams,
+        params: Params,
     ) -> Option<u32> {
         let id = self.next_request_id;
         self.next_request_id += 1;
@@ -558,7 +558,7 @@ impl Server {
     pub fn send_notification(
         &self,
         method: String,
-        params: NotificationParams,
+        params: Params,
     ) -> Option<()> {
         let notification = Notification {
             jsonrpc: "2.0".to_string(),

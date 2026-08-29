@@ -231,8 +231,8 @@ fn build_text_document_definition(
     uri: String,
     line: i64,
     character: i64,
-) -> RequestParams {
-    RequestParams::DefinitionParams(DefinitionParams {
+) -> Params {
+    Params::DefinitionParams(DefinitionParams {
         text_document: TextDocumentIdentifier { uri },
         position: Position {
             line: line as usize,
@@ -246,8 +246,8 @@ fn build_text_document_completion(
     uri: String,
     line: i64,
     character: i64,
-) -> RequestParams {
-    RequestParams::CompletionParams(CompletionParams {
+) -> Params {
+    Params::CompletionParams(CompletionParams {
         text_document: TextDocumentIdentifier { uri },
         position: Position {
             line: line as usize,
@@ -258,12 +258,8 @@ fn build_text_document_completion(
 }
 
 #[allow(non_snake_case)]
-fn build_text_document_hover(
-    uri: String,
-    line: i64,
-    character: i64,
-) -> RequestParams {
-    RequestParams::HoverParams(HoverParams {
+fn build_text_document_hover(uri: String, line: i64, character: i64) -> Params {
+    Params::HoverParams(HoverParams {
         text_document: TextDocumentIdentifier { uri },
         position: Position {
             line: line as usize,
@@ -331,8 +327,8 @@ fn build_text_document_did_open(
     uri: String,
     file_content: String,
     server: &mut Server,
-) -> NotificationParams {
-    NotificationParams::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
+) -> Params {
+    Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri,
             language_id: LANGUAGE_ID.to_string(),
@@ -352,7 +348,7 @@ fn build_text_document_did_change(
         Option<usize>,
     )>,
     server: &mut Server,
-) -> NotificationParams {
+) -> Params {
     let mut json_content_changes = Vec::new();
 
     for content_change in content_changes {
@@ -384,19 +380,17 @@ fn build_text_document_did_change(
         json_content_changes.push(json_content_change);
     }
 
-    NotificationParams::DidChangeTextDocumentParams(
-        DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier {
-                uri,
-                version: server.inc_and_get_version_number(),
-            },
-            content_changes: json_content_changes,
+    Params::DidChangeTextDocumentParams(DidChangeTextDocumentParams {
+        text_document: VersionedTextDocumentIdentifier {
+            uri,
+            version: server.inc_and_get_version_number(),
         },
-    )
+        content_changes: json_content_changes,
+    })
 }
 
-fn build_text_document_did_close(uri: String) -> NotificationParams {
-    NotificationParams::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
+fn build_text_document_did_close(uri: String) -> Params {
+    Params::DidCloseTextDocumentParams(DidCloseTextDocumentParams {
         text_document: TextDocumentIdentifier { uri },
     })
 }
