@@ -397,3 +397,25 @@ fn decode_response_with_result_and_error() {
 
     assert_json_decodes_into(json, decoded);
 }
+
+#[test]
+fn decode_unkown() {
+    // A request/notification has method
+    // A response has result OR error (reminder: if both are allowed to be none
+    // it will incorrectly be decoded as request)
+    let json: serde_json::Value = json!({
+      "id": 1,
+      "jsonrpc": "2.0",
+    });
+
+    let decoded = Message::Unknown(RawMessage {
+        jsonrpc: "2.0".to_string(),
+        id: Some(1),
+        method: None,
+        params: None,
+        result: None,
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
