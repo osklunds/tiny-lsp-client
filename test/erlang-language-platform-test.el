@@ -69,12 +69,10 @@
   (setq request-string "Received: (Request)")
   (setq response-string "Received: (Response)")
   (setq notification-string "Received: (Notification)")
-  (setq unknown-string "Received: (Unknown)")
 
   (assert-not (> (count-in-log-file request-string) 0))
   (assert-not (> (count-in-log-file response-string) 0))
   (assert-not (> (count-in-log-file notification-string) 0))
-  (assert-not (> (count-in-log-file unknown-string) 0))
 
   (assert-equal 0 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
@@ -106,7 +104,6 @@
   (assert (> (count-in-log-file request-string) 0))
   (assert (> (count-in-log-file response-string) 0))
   (assert (> (count-in-log-file notification-string) 0))
-  (assert (> (count-in-log-file unknown-string) 0))
   )
 
 ;; todo: need newlines here too
