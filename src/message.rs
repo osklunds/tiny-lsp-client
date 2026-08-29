@@ -90,6 +90,7 @@ impl<'d> Deserialize<'d> for Message {
                 ..
             } => {
                 let response = Response {
+                    jsonrpc,
                     id,
                     result: Some(result),
                     error,
@@ -171,6 +172,7 @@ pub struct CompletionContext {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
+    pub jsonrpc: String,
     pub id: u32,
     pub result: Option<Result>,
     pub error: Option<ResponseError>,

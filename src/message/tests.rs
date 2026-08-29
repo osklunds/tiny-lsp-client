@@ -34,6 +34,7 @@ fn completion_item_label() {
     });
 
     let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(
             CompletionResult::CompletionList(CompletionList {
@@ -72,6 +73,7 @@ fn completion_item_label_and_insert_text() {
     });
 
     let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(
             CompletionResult::CompletionList(CompletionList {
@@ -107,6 +109,7 @@ fn completion_item_label_and_insert_text_and_text_edit() {
     });
 
     let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(
             CompletionResult::CompletionList(CompletionList {
@@ -128,7 +131,7 @@ fn completion_item_label_and_insert_text_and_text_edit() {
 #[test]
 fn completion_result_completion_items() {
     let json: serde_json::Value = json!({
-        "jsonrpc": 2.0,
+        "jsonrpc": "2.0".to_string(),
         "id": 123,
         "result": [
             {
@@ -138,6 +141,7 @@ fn completion_result_completion_items() {
     });
 
     let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(
             CompletionResult::CompletionItems(vec![CompletionItem {
@@ -167,6 +171,7 @@ fn message_request_response_notification_variants() {
     });
 
     let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
         id: 123,
         result: Some(Result::TextDocumentCompletionResult(
             CompletionResult::CompletionList(CompletionList {
