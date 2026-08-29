@@ -82,7 +82,7 @@ Starting from the right in the diagram: for each project active, there's one LSP
 send_request(
     "textDocument/definition".to_string(),
     Message::Request(
-        RequestParams::DefinitionParams(DefinitionParams {
+        Params::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier { uri: "/some/path/file.rs" },
             position: Position {
                 character: 4,
@@ -218,7 +218,6 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 
 - =jdtls= doesn't start, so =jdtls= tests are broken.
 - =eldoc= for =jdtls= doesn't work after upgrading =jdtls= from 1.46.0 to 1.56.0.
-- erlang-language-platform related: the LSP server can send requests to the client. Such requests are incorrectly decoded as responses, and the expected request id is too big when the client later sends and waits for response.
 
 *** Low priority
 
@@ -239,11 +238,11 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** High priority
 
 - [Functionality] Support lsp rename
-- [Functionality] erlang-language-platform related: take common part of insertText and label if insertTextFormat is snippet, becuase erlang-language-platform doesn't seem to honor that client only supports plaintext format.
 - [Functionality] Adjustable =MAX_LOG_ENTRY_LEN_BYTES=, because when debugging, sometimes the full message needs to be seen.
 
 *** Low priority
 
+- [Test] Switch from Tumbleweed to Debian. Even if a commit hash is specified as image version, on old commits, that might still download packages later than the commit assumed, meaning tests won't pass if you checkout an old commit.
 - [Functionality] Signature help in eldoc
 - [Code quality] Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait? Maybe emacs-module-rs does it in a smart way?
 - [Code quality] Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
@@ -286,6 +285,8 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 - [Functionality] Multiple servers per buffer, could be relevant for HTML, CSS and Javascript
       - But I can't do this until I know how I want to use it
       - Could be that =tlc-server-cmds= should be removed, and general hook per major/minor mode that starts a server
+- [Functionality] erlang-language-platform related: take common part of insertText and label if insertTextFormat is snippet, becuase erlang-language-platform doesn't seem to honor that client only supports plaintext format.
+      - Solve ad-hoc instead, e.g. keybind to quickly replace ${1:arg} similar to =ciw= in vim.
 - [Performance] Support utf-32 line pos, that =eglot= has as preffered, since it has better performance than utf-16.
       - Might never do since small gain for lots of complexity.
 - [Performance] Consider caching didChange like eglot.

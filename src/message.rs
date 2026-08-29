@@ -22,17 +22,149 @@
 mod tests;
 
 use serde::Deserialize;
+use serde::Deserializer;
 use serde::Serialize;
 
 // Keeping a simple constant until I see signs it needs to be dynamic
 pub const LANGUAGE_ID: &'static str = "languageId";
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct RawMessage {
+    // All
+    pub jsonrpc: String,
+
+    // Request and Response
+    pub id: Option<u32>,
+
+    // Request and Notification
+    pub method: Option<String>,
+    pub params: Option<Params>,
+
+    // Response
+    #[serde(default, deserialize_with = "deserialize_some")]
+    // None if missing
+    // Some(None) if null
+    pub result: Option<Option<Result>>,
+    pub error: Option<ResponseError>,
+}
+
+// @credits: https://github.com/serde-rs/serde/issues/984#issuecomment-314143738
+// Any value that is present is considered Some value, including null.
+fn deserialize_some<'de, T, D>(
+    deserializer: D,
+) -> std::result::Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
+}
+
+#[derive(PartialEq, Debug, Serialize, Clone)]
 #[serde(untagged)]
 pub enum Message {
     Request(Request),
     Response(Response),
     Notification(Notification),
+    Unknown(RawMessage), // Not used. Only for debug logs
+}
+
+impl<'d> Deserialize<'d> for Message {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'d>,
+    {
+        // elp sends messages like below TO the client
+        // {
+        //   "id": 5,
+        //   "jsonrpc": "2.0",
+        //   "method": "workspace/codeLens/refresh"
+        // }
+        // Before, the serde deserializer incorrectly interpreted that as a
+        // Response with None result and None error.  That in turn caused "too
+        // big id" error.  But the above is a request, not a response, so we
+        // need to distinguish them, and only deserialize as response if result
+        // OR error is Some.
+
+        let raw_message = RawMessage::deserialize(deserializer)?;
+
+        match raw_message {
+            // Request
+            RawMessage {
+                jsonrpc,
+                id: Some(id),
+                method: Some(method),
+                params,
+                ..
+            } => {
+                let request = Request {
+                    jsonrpc,
+                    id,
+                    method,
+                    params,
+                };
+                Ok(Message::Request(request))
+            }
+
+            // Notification
+            RawMessage {
+                jsonrpc,
+                id: None,
+                method: Some(method),
+                params,
+                ..
+            } => {
+                let notification = Notification {
+                    jsonrpc,
+                    method,
+                    params,
+                };
+                Ok(Message::Notification(notification))
+            }
+
+            // Response with result
+            RawMessage {
+                jsonrpc,
+                id: Some(id),
+                result: Some(result),
+                error,
+                ..
+            } => {
+                let result = if let Some(result) = result {
+                    result
+                } else {
+                    Result::NullResult
+                };
+
+                let response = Response {
+                    jsonrpc,
+                    id,
+                    result: Some(result),
+                    error,
+                };
+                Ok(Message::Response(response))
+            }
+
+            // Response with error
+            RawMessage {
+                jsonrpc,
+                id: Some(id),
+                result: None,
+                error: Some(error),
+                ..
+            } => {
+                let response = Response {
+                    jsonrpc,
+                    id,
+                    result: None,
+                    error: Some(error),
+                };
+                Ok(Message::Response(response))
+            }
+
+            _ => Ok(Message::Unknown(raw_message)),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -40,15 +172,23 @@ pub struct Request {
     pub jsonrpc: String,
     pub id: u32,
     pub method: String,
-    pub params: RequestParams,
+    pub params: Option<Params>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
-pub enum RequestParams {
+pub enum Params {
+    // Request
     DefinitionParams(DefinitionParams),
     CompletionParams(CompletionParams),
     HoverParams(HoverParams),
+
+    // Notification
+    DidOpenTextDocumentParams(DidOpenTextDocumentParams),
+    DidChangeTextDocumentParams(DidChangeTextDocumentParams),
+    DidCloseTextDocumentParams(DidCloseTextDocumentParams),
+
+    // Not used (much). Only for debug logs and initialize
     Untyped(serde_json::Value),
 }
 
@@ -87,6 +227,7 @@ pub struct CompletionContext {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
+    pub jsonrpc: String,
     pub id: u32,
     pub result: Option<Result>,
     pub error: Option<ResponseError>,
@@ -104,6 +245,7 @@ pub enum Result {
     TextDocumentDefinitionResult(DefinitionResult),
     TextDocumentCompletionResult(CompletionResult),
     TextDocumentHoverResult(HoverResult),
+    NullResult,
     Untyped(serde_json::Value),
 }
 
@@ -189,16 +331,7 @@ pub struct Range {
 pub struct Notification {
     pub jsonrpc: String,
     pub method: String,
-    pub params: NotificationParams,
-}
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum NotificationParams {
-    DidOpenTextDocumentParams(DidOpenTextDocumentParams),
-    DidChangeTextDocumentParams(DidChangeTextDocumentParams),
-    DidCloseTextDocumentParams(DidCloseTextDocumentParams),
-    Untyped(serde_json::Value),
+    pub params: Option<Params>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -270,5 +403,5 @@ pub struct HoverResult {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct MarkupContent {
-    pub value: String
+    pub value: String,
 }

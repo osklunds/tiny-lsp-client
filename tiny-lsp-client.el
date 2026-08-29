@@ -460,7 +460,10 @@ as usual."
         ((< id request-id) (funcall continue))
 
         ;; bug case - response to request id not yet sent
-        ((> id request-id) (error "too big id"))
+        ((> id request-id) (progn
+                             (tlc--log "too big id '%s' '%s' '%s'"
+                                       id request-id server-key)
+                             (error "too big id")))
 
         ;; normal case - response to current request
         ;; todo: for now, has-result=nil is re-interpreted as params=nil which

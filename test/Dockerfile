@@ -32,6 +32,11 @@ RUN wget "https://downloads.haskell.org/~ghcup/0.1.50.2/x86_64-linux-ghcup-0.1.5
     && ./ghcup install cabal 3.14.2.0 \
     && ./ghcup install hls 2.10.0.0
 
+# Erlang - elp
+RUN wget "https://github.com/WhatsApp/erlang-language-platform/releases/download/2026-08-10/elp-linux-x86_64-unknown-linux-gnu-otp-28.5.tar.gz" \
+    && tar -xzvf elp-linux-x86_64-unknown-linux-gnu-otp-28.5.tar.gz \
+    && mv elp /usr/local/bin/
+
 ENV PATH="$PATH:/root/.ghcup/bin:/root/.ghcup/ghc/9.12.2/bin"
 
 WORKDIR "/tiny-lsp-client/test"

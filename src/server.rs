@@ -268,9 +268,13 @@ impl Server {
                 let msg: Message = match serde_json::from_str(&json) {
                     Ok(msg) => msg,
                     Err(e) => {
+                        // Log full data here, because if this fails,
+                        // the normal IO log also fails, and that makes
+                        // it impossible to know what the message was
                         logger::log_rust_debug!(
-                            "serde_json::from_str failed: '{:?}'",
-                            e
+                            "serde_json::from_str failed: '{:?}' data '{}'",
+                            e,
+                            &json
                         );
                         break;
                     }
@@ -280,48 +284,55 @@ impl Server {
 
                 // Only care about response so far, i.e. drop
                 // notifications about e.g. diagnostics
-                if let Message::Response(response) = msg {
-                    let id = response.id;
+                let message_type = match msg {
+                    Message::Response(response) => {
+                        let id = response.id;
 
-                    // Only touch the mutex if IO is logged
-                    if logger::is_log_enabled!(LOG_IO) {
-                        let mut seq_num_timestamps =
-                            lock(&seq_num_timestamps_recv);
-                        logger::log_rust_debug!(
-                            "recv thread has '{}' timestamps: '{:?}'",
-                            seq_num_timestamps.len(),
-                            seq_num_timestamps
-                        );
+                        // Only touch the mutex if IO is logged
+                        if logger::is_log_enabled!(LOG_IO) {
+                            let mut seq_num_timestamps =
+                                lock(&seq_num_timestamps_recv);
+                            logger::log_rust_debug!(
+                                "recv thread has '{}' timestamps: '{:?}'",
+                                seq_num_timestamps.len(),
+                                seq_num_timestamps
+                            );
 
-                        if let Some(ts) = seq_num_timestamps.get(&id) {
-                            duration = Some(Some(ts.elapsed().as_millis()));
-                            seq_num_timestamps.remove(&id);
-                        } else {
-                            duration = Some(None);
+                            if let Some(ts) = seq_num_timestamps.get(&id) {
+                                duration = Some(Some(ts.elapsed().as_millis()));
+                                seq_num_timestamps.remove(&id);
+                            } else {
+                                duration = Some(None);
+                            }
+                            drop(seq_num_timestamps);
                         }
-                        drop(seq_num_timestamps);
+
+                        if let Ok(()) = stdout_tx.send(response) {
+                        } else {
+                            break;
+                        }
+
+                        // For testing purposes, the below can be used to simulate
+                        // a slow server.
+                        // let new_stdout_tx = stdout_tx.clone();
+
+                        // thread::spawn(move || {
+                        //     match response.result {
+                        //         Some(Result::TextDocumentCompletionResult(_)) => {
+                        //             std::thread::sleep(Duration::from_millis(2000))
+                        //         }
+                        //         _ => (),
+                        //     }
+
+                        //     if let Ok(()) = new_stdout_tx.send(response) {}
+                        // });
+
+                        "Response".to_string()
                     }
-
-                    if let Ok(()) = stdout_tx.send(response) {
-                    } else {
-                        break;
-                    }
-
-                    // For testing purposes, the below can be used to simulate
-                    // a slow server.
-                    // let new_stdout_tx = stdout_tx.clone();
-
-                    // thread::spawn(move || {
-                    //     match response.result {
-                    //         Some(Result::TextDocumentCompletionResult(_)) => {
-                    //             std::thread::sleep(Duration::from_millis(2000))
-                    //         }
-                    //         _ => (),
-                    //     }
-
-                    //     if let Ok(()) = new_stdout_tx.send(response) {}
-                    // });
-                }
+                    Message::Request(_) => "Request".to_string(),
+                    Message::Notification(_) => "Notification".to_string(),
+                    Message::Unknown(_) => "Unknown".to_string(),
+                };
 
                 if logger::is_log_enabled!(LOG_IO) {
                     // Decode as serde_json::Value too, to be able
@@ -350,8 +361,10 @@ impl Server {
                         // Notification
                         None => format!(""),
                     };
+                    // todo: add test coverage
                     logger::log_io!(
-                        "Received: {}{}",
+                        "Received: ({}) {}{}",
+                        message_type,
                         duration_part,
                         pretty_json
                     );
@@ -521,14 +534,14 @@ impl Server {
         });
         self.send_request(
             "initialize".to_string(),
-            RequestParams::Untyped(initialize_params),
+            Params::Untyped(initialize_params),
         )?;
 
         self.recv_response()?;
 
         self.send_notification(
             "initialized".to_string(),
-            NotificationParams::Untyped(json!({})),
+            Params::Untyped(json!({})),
         )?;
 
         Some(())
@@ -539,7 +552,7 @@ impl Server {
     pub fn send_request(
         &mut self,
         method: String,
-        params: RequestParams,
+        params: Params,
     ) -> Option<u32> {
         let id = self.next_request_id;
         self.next_request_id += 1;
@@ -547,7 +560,7 @@ impl Server {
             jsonrpc: "2.0".to_string(),
             id,
             method,
-            params,
+            params: Some(params),
         };
         match self.sender.send(Some(Message::Request(request))) {
             Ok(()) => Some(id),
@@ -558,12 +571,12 @@ impl Server {
     pub fn send_notification(
         &self,
         method: String,
-        params: NotificationParams,
+        params: Params,
     ) -> Option<()> {
         let notification = Notification {
             jsonrpc: "2.0".to_string(),
             method,
-            params,
+            params: Some(params),
         };
         match self.sender.send(Some(Message::Notification(notification))) {
             Ok(()) => Some(()),
