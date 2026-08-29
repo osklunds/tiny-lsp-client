@@ -268,9 +268,13 @@ impl Server {
                 let msg: Message = match serde_json::from_str(&json) {
                     Ok(msg) => msg,
                     Err(e) => {
+                        // Log full data here, because if this fails,
+                        // the normal IO log also fails, and that makes
+                        // it impossible to know what the message was
                         logger::log_rust_debug!(
-                            "serde_json::from_str failed: '{:?}'",
-                            e
+                            "serde_json::from_str failed: '{:?}' data '{}'",
+                            e,
+                            &json
                         );
                         break;
                     }
