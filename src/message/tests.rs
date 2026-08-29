@@ -191,18 +191,18 @@ fn message_request_response_notification_variants() {
 #[test]
 fn decode_request() {
     let json: serde_json::Value = json!({
-      "jsonrpc": "2.0",
-      "id": 1,
-      "method": "textDocument/definition",
-      "params": {
-        "textDocument": {
-          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
-        },
-        "position": {
-          "line": 10,
-          "character": 18
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+            },
+            "position": {
+                "line": 10,
+                "character": 18
+            }
         }
-      }
     });
 
     let decoded = Message::Request(Request {
@@ -226,9 +226,9 @@ fn decode_request() {
 #[test]
 fn decode_request_without_params() {
     let json: serde_json::Value = json!({
-      "id": 1,
-      "jsonrpc": "2.0",
-      "method": "workspace/codeLens/refresh"
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "workspace/codeLens/refresh"
     });
 
     let decoded = Message::Request(Request {
@@ -244,16 +244,16 @@ fn decode_request_without_params() {
 #[test]
 fn decode_notification() {
     let json: serde_json::Value = json!({
-      "jsonrpc": "2.0",
-      "method": "textDocument/didOpen",
-      "params": {
-        "textDocument": {
-          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp",
-          "languageId": "languageId",
-          "version": 0,
-          "text": "hej"
+        "jsonrpc": "2.0",
+        "method": "textDocument/didOpen",
+        "params": {
+            "textDocument": {
+                "uri": "file:///tiny-lsp-client/test/clangd/main.cpp",
+                "languageId": "languageId",
+                "version": 0,
+                "text": "hej"
+            }
         }
-      }
     });
 
     let decoded = Message::Notification(Notification {
@@ -278,23 +278,23 @@ fn decode_notification() {
 #[test]
 fn decode_response_with_result() {
     let json: serde_json::Value = json!({
-      "id": 1,
-      "jsonrpc": "2.0",
-      "result": [
-        {
-          "range": {
-            "end": {
-              "character": 20,
-              "line": 4
-            },
-            "start": {
-              "character": 6,
-              "line": 4
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": [
+            {
+                "range": {
+                    "end": {
+                        "character": 20,
+                        "line": 4
+                    },
+                    "start": {
+                        "character": 6,
+                        "line": 4
+                    }
+                },
+                "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
             }
-          },
-          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
-        }
-      ]
+        ]
     });
 
     let decoded = Message::Response(Response {
@@ -327,10 +327,10 @@ fn decode_response_with_error() {
         "id": 1,
         "jsonrpc": "2.0",
         "error": {
-      "code": -32801,
-      "message": "msg"
-    }
-      });
+            "code": -32801,
+            "message": "msg"
+        }
+    });
 
     let decoded = Message::Response(Response {
         jsonrpc: "2.0".to_string(),
@@ -348,27 +348,27 @@ fn decode_response_with_error() {
 #[test]
 fn decode_response_with_result_and_error() {
     let json: serde_json::Value = json!({
-      "id": 1,
-      "jsonrpc": "2.0",
-      "result": [
-        {
-          "range": {
-            "end": {
-              "character": 20,
-              "line": 4
-            },
-            "start": {
-              "character": 6,
-              "line": 4
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": [
+            {
+                "range": {
+                    "end": {
+                        "character": 20,
+                        "line": 4
+                    },
+                    "start": {
+                        "character": 6,
+                        "line": 4
+                    }
+                },
+                "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
             }
-          },
-          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
-        }
-      ],
+        ],
         "error": {
-      "code": -32801,
-      "message": "msg"
-    }
+            "code": -32801,
+            "message": "msg"
+        }
     });
 
     let decoded = Message::Response(Response {
@@ -454,8 +454,8 @@ fn decode_unkown() {
     // A response has result OR error (reminder: if both are allowed to be none
     // it will incorrectly be decoded as request)
     let json: serde_json::Value = json!({
-      "id": 1,
-      "jsonrpc": "2.0",
+        "id": 1,
+        "jsonrpc": "2.0",
     });
 
     let decoded = Message::Unknown(RawMessage {
