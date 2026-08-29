@@ -41,9 +41,11 @@ struct RawMessage {
     pub method: Option<String>,
 
     // Request
+    #[serde(rename = "params")]
     pub request_params: Option<RequestParams>,
 
     // Notification
+    #[serde(rename = "params")]
     pub notification_params: Option<NotificationParams>,
 
     // Response
@@ -66,10 +68,9 @@ impl<'d> Deserialize<'d> for Message {
     {
         let raw_message = RawMessage::deserialize(deserializer)?;
 
-        let jsonrpc = raw_message.jsonrpc;
-
         match raw_message {
             RawMessage {
+                jsonrpc,
                 id: Some(id),
                 method: Some(method),
                 request_params: Some(params),
@@ -84,6 +85,7 @@ impl<'d> Deserialize<'d> for Message {
                 Ok(Message::Request(request))
             }
             RawMessage {
+                jsonrpc,
                 id: Some(id),
                 result: Some(result),
                 error,
@@ -97,26 +99,8 @@ impl<'d> Deserialize<'d> for Message {
                 };
                 Ok(Message::Response(response))
             }
-            _ => Err(D::Error::custom("todo add fields")),
+            _ => Err(D::Error::custom(format!("{:?}", raw_message))),
         }
-
-        // // Request or Response
-        // if let Some(_id) = raw_message.id {
-        //     return Err(D::Error::custom("invalid user age"));
-        // }
-        // // Notification
-        // else {
-        //     if let Some(params) = raw_message.notification_params {
-        //         let notification = Notification {
-        //             jsonrpc,
-        //             method: raw_message.method.unwrap(),
-        //             params,
-        //         };
-        //         Ok(Message::Notification(notification))
-        //     } else {
-        //         return Err(D::Error::custom("invalid user age"));
-        //     }
-        // }
     }
 }
 

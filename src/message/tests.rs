@@ -187,3 +187,37 @@ fn message_request_response_notification_variants() {
 
     assert_json_decodes_into(json, decoded);
 }
+
+#[test]
+fn decode_request_ok() {
+    let request_json: serde_json::Value = json!({
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "textDocument/definition",
+      "params": {
+        "textDocument": {
+          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+        },
+        "position": {
+          "line": 10,
+          "character": 18
+        }
+      }
+    });
+
+    let request_decoded = Message::Request(Request {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        method: "textDocument/definition".to_string(),
+        params: RequestParams::DefinitionParams(DefinitionParams {
+            text_document: TextDocumentIdentifier {
+                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
+            },
+            position: Position {
+                line: 10,
+                character: 18,
+            },
+        }),
+    });
+    assert_json_decodes_into(request_json, request_decoded);
+}
