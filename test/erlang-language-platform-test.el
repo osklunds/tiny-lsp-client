@@ -78,12 +78,14 @@
   (assert-equal 20 (current-column))
 
   ;; Act
-  (non-interactive-xref-find-definitions)
+  (run-until 100 0.1
+    (non-interactive-xref-find-definitions)
+
+    ;; Assert
+    (assert-equal 11 (line-number-at-pos))
+    (assert-equal 0 (current-column)))
 
   ;; Assert
-  (assert-equal 11 (line-number-at-pos))
-  (assert-equal 0 (current-column))
-
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
   )

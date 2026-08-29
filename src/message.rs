@@ -21,7 +21,6 @@
 #[cfg(test)]
 mod tests;
 
-use serde::de::Error;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -30,7 +29,7 @@ use serde::Serialize;
 pub const LANGUAGE_ID: &'static str = "languageId";
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-struct RawMessage {
+pub struct RawMessage {
     // All
     pub jsonrpc: String,
 
@@ -52,6 +51,7 @@ pub enum Message {
     Request(Request),
     Response(Response),
     Notification(Notification),
+    Unknown(RawMessage), // Not used. Only for debug logs
 }
 
 impl<'d> Deserialize<'d> for Message {
@@ -111,6 +111,7 @@ impl<'d> Deserialize<'d> for Message {
                 };
                 Ok(Message::Response(response))
             }
+
             // Response with error
             RawMessage {
                 jsonrpc,
@@ -128,7 +129,7 @@ impl<'d> Deserialize<'d> for Message {
                 Ok(Message::Response(response))
             }
 
-            _ => Err(D::Error::custom(format!("{:?}", raw_message))),
+            _ => Ok(Message::Unknown(raw_message)),
         }
     }
 }
@@ -154,6 +155,7 @@ pub enum Params {
     DidChangeTextDocumentParams(DidChangeTextDocumentParams),
     DidCloseTextDocumentParams(DidCloseTextDocumentParams),
 
+    // Not used (much). Only for debug logs and initialize
     Untyped(serde_json::Value),
 }
 
