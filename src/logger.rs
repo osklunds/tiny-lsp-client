@@ -30,6 +30,7 @@ use std::path::Path;
 use std::ptr;
 use std::str;
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 
@@ -73,6 +74,10 @@ macro_rules! is_log_enabled {
 }
 pub(crate) use is_log_enabled;
 
+fn max_log_entry_len() -> usize {
+    MAX_LOG_ENTRY_LEN_BYTES.load(Ordering::Relaxed)
+}
+
 // Note: can't be thread_local like servers, becuase these are accessed
 // from several threads
 pub static LOG_IO: AtomicBool = AtomicBool::new(true);
@@ -81,8 +86,9 @@ pub static LOG_RUST_DEBUG: AtomicBool = AtomicBool::new(true);
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);
 static LOG_FILE_INFO: Mutex<Option<LogFileInfo>> = Mutex::new(None);
 
+pub static MAX_LOG_ENTRY_LEN_BYTES: AtomicUsize = AtomicUsize::new(2_000);
+
 const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
-const MAX_LOG_ENTRY_LEN_BYTES: usize = 2_000;
 
 struct LogFileInfo {
     log_file_name: String,
@@ -134,12 +140,12 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     let formatted =
         format!("{} - {} - {}\n", log_name.as_ref(), timestamp, msg.as_ref());
 
-    let truncated = if formatted.len() > MAX_LOG_ENTRY_LEN_BYTES
+    let truncated = if formatted.len() > max_log_entry_len()
         // The response to intialize can be long, but is always of interest
         && !formatted.contains("\"id\": 0,")
     {
         // To handle unicode boundary, will panic otherwise
-        let boundary = formatted.floor_char_boundary(MAX_LOG_ENTRY_LEN_BYTES);
+        let boundary = formatted.floor_char_boundary(max_log_entry_len());
         format!("{}...TRUNCATED\n", &formatted[0..boundary])
     } else {
         formatted

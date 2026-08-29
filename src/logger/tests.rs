@@ -96,8 +96,8 @@ fn unicode_truncation() {
 
     // To force split at unicode boundary
     for i in 0..4 {
-        let mut log_entry = "a".repeat(MAX_LOG_ENTRY_LEN_BYTES / 2 + i);
-        log_entry.push_str(&"あ".repeat(MAX_LOG_ENTRY_LEN_BYTES / 2));
+        let mut log_entry = "a".repeat(max_log_entry_len() / 2 + i);
+        log_entry.push_str(&"あ".repeat(max_log_entry_len() / 2));
 
         log_io!("{}", log_entry);
 

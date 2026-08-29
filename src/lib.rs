@@ -549,6 +549,12 @@ unsafe extern "C" fn tlc__rust_set_option(
                     _ => todo!("raise lisp error"),
                 };
                 logger::set_log_file_name(file_name);
+            } else if symbol.0 == "tlc-max-log-entry-len-bytes" {
+                let value = match value {
+                    SetOptionValue::Usize(value) => value,
+                    _ => todo!("raise lisp error"),
+                };
+                logger::MAX_LOG_ENTRY_LEN_BYTES.store(value, Ordering::Relaxed)
             } else {
                 let value = match value {
                     SetOptionValue::Bool(value) => value,
@@ -759,6 +765,7 @@ impl FromLisp for SendNotificationParameters {
 
 enum SetOptionValue {
     Bool(bool),
+    Usize(usize),
     FileName(String),
 }
 
@@ -769,6 +776,8 @@ impl FromLisp for SetOptionValue {
     ) -> LispResult<SetOptionValue> {
         if call_lisp_rust(env, "stringp", vec![value])? {
             Ok(Self::FileName(FromLisp::from_lisp(env, value)?))
+        } else if call_lisp_rust(env, "integerp", vec![value])? {
+            Ok(Self::Usize(FromLisp::from_lisp(env, value)?))
         } else {
             Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
         }

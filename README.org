@@ -238,7 +238,6 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** High priority
 
 - [Functionality] Support lsp rename
-- [Functionality] Adjustable =MAX_LOG_ENTRY_LEN_BYTES=, because when debugging, sometimes the full message needs to be seen.
 
 *** Low priority
 

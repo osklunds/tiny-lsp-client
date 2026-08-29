@@ -216,6 +216,8 @@ this common file. Is used to differentiate log file names.")
   ;; One drawback of running in the same emacs instance with ERT is that
   ;; this clean up in the end is needed.
 
+  (customize-set-variable 'tlc-max-log-entry-len-bytes 2000)
+
   (while (tlc-info)
     (cl-letf (((symbol-function 'completing-read)
                (lambda (_ collection &rest _)

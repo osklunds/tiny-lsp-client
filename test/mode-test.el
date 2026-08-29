@@ -1568,3 +1568,22 @@ short other_function(int arg)" (get-eldoc-msg)))
     (emacs-lisp-native-compile-and-load)
     (assert-not found-error))
   )
+
+(tlc-deftest change-max-log-entry-len-bytes-test ()
+  (setq truncated-string "TRUNCATED")
+  (assert-not (> (count-in-log-file truncated-string) 0))
+  
+  (find-file (relative-repo-root "test" "clangd" "main.cpp"))
+  (assert-equal 1 (number-of-did-open))
+  (assert-equal 0 (number-of-did-close))
+  (tlc-mode -1)
+  (tlc-mode t)
+  (assert-not (> (count-in-log-file truncated-string) 0))
+
+  (customize-set-variable 'tlc-max-log-entry-len-bytes 5)
+
+  (tlc-mode -1)
+  (tlc-mode t)
+
+  (assert (> (count-in-log-file truncated-string) 0) "truncated count")
+  )

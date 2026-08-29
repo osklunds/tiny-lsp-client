@@ -101,6 +101,13 @@ output. Probably mainly useful for developing tiny-lsp-client."
   :initialize 'custom-initialize-set
   :set 'tlc--set-rust-based-option)
 
+(defcustom tlc-max-log-entry-len-bytes 2000
+  "Max length of log entries."
+  :group 'tiny-lsp-client
+  :type 'integer
+  :initialize 'custom-initialize-set
+  :set 'tlc--set-rust-based-option)
+
 (defcustom tlc-log-file (file-truename
                          (file-name-concat
                           user-emacs-directory
