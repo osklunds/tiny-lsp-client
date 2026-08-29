@@ -60,11 +60,8 @@ impl<'d> Deserialize<'d> for Message {
         D: Deserializer<'d>,
     {
         // todo: add comment why
-        // todo: add log for "too big id" and test that never seen in tests
-        // because run-until hides faults
         // todo: Add unit tests and example of why this special deserialize
         // is needed
-        // todo: Log msg type in IO
         let raw_message = RawMessage::deserialize(deserializer)?;
 
         match raw_message {
