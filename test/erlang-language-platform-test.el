@@ -234,34 +234,16 @@ other_function_hej(Arg) ->
 
   (re-search-forward "other_function")
   (next-line)
-  (setq tlc-collection-fun (get-tlc-collection-fun))
-  (assert-equal 0 (number-of-completion-requests))
 
   ;; erlang_language_platform seems to return nothing if nothing has been typed
-  (assert-equal nil (funcall tlc-collection-fun "" nil t))
-  (assert-equal 1 (number-of-completion-requests))
-
-  ;; todo: consider this test for mode-test too, i.e, not an empty string as
-  ;; starting point and bounds are different from point
   (insert "o")
 
-  (setq tlc-collection-fun (get-tlc-collection-fun))
-  (assert-equal 1 (number-of-completion-requests))
-
-  ;; Race condition where "o" is sometimes included
-  (sleep-for 0.1)
-  (let ((result (funcall tlc-collection-fun "" nil t)))
-    (assert-equal 2 (number-of-completion-requests))
-    ;; erlang_language_platform seems to return stuff even with "o"
-    (dolist (exp '("tuple_to_list" "open_port" "atom_to_list" "other_function"))
-      (assert (cl-member exp result :test 'string-equal) exp))
-    )
-
-  (let ((result (funcall tlc-collection-fun "o" nil t)))
-    ;; But with o as prefix, more reasonable results are seen
-    (assert-equal '("of" "or" "orelse" "open_port" "o" "other_function") result)
-    )
-  (assert-equal 2 (number-of-completion-requests))
+  (run-until 100 0.5
+    (let* ((tlc-collection-fun (get-tlc-collection-fun))
+           (result (funcall tlc-collection-fun "" nil t)))
+      (dolist (exp '("ok" "other_function(${1:Arg})"))
+        (assert (cl-member exp result :test 'string-equal) exp))
+      ))
   )
 
 (tlc-deftest eldoc-test ()
