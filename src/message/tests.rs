@@ -251,3 +251,73 @@ fn decode_notification_ok() {
     });
     assert_json_decodes_into(request_json, request_decoded);
 }
+
+#[test]
+fn decode_response_with_result_ok() {
+    let json: serde_json::Value = json!({
+      "id": 1,
+      "jsonrpc": "2.0",
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 20,
+              "line": 4
+            },
+            "start": {
+              "character": 6,
+              "line": 4
+            }
+          },
+          "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+        }
+      ]
+    });
+
+    let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(Result::TextDocumentDefinitionResult(
+            DefinitionResult::LocationList(vec![Location {
+                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
+                range: Range {
+                    start: Position {
+                        line: 4,
+                        character: 6,
+                    },
+                    end: Position {
+                        line: 4,
+                        character: 20,
+                    },
+                },
+            }]),
+        )),
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
+
+#[test]
+fn decode_response_with_error_ok() {
+    let json: serde_json::Value = json!({
+        "id": 1,
+        "jsonrpc": "2.0",
+        "error": {
+      "code": -32801,
+      "message": "msg"
+    }
+      });
+
+    let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: None,
+        error: Some(ResponseError {
+            code: -32801,
+            message: "msg".to_string(),
+        }),
+    });
+
+    assert_json_decodes_into(json, decoded);
+}

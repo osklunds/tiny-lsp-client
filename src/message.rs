@@ -62,6 +62,7 @@ impl<'d> Deserialize<'d> for Message {
         let raw_message = RawMessage::deserialize(deserializer)?;
 
         match raw_message {
+            // Request
             RawMessage {
                 jsonrpc,
                 id: Some(id),
@@ -77,6 +78,8 @@ impl<'d> Deserialize<'d> for Message {
                 };
                 Ok(Message::Request(request))
             }
+
+            // Notification
             RawMessage {
                 jsonrpc,
                 id: None,
@@ -91,6 +94,8 @@ impl<'d> Deserialize<'d> for Message {
                 };
                 Ok(Message::Notification(notification))
             }
+
+            // Response with result
             RawMessage {
                 jsonrpc,
                 id: Some(id),
@@ -106,6 +111,23 @@ impl<'d> Deserialize<'d> for Message {
                 };
                 Ok(Message::Response(response))
             }
+            // Response with error
+            RawMessage {
+                jsonrpc,
+                id: Some(id),
+                result: None,
+                error: Some(error),
+                ..
+            } => {
+                let response = Response {
+                    jsonrpc,
+                    id,
+                    result: None,
+                    error: Some(error),
+                };
+                Ok(Message::Response(response))
+            }
+
             _ => Err(D::Error::custom(format!("{:?}", raw_message))),
         }
     }
