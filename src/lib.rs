@@ -435,50 +435,53 @@ fn handle_response<A: IntoLisp>(
     response: Response,
 ) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
     if let Some(result) = response.result {
-        if let Result::Untyped(_) = result {
-            logger::log_rust_debug!(
-                "Non-supported response received: {:?}",
-                result
-            );
-            RustCallResult::Symbol("error-response")
-        } else {
-            let return_value = match result {
-                Result::TextDocumentDefinitionResult(definition_result) => {
-                    HandleResponse::DefinitionResponse(
-                        handle_definition_response(definition_result),
-                    )
-                }
-                Result::TextDocumentCompletionResult(completion_result) => {
-                    HandleResponse::CompletionResponse(
-                        handle_completion_response(completion_result),
-                    )
-                }
-                Result::TextDocumentHoverResult(hover_result) => {
-                    HandleResponse::HoverResponse(handle_hover_response(
-                        hover_result,
-                    ))
-                }
-                _ => panic!("case already handled"),
-            };
-            RustCallResult::Any((
-                RustCallResult::<A>::Symbol("response"),
-                response.id,
-                true,
-                return_value,
-            ))
+        match result {
+            Result::Untyped(_) => {
+                logger::log_rust_debug!(
+                    "Non-supported response received: {:?}",
+                    result
+                );
+                RustCallResult::Symbol("error-response")
+            }
+            Result::NullResult => {
+                // Happens e.g. when rust-analyzer doesn't send any completion result
+                RustCallResult::Any((
+                    RustCallResult::Symbol("response"),
+                    response.id,
+                    false,
+                    HandleResponse::NullResponse,
+                ))
+            }
+            _ => {
+                let return_value = match result {
+                    Result::TextDocumentDefinitionResult(definition_result) => {
+                        HandleResponse::DefinitionResponse(
+                            handle_definition_response(definition_result),
+                        )
+                    }
+                    Result::TextDocumentCompletionResult(completion_result) => {
+                        HandleResponse::CompletionResponse(
+                            handle_completion_response(completion_result),
+                        )
+                    }
+                    Result::TextDocumentHoverResult(hover_result) => {
+                        HandleResponse::HoverResponse(handle_hover_response(
+                            hover_result,
+                        ))
+                    }
+                    _ => panic!("case already handled"),
+                };
+                RustCallResult::Any((
+                    RustCallResult::<A>::Symbol("response"),
+                    response.id,
+                    true,
+                    return_value,
+                ))
+            }
         }
     } else {
-        if response.error.is_some() {
-            RustCallResult::Symbol("error-response")
-        } else {
-            // Happens e.g. when rust-analyzer doesn't send any completion result
-            RustCallResult::Any((
-                RustCallResult::Symbol("response"),
-                response.id,
-                false,
-                HandleResponse::NullResponse,
-            ))
-        }
+        // If we wanted to, could assert that response.error.is_some()
+        RustCallResult::Symbol("error-response")
     }
 }
 
