@@ -190,7 +190,7 @@ fn message_request_response_notification_variants() {
 
 #[test]
 fn decode_request() {
-    let request_json: serde_json::Value = json!({
+    let json: serde_json::Value = json!({
       "jsonrpc": "2.0",
       "id": 1,
       "method": "textDocument/definition",
@@ -205,11 +205,11 @@ fn decode_request() {
       }
     });
 
-    let request_decoded = Message::Request(Request {
+    let decoded = Message::Request(Request {
         jsonrpc: "2.0".to_string(),
         id: 1,
         method: "textDocument/definition".to_string(),
-        params: Params::DefinitionParams(DefinitionParams {
+        params: Some(Params::DefinitionParams(DefinitionParams {
             text_document: TextDocumentIdentifier {
                 uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
             },
@@ -217,14 +217,33 @@ fn decode_request() {
                 line: 10,
                 character: 18,
             },
-        }),
+        })),
     });
-    assert_json_decodes_into(request_json, request_decoded);
+
+    assert_json_decodes_into(json, decoded);
+}
+
+#[test]
+fn decode_request_without_params() {
+    let json: serde_json::Value = json!({
+      "id": 1,
+      "jsonrpc": "2.0",
+      "method": "workspace/codeLens/refresh"
+    });
+
+    let decoded = Message::Request(Request {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        method: "workspace/codeLens/refresh".to_string(),
+        params: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
 }
 
 #[test]
 fn decode_notification() {
-    let request_json: serde_json::Value = json!({
+    let json: serde_json::Value = json!({
       "jsonrpc": "2.0",
       "method": "textDocument/didOpen",
       "params": {
@@ -237,7 +256,7 @@ fn decode_notification() {
       }
     });
 
-    let request_decoded = Message::Notification(Notification {
+    let decoded = Message::Notification(Notification {
         jsonrpc: "2.0".to_string(),
         method: "textDocument/didOpen".to_string(),
         params: Params::DidOpenTextDocumentParams(DidOpenTextDocumentParams {
@@ -249,7 +268,8 @@ fn decode_notification() {
             },
         }),
     });
-    assert_json_decodes_into(request_json, request_decoded);
+
+    assert_json_decodes_into(json, decoded);
 }
 
 #[test]
@@ -375,22 +395,3 @@ fn decode_response_with_result_and_error() {
     assert_json_decodes_into(json, decoded);
 }
 
-#[test]
-fn decode_request_without_params() {
-    let json: serde_json::Value = json!({
-      "id": 1,
-      "jsonrpc": "2.0",
-      "method": "workspace/codeLens/refresh"
-    });
-
-    let decoded = Message::Unknown(RawMessage {
-        jsonrpc: "2.0".to_string(),
-        id: Some(1),
-        method: Some("workspace/codeLens/refresh".to_string()),
-        params: None,
-        result: None,
-        error: None,
-    });
-
-    assert_json_decodes_into(json, decoded);
-}

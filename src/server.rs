@@ -560,7 +560,7 @@ impl Server {
             jsonrpc: "2.0".to_string(),
             id,
             method,
-            params,
+            params: Some(params),
         };
         match self.sender.send(Some(Message::Request(request))) {
             Ok(()) => Some(id),

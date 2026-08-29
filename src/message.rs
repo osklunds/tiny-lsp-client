@@ -70,8 +70,6 @@ impl<'d> Deserialize<'d> for Message {
         // big id" error.  But the above is a request, not a response, so we
         // need to distinguish them, and only deserialize as response if result
         // OR error is Some.
-        // Note: The above is deserialized as unknown, because the params
-        // field of Request is (perhaps incorrectly) mandatory.
 
         let raw_message = RawMessage::deserialize(deserializer)?;
 
@@ -81,14 +79,14 @@ impl<'d> Deserialize<'d> for Message {
                 jsonrpc,
                 id: Some(id),
                 method: Some(method),
-                params: Some(params),
+                params,
                 ..
             } => {
                 let request = Request {
                     jsonrpc,
                     id,
                     method,
-                    params,
+                    params
                 };
                 Ok(Message::Request(request))
             }
@@ -153,7 +151,7 @@ pub struct Request {
     pub jsonrpc: String,
     pub id: u32,
     pub method: String,
-    pub params: Params,
+    pub params: Option<Params>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
