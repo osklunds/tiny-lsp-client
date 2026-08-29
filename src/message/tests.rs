@@ -399,6 +399,56 @@ fn decode_response_with_result_and_error() {
 }
 
 #[test]
+fn decode_response_with_extra_fields() {
+    let json: serde_json::Value = json!({
+        "extra": 2,
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": [
+            {
+                "extra": {
+                    "end": 2,
+                },
+                "range": {
+                    "end": {
+                        "character": 20,
+                        "line": 4
+                    },
+                    "start": {
+                        "character": 6,
+                        "line": 4
+                    }
+                },
+                "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+            }
+        ]
+    });
+
+    let decoded = Message::Response(Response {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        result: Some(Result::TextDocumentDefinitionResult(
+            DefinitionResult::LocationList(vec![Location {
+                uri: "file:///tiny-lsp-client/test/clangd/main.cpp".to_string(),
+                range: Range {
+                    start: Position {
+                        line: 4,
+                        character: 6,
+                    },
+                    end: Position {
+                        line: 4,
+                        character: 20,
+                    },
+                },
+            }]),
+        )),
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}
+
+#[test]
 fn decode_unkown() {
     // A request/notification has method
     // A response has result OR error (reminder: if both are allowed to be none
