@@ -151,3 +151,34 @@ fn completion_result_completion_items() {
 
     assert_json_decodes_into(json, decoded);
 }
+
+#[test]
+fn message_request_response_notification_variants() {
+    let json: serde_json::Value = json!({
+        "jsonrpc": "2.0",
+        "id": 123,
+        "result": {
+            "items": [
+                {
+                    "label": "some_label",
+                }
+            ]
+        }
+    });
+
+    let decoded = Message::Response(Response {
+        id: 123,
+        result: Some(Result::TextDocumentCompletionResult(
+            CompletionResult::CompletionList(CompletionList {
+                items: vec![CompletionItem {
+                    label: "some_label".to_string(),
+                    insert_text: None,
+                    text_edit: None,
+                }],
+            }),
+        )),
+        error: None,
+    });
+
+    assert_json_decodes_into(json, decoded);
+}

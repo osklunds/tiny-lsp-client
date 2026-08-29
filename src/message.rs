@@ -21,18 +21,102 @@
 #[cfg(test)]
 mod tests;
 
+use serde::de::Error;
 use serde::Deserialize;
+use serde::Deserializer;
 use serde::Serialize;
 
 // Keeping a simple constant until I see signs it needs to be dynamic
 pub const LANGUAGE_ID: &'static str = "languageId";
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+struct RawMessage {
+    // All
+    pub jsonrpc: String,
+
+    // Request and Response
+    pub id: Option<u32>,
+
+    // Request and Notification
+    pub method: Option<String>,
+
+    // Request
+    pub request_params: Option<RequestParams>,
+
+    // Notification
+    pub notification_params: Option<NotificationParams>,
+
+    // Response
+    pub result: Option<Result>,
+    pub error: Option<ResponseError>,
+}
+
+#[derive(PartialEq, Debug, Serialize, Clone)]
 #[serde(untagged)]
 pub enum Message {
     Request(Request),
     Response(Response),
     Notification(Notification),
+}
+
+impl<'d> Deserialize<'d> for Message {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'d>,
+    {
+        let raw_message = RawMessage::deserialize(deserializer)?;
+
+        let jsonrpc = raw_message.jsonrpc;
+
+        match raw_message {
+            RawMessage {
+                id: Some(id),
+                method: Some(method),
+                request_params: Some(params),
+                ..
+            } => {
+                let request = Request {
+                    jsonrpc,
+                    id,
+                    method,
+                    params,
+                };
+                Ok(Message::Request(request))
+            }
+            RawMessage {
+                id: Some(id),
+                result: Some(result),
+                error,
+                ..
+            } => {
+                let response = Response {
+                    id,
+                    result: Some(result),
+                    error,
+                };
+                Ok(Message::Response(response))
+            }
+            _ => Err(D::Error::custom("todo add fields")),
+        }
+
+        // // Request or Response
+        // if let Some(_id) = raw_message.id {
+        //     return Err(D::Error::custom("invalid user age"));
+        // }
+        // // Notification
+        // else {
+        //     if let Some(params) = raw_message.notification_params {
+        //         let notification = Notification {
+        //             jsonrpc,
+        //             method: raw_message.method.unwrap(),
+        //             params,
+        //         };
+        //         Ok(Message::Notification(notification))
+        //     } else {
+        //         return Err(D::Error::custom("invalid user age"));
+        //     }
+        // }
+    }
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -270,5 +354,5 @@ pub struct HoverResult {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct MarkupContent {
-    pub value: String
+    pub value: String,
 }
