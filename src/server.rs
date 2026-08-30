@@ -532,19 +532,61 @@ impl Server {
                 }
             }
         });
-        self.send_request(
+        let id = match self.send_request(
             "initialize".to_string(),
             Params::Untyped(initialize_params),
-        )?;
+        ) {
+            Some(id) => id,
+            None => {
+                logger::log_rust_debug!(
+                    "initialize/send_request failed. {}",
+                    self.root_path
+                );
+                return None;
+            }
+        };
 
-        self.recv_response()?;
+        let response =
+            match self.try_recv_response(Some(Duration::from_millis(5000))) {
+                None => {
+                    logger::log_rust_debug!(
+                        "initialize/try_recv_response failed {}",
+                        self.root_path
+                    );
+                    return None;
+                }
+                Some(None) => {
+                    logger::log_rust_debug!(
+                        "initialize/try_recv_response timeout {}",
+                        self.root_path
+                    );
+                    return None;
+                }
+                Some(Some(response)) => response,
+            };
 
-        self.send_notification(
+        if response.id != id {
+            logger::log_rust_debug!(
+                "initialize/incorrect response {} {:?}",
+                self.root_path,
+                response
+            );
+            return None;
+        }
+
+        match self.send_notification(
             "initialized".to_string(),
             Params::Untyped(json!({})),
-        )?;
-
-        Some(())
+        ) {
+            Some(()) => Some(()),
+            None => {
+                logger::log_rust_debug!(
+                    "initialize/send_notification failed {}",
+                    self.root_path
+                );
+                None
+            }
+        }
     }
 
     // all these should return Option. If None, then lib should close server

@@ -238,7 +238,6 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 *** High priority
 
 - [Functionality] Support lsp rename
-- [Robustness] Timeout when starting server. If no initialize response after custom time, default 5 seconds, kill the server and consider start failed.
 
 *** Low priority
 
