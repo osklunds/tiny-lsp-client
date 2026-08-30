@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t; -*-
+
 ;; Copyright (C) 2025 Oskar Lundström
 
 ;; This file is part of tiny-lsp-client.

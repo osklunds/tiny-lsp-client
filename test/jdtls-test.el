@@ -1,4 +1,4 @@
-;; -*- lexical-binding: nil -*-
+;;; -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2025 Oskar Lundström
 
