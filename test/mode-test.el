@@ -1589,6 +1589,9 @@ short other_function(int arg)" (get-eldoc-msg)))
   )
 
 (tlc-deftest start-server-timeout ()
+  ;; To speed up test and get test coverage on changing it
+  (customize-set-variable 'tlc-server-start-timeout 500)
+
   (setq timeout-string "initialize/recv_response timeout")
   (assert-equal 0 (count-in-log-file timeout-string))
 
@@ -1604,4 +1607,8 @@ short other_function(int arg)" (get-eldoc-msg)))
                   (apply #'format message-args))
     )
   (assert-equal 1 (count-in-log-file "initialize/recv_response timeout"))
+
+  ;; Best-effort attemt to let other tests have default value.
+  ;; Some of them becamse unstable with lower value.
+  (customize-set-variable 'tlc-server-start-timeout 5000)
   )

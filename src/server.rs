@@ -512,7 +512,7 @@ impl Server {
         return None;
     }
 
-    pub fn initialize(&mut self) -> Option<()> {
+    pub fn initialize(&mut self, timeout: Duration) -> Option<()> {
         let root_uri = format!("file://{}", self.root_path);
 
         // todo: consider what to send here, especially for completion
@@ -547,7 +547,7 @@ impl Server {
         };
 
         let response =
-            match self.recv_response(Some(Duration::from_millis(5000))) {
+            match self.recv_response(Some(timeout)) {
                 None => {
                     logger::log_rust_debug!(
                         "initialize/recv_response failed {}",

@@ -67,8 +67,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        1,
-        1,
+        2,
+        2,
         tlc__rust_start_server,
         "tlc--rust-start-server",
     );
@@ -165,7 +165,7 @@ unsafe extern "C" fn tlc__rust_start_server(
         args,
         true,
         "tlc__rust_start_server",
-        |(server_key,)| {
+        |(server_key, timeout_ms): (ServerKey, u64)| {
             servers::with_servers(|servers| {
                 if servers.contains_key(&server_key) {
                     return Symbol("already-started".to_string());
@@ -174,7 +174,9 @@ unsafe extern "C" fn tlc__rust_start_server(
                 }
                 match Server::new(&server_key.root_path, &server_key.server_cmd)
                 {
-                    Some(mut server) => match server.initialize() {
+                    Some(mut server) => match server
+                        .initialize(Duration::from_millis(timeout_ms))
+                    {
                         Some(()) => {
                             servers.insert(server_key, server);
                             Symbol("started".to_string())

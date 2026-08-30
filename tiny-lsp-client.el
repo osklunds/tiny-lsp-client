@@ -59,6 +59,12 @@
 ;; the critical path and converting lisp list to vec everytime is too
 ;; expensive.
 
+(defcustom tlc-server-start-timeout 5000
+  "The timeout in milliseconds for how long to wait for the LSP server to
+respond to the initialize message."
+  :group 'tiny-lsp-client
+  :type 'integer)
+
 (defcustom tlc-find-root-function 'tlc-find-root-default-function
   "Function used for finding the root path of a project."
   :group 'tiny-lsp-client
@@ -222,7 +228,7 @@ obvious that they happen."
   (if (cl-member (tlc--server-key) (tlc--all-server-keys) :test 'equal)
       (message "Connected to already started '%s' in '%s'" (tlc--server-cmd) (tlc--root))
     (tlc--run-hooks 'tlc-before-start-server-hook)
-    (let* ((result (tlc--rust-start-server (tlc--server-key))))
+    (let* ((result (tlc--rust-start-server (tlc--server-key) tlc-server-start-timeout)))
       (tlc--log "Start server result: %s" result)
       (pcase result
         ;; normal case

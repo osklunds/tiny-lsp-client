@@ -29,7 +29,7 @@ fn initialize() {
     )
     .unwrap();
 
-    server.initialize();
+    server.initialize(Duration::from_secs(60));
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn did_open_change_close_and_definition() {
     let cwd = env::current_dir().unwrap().display().to_string();
 
     let mut server = Server::new(&cwd, "rust-analyzer").unwrap();
-    server.initialize();
+    server.initialize(Duration::from_secs(60));
 
     // todo: skip using dummy.rs, use the one from test/rust_analyzer instead
     let dummy_file_path = format!("{}/src/dummy.rs", cwd);

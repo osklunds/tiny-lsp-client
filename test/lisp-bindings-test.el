@@ -96,44 +96,44 @@
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
-    (tlc--rust-start-server 'hello))
+    (tlc--rust-start-server 'hello 5000))
   (sleep-for 1)
   (assert-equal 1 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, but not a list"
-    (tlc--rust-start-server "hello"))
+    (tlc--rust-start-server "hello" 5000))
   (assert-equal 2 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 1"
-    (tlc--rust-start-server '("hello")))
+    (tlc--rust-start-server '("hello") 5000))
   (assert-equal 3 (number-of-top-level-fails))
   (assert-equal 0 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (assert-error 'stringp
-    (tlc--rust-start-server '("hello" hello)))
+    (tlc--rust-start-server '("hello" hello) 5000))
   (assert-equal 4 (number-of-top-level-fails))
   (assert-equal 1 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (assert-error 'stringp
-    (tlc--rust-start-server '(hello "hello")))
+    (tlc--rust-start-server '(hello "hello") 5000))
   (assert-equal 5 (number-of-top-level-fails))
   (assert-equal 2 (number-of-non-local-exit))
 
   ;; FromLisp, manually raised error
   (assert-error "In check_tuple, exp_arity: 2, arity: 3"
-    (tlc--rust-start-server '(hello "hello" "hello")))
+    (tlc--rust-start-server '(hello "hello" "hello") 5000))
   (assert-equal 6 (number-of-top-level-fails))
   (assert-equal 2 (number-of-non-local-exit))
 
   ;; FromLisp, error in called lisp function
   (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
-    (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello"))))
+    (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello") 5000)))
   (assert-equal 7 (number-of-top-level-fails))
   (assert-equal 3 (number-of-non-local-exit))
 
@@ -141,25 +141,27 @@
   (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _)
                                                (error "error-in-symbol-name"))))
     (assert-error "error-in-symbol-name"
-      (tlc--rust-start-server '("hello" "hello"))))
+      (tlc--rust-start-server '("hello" "hello") 5000)))
   (assert-equal 8 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
 
-  (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)))
+  (assert-equal 'start-failed (tlc--rust-start-server (list "/doesnt/exist" server-cmd)
+                                                      5000))
 
-  (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")))
+  (assert-equal 'start-failed (tlc--rust-start-server (list root-path "doesnt_exist")
+                                                      5000))
 
   (let* ((number-of-args (lambda ()
                            (count-in-log-file
                             (format
-                             "tlc__rust_start_server arguments (1) : ((%S %S))"
+                             "tlc__rust_start_server arguments (2) : ((%S %S) 5000)"
                              root-path server-cmd))))
          (number-of-rets (lambda ()
                            (count-in-log-file
                             "tlc__rust_start_server return value: 'started'"))))
     (assert-equal 0 (funcall number-of-args))
     (assert-equal 0 (funcall number-of-rets))
-    (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd)))
+    (assert-equal 'started (tlc--rust-start-server (list root-path server-cmd) 5000))
     (assert-equal 1 (funcall number-of-args) "arg")
     (assert-equal 1 (funcall number-of-rets) "ret"))
 
@@ -175,7 +177,7 @@
     (x
      (error "unexpected return: %s" x)))
 
-  (assert-equal 'already-started (tlc--rust-start-server (list root-path server-cmd)))
+  (assert-equal 'already-started (tlc--rust-start-server (list root-path server-cmd) 5000))
 
   (message "Server started")
 
