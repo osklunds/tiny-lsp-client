@@ -247,7 +247,6 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 - [Code quality] Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait? Maybe emacs-module-rs does it in a smart way?
 - [Code quality] Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
 - [Performance] Remove duplicate completions in Rust code.
-- [Performance] Improve the =servers::with_servers()= API to not call =server::is_working()= on all servers, only for the =ServerKey= requested, to prevent linear slow down when many servers.
 - [Robustness] Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
 - [Robustness] In general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
 - [Robustness] Time out for all calls towards rust. Or at least, make sure all existing calls return quickly and can't freeze. Starting a new server can freeze if the server cmd never sends an initialize response.

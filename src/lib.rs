@@ -628,20 +628,11 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     server_key: ServerKey,
     function: F,
 ) -> RustCallResult<T> {
-    servers::with_servers(|servers| {
-        if let Some(ref mut server) = &mut servers.get_mut(&server_key) {
-            if let Some(result) = function(server) {
-                RustCallResult::Any(result)
-            } else {
-                // This means it failed during handling this call
-                servers.remove(&server_key);
-                RustCallResult::Symbol("no-server")
-            }
-        } else {
-            // This means the server wasn't existing before this call
-            RustCallResult::Symbol("no-server")
-        }
-    })
+    servers::with_server(
+        |server| function(server).map(|result| RustCallResult::Any(result)),
+        server_key,
+        RustCallResult::Symbol("no-server"),
+    )
 }
 
 // To handle these in a more elegant and generic way, could use "Either"
