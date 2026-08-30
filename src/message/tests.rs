@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Oskar Lundström
+// Copyright (C) 2025-2026 Oskar Lundström
 
 // This file is part of tiny-lsp-client.
 
