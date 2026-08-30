@@ -547,17 +547,17 @@ impl Server {
         };
 
         let response =
-            match self.try_recv_response(Some(Duration::from_millis(5000))) {
+            match self.recv_response(Some(Duration::from_millis(5000))) {
                 None => {
                     logger::log_rust_debug!(
-                        "initialize/try_recv_response failed {}",
+                        "initialize/recv_response failed {}",
                         self.root_path
                     );
                     return None;
                 }
                 Some(None) => {
                     logger::log_rust_debug!(
-                        "initialize/try_recv_response timeout {}",
+                        "initialize/recv_response timeout {}",
                         self.root_path
                     );
                     return None;
@@ -626,19 +626,11 @@ impl Server {
         }
     }
 
-    pub fn recv_response(&self) -> Option<Response> {
-        if let Ok(response) = self.receiver.recv() {
-            Some(response)
-        } else {
-            None
-        }
-    }
-
     // timeout: if None, no timeout, return immediately if no response.
     // Otherwise, don't return until timeout has passed.
     // Outer Option (like the other methods) represents error or not. Inner
     // Option represents wheether a response is available now or not.
-    pub fn try_recv_response(
+    pub fn recv_response(
         &self,
         timeout: Option<Duration>,
     ) -> Option<Option<Response>> {

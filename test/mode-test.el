@@ -1589,7 +1589,7 @@ short other_function(int arg)" (get-eldoc-msg)))
   )
 
 (tlc-deftest start-server-timeout ()
-  (setq timeout-string "initialize/try_recv_response timeout")
+  (setq timeout-string "initialize/recv_response timeout")
   (assert-equal 0 (count-in-log-file timeout-string))
 
   ;; Disble debug-on-error, otherwise find-file's error can't be caught,
@@ -1603,5 +1603,5 @@ short other_function(int arg)" (get-eldoc-msg)))
     (assert-equal "File mode specification error: (error Failed to start 'sleep 1000' in '/tiny-lsp-client/test/clangd/'. Check log for details.)"
                   (apply #'format message-args))
     )
-  (assert-equal 1 (count-in-log-file "initialize/try_recv_response timeout"))
+  (assert-equal 1 (count-in-log-file "initialize/recv_response timeout"))
   )

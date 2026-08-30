@@ -415,7 +415,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 } else {
                     Some(Duration::from_millis(timeout))
                 };
-                if let Some(recv_result) = server.try_recv_response(timeout) {
+                if let Some(recv_result) = server.recv_response(timeout) {
                     let result = match recv_result {
                         Some(response) => RustCallResult::Any(
                             handle_response::<u32>(response),
