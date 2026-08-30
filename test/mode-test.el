@@ -17,8 +17,6 @@
 ;; You should have received a copy of the GNU General Public License along with
 ;; tiny-lsp-client. If not, see <https:;;www.gnu.org/licenses/>.
 
-;;;  -*- lexical-binding: t; -*-
-
 ;; Tests focusing on tlc-mode itself, not specific to any LSP server. Using
 ;; clangd since it's faster to start than rust-analyzer.
 
