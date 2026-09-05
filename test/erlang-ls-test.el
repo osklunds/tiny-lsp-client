@@ -143,7 +143,10 @@ my_function(Arg) ->
   (setq saved-point (point))
   (run-until 100 0.1
     (goto-char saved-point)
-    (non-interactive-xref-find-definitions)
+    ;; Decrease max-eval-depth in case LSP server errors out, makes
+    ;; the test faster
+    (let* ((max-eval-depth 100))
+      (non-interactive-xref-find-definitions))
     (assert-equal 5 (line-number-at-pos))
     (assert-equal 0 (current-column)))
 
