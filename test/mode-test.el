@@ -1602,7 +1602,7 @@ short other_function(int arg)" (get-eldoc-msg)))
     (cl-letf (((symbol-function 'message) (lambda (&rest args) (setq message-args args))))
       (find-file (relative-repo-root "test" "clangd" "main.cpp"))
       )
-    (assert-equal "File mode specification error: (error Failed to start 'sleep 1000' in '/tiny-lsp-client/test/clangd/'. Check log for details.)"
+    (assert-equal "File mode specification error: (error \"Failed to start 'sleep 1000' in '/tiny-lsp-client/test/clangd/'. Check log for details.\")"
                   (apply #'format message-args))
     )
   (assert-equal 1 (count-in-log-file "initialize/recv_response timeout"))
