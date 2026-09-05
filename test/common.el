@@ -247,7 +247,7 @@ this common file. Is used to differentiate log file names.")
        )))
 
 (defun cargo-target-dir ()
-  (if-let ((dir (getenv "CARGO_TARGET_DIR")))
+  (if-let* ((dir (getenv "CARGO_TARGET_DIR")))
       dir
     (relative-repo-root "target")))
 

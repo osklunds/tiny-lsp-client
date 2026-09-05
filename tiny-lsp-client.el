@@ -278,7 +278,7 @@ obvious that they happen."
     (tlc--notify-text-document-did-open)))
 
 (defun tlc--notify-text-document-did-open ()
-  (let* ((revert revert-buffer-in-progress-p)
+  (let* ((revert revert-buffer-in-progress)
          (content (tlc--widen
                    (buffer-substring-no-properties (point-min) (point-max)))))
     (tlc--log "didOpen. File: %s Revert in progress: %s."
@@ -323,12 +323,12 @@ obvious that they happen."
 
 ;; todo: lsp-mode becomes disabled if rust-mode becomes disabled, but something
 ;; like this wasn't needed. Why? Eglot has it too though, but doesn't check
-;; revert-buffer-in-progress-p
+;; revert-buffer-in-progress
 (defun tlc--change-major-mode-hook ()
   (tlc--log "tlc--change-major-mode-hook called. tlc-mode: %s. Revert in progress: %s"
             tlc-mode
-            revert-buffer-in-progress-p)
-  (unless revert-buffer-in-progress-p
+            revert-buffer-in-progress)
+  (unless revert-buffer-in-progress
     (tlc-mode -1)))
 
 ;; -----------------------------------------------------------------------------
@@ -338,14 +338,14 @@ obvious that they happen."
 (defvar-local tlc--change nil)
 
 (defun tlc--before-change-hook (beg end)
-  (tlc--log "tlc--before-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+  (tlc--log "tlc--before-change-hook called (%s %s). revert-buffer-in-progress: %s. tlc--change: %s."
             beg
             end
-            revert-buffer-in-progress-p
+            revert-buffer-in-progress
             tlc--change)
   ;; If revert in progress, it can happen that didChange is sent before didOpen,
   ;; when discarding changes in magit
-  (unless revert-buffer-in-progress-p
+  (unless revert-buffer-in-progress
     (if tlc--change
         ;; If there already is a tlc--change it means before-change and
         ;; after-change were not called as a balanced pair. So send full
@@ -376,14 +376,14 @@ obvious that they happen."
      2))
 
 (defun tlc--after-change-hook (beg end _pre-change-length)
-  (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress-p: %s. tlc--change: %s."
+  (tlc--log "tlc--after-change-hook called (%s %s). revert-buffer-in-progress: %s. tlc--change: %s."
             beg
             end
-            revert-buffer-in-progress-p
+            revert-buffer-in-progress
             tlc--change)
   ;; if revert in progress, it can happen that didChange is sent before didOpen
   ;; when discarding changes in magit
-  (unless revert-buffer-in-progress-p
+  (unless revert-buffer-in-progress
     (if tlc--change
         (let* ((start-line      (nth 0 tlc--change))
                (start-character (nth 1 tlc--change))
@@ -428,7 +428,7 @@ obvious that they happen."
 ;; @credits: Reqeust/response mechanism inspired by
 ;; https://github.com/zbelial/lspce
 (defun tlc--request (method arguments rust-timeout emacs-timeout interruptible)
-  (when-let ((request-id (tlc--send-request method arguments (tlc--server-key))))
+  (when-let* ((request-id (tlc--send-request method arguments (tlc--server-key))))
     (tlc--wait-for-response request-id (tlc--server-key)
                             rust-timeout emacs-timeout interruptible)))
 
@@ -682,7 +682,7 @@ as usual."
                      'require-match
                      nil
                      'tlc-stop-server
-                     (when-let ((key (and tlc-mode (tlc--server-key))))
+                     (when-let* ((key (and tlc-mode (tlc--server-key))))
                        (tlc--server-key-to-completion key))))))
 
 (defun tlc--stop-server (&optional server-key nowarn-not-found)
@@ -792,7 +792,7 @@ seems to accept URIs that are not encoded properly."
   "The initial fetch of the root for this buffer. Cache the root since if it
 changes for a buffer, the server needs to be restarted anyway."
   (setq tlc--root
-        (when-let ((root (funcall tlc-find-root-function)))
+        (when-let* ((root (funcall tlc-find-root-function)))
           (file-truename root))))
 
 (defun tlc--root ()
@@ -811,7 +811,7 @@ a nil root is OK."
   "Get root directory using project.el."
   (tlc--log "tlc-find-root-default-function '%s' '%s'"
             default-directory (project-current))
-  (when-let ((project (project-current)))
+  (when-let* ((project (project-current)))
     (project-root project)))
 
 ;;;; ---------------------------------------------------------------------------
