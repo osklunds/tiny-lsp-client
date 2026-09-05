@@ -953,9 +953,8 @@ void last_function() {
   (assert-equal '(tlc-xref-backend t) xref-backend-functions)
 
   ;; Act
-  (should-error
-   (non-interactive-xref-find-definitions)
-   :type 'cl-no-applicable-method)
+  (assert-error "No definitions found for: other_function"
+   (non-interactive-xref-find-definitions))
 
   ;; Assert
   (assert-equal 11 (line-number-at-pos))

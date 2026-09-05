@@ -526,9 +526,8 @@ as usual."
 
 ;; @credits: Inspired from https://github.com/emacs-lsp/lsp-mode 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql xref-tlc)))
-  (when tlc-mode
-    (propertize (or (thing-at-point 'symbol) "")
-                'identifier-at-point t)))
+  (propertize (or (thing-at-point 'symbol) "")
+              'identifier-at-point t))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql xref-tlc)) _identifier)
   (when tlc-mode
