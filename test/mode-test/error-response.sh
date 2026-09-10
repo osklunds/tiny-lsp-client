@@ -10,5 +10,21 @@ send() {
 
 send '{"id":0,"jsonrpc": "2.0","result":{}}'
 
+send '{"id":1,"jsonrpc": "2.0","result":[
+    {
+      "range": {
+        "end": {
+          "character": 10,
+          "line": 4
+        },
+        "start": {
+          "character": 10,
+          "line": 4
+        }
+      },
+      "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+    }
+  ]}'
+
 sleep 1000
 

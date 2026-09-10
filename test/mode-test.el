@@ -1618,4 +1618,9 @@ short other_function(int arg)" (get-eldoc-msg)))
   (let* ((server-cmd (file-name-concat default-directory "mode-test" "error-response.sh"))
          (tlc-server-cmds `((c++-mode . ,server-cmd))))
     (find-file (relative-repo-root "test" "clangd" "main.cpp")))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 10 (current-column))
+
   )
