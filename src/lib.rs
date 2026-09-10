@@ -635,9 +635,9 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     )
 }
 
-// To handle these in a more elegant and generic way, could use "Either"
-// "Either3" and so on, to handle the union types. But the problem is FromLisp.
-// See the comment in FromLisp::from_lisp for SendNotificationParameters.
+// The fundamental issue is that you need strong pre-defined types, to not spread the
+// unsafe into lisp conversion everywhere. But with strong pre-defined types,
+// you need to, well, pre-define all possible values.
 enum RustCallResult<A: IntoLisp> {
     Symbol(&'static str),
     Any(A),
