@@ -26,5 +26,30 @@ send '{"id":1,"jsonrpc": "2.0","result":[
     }
   ]}'
 
+send '{
+  "error": {
+    "code": -32801,
+    "message": "some error"
+  },
+  "id": 2,
+  "jsonrpc": "2.0"
+}'
+
+send '{"id":3,"jsonrpc": "2.0","result":[
+    {
+      "range": {
+        "end": {
+          "character": 5,
+          "line": 2
+        },
+        "start": {
+          "character": 5,
+          "line": 2
+        }
+      },
+      "uri": "file:///tiny-lsp-client/test/clangd/main.cpp"
+    }
+  ]}'
+
 sleep 1000
 

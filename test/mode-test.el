@@ -1623,4 +1623,16 @@ short other_function(int arg)" (get-eldoc-msg)))
   (assert-equal 5 (line-number-at-pos))
   (assert-equal 10 (current-column))
 
+  ;; Need to call internal function so that response is ignored
+  ;; Simulates that user send xref, but server is slow, so user aborted,
+  ;; then an error response is available in the recv channel.
+  ;; For completion, probably this scenario is even more likely, due to
+  ;; "error modified"
+  (tlc--send-request
+   "textDocument/definition"
+   (list "uri" 5 10)
+   (tlc--server-key))
+
+  (non-interactive-xref-find-definitions)
+
   )
