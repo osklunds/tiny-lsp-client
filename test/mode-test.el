@@ -954,7 +954,7 @@ void last_function() {
 
   ;; Act
   (assert-error "No definitions found for: other_function"
-   (non-interactive-xref-find-definitions))
+    (non-interactive-xref-find-definitions))
 
   ;; Assert
   (assert-equal 11 (line-number-at-pos))
@@ -1610,4 +1610,12 @@ short other_function(int arg)" (get-eldoc-msg)))
   ;; Best-effort attemt to let other tests have default value.
   ;; Some of them becamse unstable with lower value.
   (customize-set-variable 'tlc-server-start-timeout 5000)
+  )
+
+(tlc-deftest error-response ()
+  (customize-set-variable 'tlc-server-start-timeout 500)
+
+  (let* ((server-cmd (file-name-concat default-directory "mode-test" "error-response.sh"))
+         (tlc-server-cmds `((c++-mode . ,server-cmd))))
+    (find-file (relative-repo-root "test" "clangd" "main.cpp")))
   )
