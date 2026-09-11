@@ -475,6 +475,7 @@ as usual."
       (`(2 ,_params) (progn
                       (message "null-result from LSP server")
                       nil))
+      ;; todo: test coverage
       (`(3 ,_params) (progn
                       (message "error from LSP server")
                       nil))
