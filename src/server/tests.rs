@@ -17,10 +17,13 @@
 
 use super::*;
 use std::env;
+use std::fs;
+use regex::Regex;
 
 #[test]
 fn initialize() {
-    logger::set_log_file_name("/tmp/tiny-lsp-client.log");
+    let log_path = "/tmp/tiny-lsp-client.log";
+    logger::set_log_file_name(log_path);
 
     let mut server = Server::new(
         &env::current_dir().unwrap().display().to_string(),
@@ -28,5 +31,8 @@ fn initialize() {
     )
     .unwrap();
 
-    server.initialize(Duration::from_secs(60));
+    server.initialize(Duration::from_secs(60)).unwrap();
+
+    let log_content = fs::read_to_string(log_path).unwrap();
+    assert!(!Regex::new(r"STDERR").unwrap().is_match(&log_content));
 }
