@@ -471,13 +471,13 @@ as usual."
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
       ;; normal case - response, 1 of 3 types
-      (`("result" ,params) params)
-      (`("null-result" _) (progn
-                            (message "null-result from LSP server")
-                            nil))
-      (`("error" _) (progn
-                      (message "error from LSP server")
-                      nil))
+      (`(1 ,params) params)
+      ('(2 _) (progn
+                (message "null-result from LSP server")
+                nil))
+      ('(3 _) (progn
+                (message "error from LSP server")
+                nil))
 
       ;; normal case - no response yet
       ('no-response

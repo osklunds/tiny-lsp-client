@@ -434,7 +434,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
 
 fn handle_response(
     response: Response,
-) -> RustCallResult<(String, ResponseParams)> {
+) -> RustCallResult<(u32, ResponseParams)> {
     if let Some(result) = response.result {
         match result {
             Result::Untyped(_) => {
@@ -446,10 +446,7 @@ fn handle_response(
             }
             Result::NullResult => {
                 // Happens e.g. when rust-analyzer doesn't send any completion result
-                RustCallResult::Any((
-                    "null-result".to_string(),
-                    ResponseParams::Null,
-                ))
+                RustCallResult::Any((2, ResponseParams::Null))
             }
             _ => {
                 let params = match result {
@@ -470,11 +467,11 @@ fn handle_response(
                     }
                     _ => panic!("case already handled"),
                 };
-                RustCallResult::Any(("result".to_string(), params))
+                RustCallResult::Any((1, params))
             }
         }
     } else {
-        RustCallResult::Any(("error".to_string(), ResponseParams::Error))
+        RustCallResult::Any((3, ResponseParams::Error))
     }
 }
 
