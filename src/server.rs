@@ -662,6 +662,12 @@ impl Server {
             };
             // If response to a previous request, keep looping inside Rust code
             if response.id < id {
+                logger::log_rust_debug!(
+                    "Old id. Looking for {} got {}. {}",
+                    id,
+                    response.id,
+                    self.root_path
+                );
                 continue;
             } else if response.id > id {
                 return RecvResult::TooBigId;

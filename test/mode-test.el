@@ -1631,10 +1631,11 @@ short other_function(int arg)" (get-eldoc-msg)))
    (list "uri" 5 10)
    (tlc--server-key))
 
-  ;; todo: check log
-
   (non-interactive-xref-find-definitions)
+  (assert-equal 3 (line-number-at-pos))
+  (assert-equal 5 (current-column))
 
+  (assert-equal 1 (count-in-log-file "Old id. Looking for 3 got 2"))
   )
 
 (tlc-deftest lisp-rust-conversion ()
