@@ -470,24 +470,14 @@ as usual."
                      request-id server-key rust-timeout emacs-timeout interruptible))))
     (tlc--log "tlc--rust-recv-response return: %s" return)
     (pcase return
-      ;; normal case - response has arrived
-      (`(response ,id ,has-result ,params)
-       (cond
-        ;; alternative but valid case - response to old request
-        ((< id request-id) (funcall continue))
-
-        ;; bug case - response to request id not yet sent
-        ((> id request-id) (progn
-                             (tlc--log "too big id '%s' '%s' '%s'"
-                                       id request-id server-key)
-                             (error "too big id")))
-
-        ;; normal case - response to current request
-        ;; todo: for now, has-result=nil is re-interpreted as params=nil which
-        ;; happens to work for textDocument/definition and
-        ;; textDocument/completion but it might not be the case in the future
-        ;; for all responses
-        (t                 (when has-result params))))
+      ;; normal case - response, 1 of 3 types
+      (`("result" ,params) params)
+      (`("null-result" _) (progn
+                            (message "null-result from LSP server")
+                            nil))
+      (`("error" _) (progn
+                      (message "error from LSP server")
+                      nil))
 
       ;; normal case - no response yet
       ('no-response
@@ -504,22 +494,24 @@ as usual."
            (sleep-for emacs-timeout))
          (funcall continue)))
 
-      ;; alternative but valid case - some error response
+      ;; alternative but valid case - server behaves badly
       ;; For now, just return nil, because all 3 callers can handle it.
-      ('error-response (progn
-                         (tlc--log
-                          "error-response in tlc--wait-for-response '%s' '%s'"
-                          request-id server-key)
-                         nil))
+      ;; todo: test coverage
+      ('too-big-id (progn
+                     (tlc--log
+                      "too-big-id in tlc--wait-for-response '%s' '%s'"
+                      request-id server-key)
+                     nil))
 
       ;; alternative but valid case - server crashed/stopped while waiting
       ;; for response. After server maybe restarted, exit.
+      ;; todo: test coverage
       ('no-server (progn
                     (tlc--ask-start-server)
                     (error "")))
 
       ;; bug case - bad return
-      (_ (error "bad return"))
+      (val (error "bad return %S" val))
       )))
 
 ;; -----------------------------------------------------------------------------
