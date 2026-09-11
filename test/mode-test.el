@@ -1613,8 +1613,6 @@ short other_function(int arg)" (get-eldoc-msg)))
   )
 
 (tlc-deftest error-response ()
-  (customize-set-variable 'tlc-server-start-timeout 500)
-
   (let* ((server-cmd (file-name-concat default-directory "mode-test" "error-response.sh"))
          (tlc-server-cmds `((c++-mode . ,server-cmd))))
     (find-file (relative-repo-root "test" "clangd" "main.cpp")))
