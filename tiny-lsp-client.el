@@ -472,10 +472,10 @@ as usual."
     (pcase return
       ;; normal case - response, 1 of 3 types
       (`(1 ,params) params)
-      (`(2 ,params) (progn
+      (`(2 ,_params) (progn
                       (message "null-result from LSP server")
                       nil))
-      (`(3 ,params) (progn
+      (`(3 ,_params) (progn
                       (message "error from LSP server")
                       nil))
 
