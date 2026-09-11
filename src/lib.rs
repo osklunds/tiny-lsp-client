@@ -31,6 +31,7 @@ mod servers;
 use crate::emacs::*;
 use crate::message::*;
 use crate::server::Server;
+use crate::server::RecvResult;
 use crate::servers::ServerKey;
 
 use std::backtrace::Backtrace;
@@ -83,8 +84,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        2,
-        2,
+        3,
+        3,
         tlc__rust_recv_response,
         "tlc--rust-recv-response",
     );
@@ -410,23 +411,23 @@ unsafe extern "C" fn tlc__rust_recv_response(
         args,
         true,
         "tlc__rust_recv_response",
-        |(server_key, timeout): (ServerKey, u64)| {
+        |(server_key, id, timeout): (ServerKey, u32, u64)| {
             handle_call(server_key, |server| {
-                let timeout = if timeout == 0 {
-                    None
-                } else {
-                    Some(Duration::from_millis(timeout))
-                };
-                if let Some(recv_result) = server.recv_response(timeout) {
-                    let result = match recv_result {
-                        Some(response) => RustCallResult::Any(
-                            handle_response::<u32>(response),
-                        ),
-                        None => RustCallResult::Symbol("no-response"),
-                    };
-                    Some(result)
-                } else {
-                    None
+                let timeout = Duration::from_millis(timeout);
+                match server.recv_response(id, timeout) {
+                    RecvResult::Response(response) => {
+                        Some(handle_response::<u32>(response))
+                    },
+                    RecvResult::Timeout => {
+                        Some(RustCallResult::Symbol("no-response"))
+                    }
+                    RecvResult::TooBigId => {
+                        Some(RustCallResult::Symbol("too-big-id"))
+                    }
+                    // todo: How to test this clause?
+                    RecvResult::Disconnected => {
+                        None
+                    }
                 }
             })
         },

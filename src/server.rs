@@ -546,33 +546,30 @@ impl Server {
             }
         };
 
-        let response =
-            match self.recv_response(Some(timeout)) {
-                None => {
-                    logger::log_rust_debug!(
-                        "initialize/recv_response failed {}",
-                        self.root_path
-                    );
-                    return None;
-                }
-                Some(None) => {
-                    logger::log_rust_debug!(
-                        "initialize/recv_response timeout {}",
-                        self.root_path
-                    );
-                    return None;
-                }
-                Some(Some(response)) => response,
-            };
-
-        if response.id != id {
-            logger::log_rust_debug!(
-                "initialize/incorrect response {} {:?}",
-                self.root_path,
-                response
-            );
-            return None;
-        }
+        match self.recv_response(id, timeout) {
+            RecvResult::Disconnected => {
+                logger::log_rust_debug!(
+                    "initialize/recv_response failed (disconnected) {}",
+                    self.root_path
+                );
+                return None;
+            }
+            RecvResult::TooBigId => {
+                logger::log_rust_debug!(
+                    "initialize/recv_response failed (too big id) {}",
+                    self.root_path
+                );
+                return None;
+            }
+            RecvResult::Timeout => {
+                logger::log_rust_debug!(
+                    "initialize/recv_response timeout {}",
+                    self.root_path
+                );
+                return None;
+            }
+            RecvResult::Response(_) => (),
+        };
 
         match self.send_notification(
             "initialized".to_string(),
@@ -626,28 +623,51 @@ impl Server {
         }
     }
 
-    // timeout: if None, no timeout, return immediately if no response.
-    // Otherwise, don't return until timeout has passed.
-    // Outer Option (like the other methods) represents error or not. Inner
-    // Option represents wheether a response is available now or not.
-    pub fn recv_response(
-        &self,
-        timeout: Option<Duration>,
-    ) -> Option<Option<Response>> {
-        let res = if let Some(timeout) = timeout {
-            self.receiver.recv_timeout(timeout).map_err(|e| match e {
-                RecvTimeoutError::Timeout => TryRecvError::Empty,
-                RecvTimeoutError::Disconnected => TryRecvError::Disconnected,
-            })
-        } else {
-            self.receiver.try_recv()
-        };
-        if let Ok(response) = res {
-            Some(Some(response))
-        } else if let Err(TryRecvError::Empty) = res {
-            Some(None)
-        } else {
-            None
+    pub fn recv_response(&self, id: u32, timeout: Duration) -> RecvResult {
+        let start = Instant::now();
+        loop {
+            let remaining = if timeout.is_zero() {
+                timeout
+            } else {
+                // TODO: how to test this subtraction? So that not the reverse
+                // happens
+                timeout
+                    .checked_sub(start.elapsed())
+                    .unwrap_or(Duration::ZERO)
+            };
+
+            // Optimization if remaining is 0, because it's the capf flow, which
+            // needs to be as smooth as possible.
+            // TODO: Consider test coverage for all of these clauses
+            let response = if remaining.is_zero() {
+                match self.receiver.try_recv() {
+                    Ok(response) => response,
+                    Err(TryRecvError::Empty) => {
+                        return RecvResult::Timeout;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        return RecvResult::Disconnected;
+                    }
+                }
+            } else {
+                match self.receiver.recv_timeout(remaining) {
+                    Ok(response) => response,
+                    Err(RecvTimeoutError::Timeout) => {
+                        return RecvResult::Timeout;
+                    }
+                    Err(RecvTimeoutError::Disconnected) => {
+                        return RecvResult::Disconnected;
+                    }
+                }
+            };
+            // If response to a previous request, keep looping inside Rust code
+            if response.id < id {
+                continue;
+            } else if response.id > id {
+                return RecvResult::TooBigId;
+            } else {
+                return RecvResult::Response(response);
+            }
         }
     }
 
@@ -751,4 +771,12 @@ fn close_thread_actions(server_process: Arc<Mutex<Child>>, thread_name: &str) {
 // Maybe too offensive coding, but let's see how it turns out in practice.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap()
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RecvResult {
+    Response(Response),
+    Timeout,
+    TooBigId,
+    Disconnected,
 }

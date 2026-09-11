@@ -1633,6 +1633,8 @@ short other_function(int arg)" (get-eldoc-msg)))
    (list "uri" 5 10)
    (tlc--server-key))
 
+  ;; todo: check log
+
   (non-interactive-xref-find-definitions)
 
   )

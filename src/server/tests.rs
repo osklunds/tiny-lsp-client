@@ -60,11 +60,15 @@ fn did_open_change_close_and_definition() {
 
     // textDocument/definition
     // Use both with and without timeout to increase test coverage
-    assert_eq!(Some(None), server.recv_response(None));
     assert_eq!(
-        Some(None),
-        server.recv_response(Some(Duration::from_millis(100)))
+        RecvResult::Timeout,
+        server.recv_response(10, Duration::from_millis(0))
     );
+    assert_eq!(
+        RecvResult::Timeout,
+        server.recv_response(10, Duration::from_millis(100))
+    );
+
     let request_params = DefinitionParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         position: Position {
@@ -136,10 +140,11 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
         )
         .unwrap();
     assert_eq!(base_id, id);
-    let response = server
-        .recv_response(Some(Duration::from_secs(60)))
-        .unwrap()
-        .unwrap();
+    let RecvResult::Response(response) =
+        server.recv_response(id, Duration::from_secs(60))
+    else {
+        panic!();
+    };
     assert_definition_response(
         Range {
             start: Position {
@@ -168,10 +173,11 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
         )
         .unwrap();
     assert_eq!(base_id + 1, id);
-    let response = server
-        .recv_response(Some(Duration::from_secs(60)))
-        .unwrap()
-        .unwrap();
+    let RecvResult::Response(response) =
+        server.recv_response(id, Duration::from_secs(60))
+    else {
+        panic!();
+    };
     assert_definition_response(
         Range {
             start: Position {
@@ -253,10 +259,11 @@ TextDocumentContentChangeEvent::TextDocumentContentChangeEventIncremental(
         )
         .unwrap();
     assert_eq!(base_id + 2, id);
-    let response = server
-        .recv_response(Some(Duration::from_secs(60)))
-        .unwrap()
-        .unwrap();
+    let RecvResult::Response(response) =
+        server.recv_response(id, Duration::from_secs(60))
+    else {
+        panic!();
+    };
     assert_definition_response(
         Range {
             start: Position {
@@ -299,10 +306,11 @@ fn receive_until_definition_response_with_one_location_1(
         .unwrap();
     assert_eq!(current_id, id);
     let next_id = current_id + 1;
-    let response = server
-        .recv_response(Some(Duration::from_secs(60)))
-        .unwrap()
-        .unwrap();
+    let RecvResult::Response(response) =
+        server.recv_response(next_id, Duration::from_secs(60))
+    else {
+        panic!();
+    };
     if let Some(result) = &response.result {
         if let Result::TextDocumentDefinitionResult(result) = result {
             if let DefinitionResult::LocationLinks(result) = result {

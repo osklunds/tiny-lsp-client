@@ -464,7 +464,7 @@ integer, unit milliseconds. EMACS-TIMEOUT is the interruptible time between each
 wait call, interruptible both by C-g and any user input. The type is float, unit
 seconds. INTERRUPTIBLE means exit on user input. Otherwise, only exists on C-g
 as usual."
-  (let ((return (tlc--rust-recv-response server-key rust-timeout))
+  (let ((return (tlc--rust-recv-response server-key request-id rust-timeout))
         (continue (lambda ()
                     (tlc--wait-for-response
                      request-id server-key rust-timeout emacs-timeout interruptible))))
