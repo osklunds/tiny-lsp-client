@@ -1636,3 +1636,64 @@ short other_function(int arg)" (get-eldoc-msg)))
   (non-interactive-xref-find-definitions)
 
   )
+
+(tlc-deftest lisp-rust-conversion ()
+  ;; Note how both manually raised errors and errors in called lisp functions
+  ;; increase number-of-top-level-fails, but only the latter
+  ;; increases number-of-non-local-exit.
+  ;; Also, as of this commit, I was too lazy to test all error cases
+  (assert-equal 0 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
+    (tlc--rust-start-server 'hello 5000))
+  (sleep-for 1)
+  (assert-equal 1 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
+    (tlc--rust-start-server "hello" 5000))
+  (assert-equal 2 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, arity: 1"
+    (tlc--rust-start-server '("hello") 5000))
+  (assert-equal 3 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (assert-error 'stringp
+    (tlc--rust-start-server '("hello" hello) 5000))
+  (assert-equal 4 (number-of-top-level-fails))
+  (assert-equal 1 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (assert-error 'stringp
+    (tlc--rust-start-server '(hello "hello") 5000))
+  (assert-equal 5 (number-of-top-level-fails))
+  (assert-equal 2 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, arity: 3"
+    (tlc--rust-start-server '(hello "hello" "hello") 5000))
+  (assert-equal 6 (number-of-top-level-fails))
+  (assert-equal 2 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
+    (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello") 5000)))
+  (assert-equal 7 (number-of-top-level-fails))
+  (assert-equal 3 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _)
+                                               (error "error-in-symbol-name"))))
+    (assert-error "error-in-symbol-name"
+      (tlc--rust-start-server '("hello" "hello") 5000)))
+  (assert-equal 8 (number-of-top-level-fails))
+  (assert-equal 4 (number-of-non-local-exit))
+
+  )
