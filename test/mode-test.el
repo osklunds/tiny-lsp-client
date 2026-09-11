@@ -1636,6 +1636,13 @@ short other_function(int arg)" (get-eldoc-msg)))
   (assert-equal 5 (current-column))
 
   (assert-equal 1 (count-in-log-file "Old id. Looking for 3 got 2"))
+
+  (tlc--stop-server)
+
+  ;; Due to how sleep doesn't want to close stdout and stderr
+  (assert-equal 1 (count-in-log-file "Gave up on waiting for 'Some(\"stderr\")'"))
+  (assert-equal 1 (count-in-log-file "Gave up on waiting for 'Some(\"recv\")'"))
+  (assert-not (tlc-info) "hej")
   )
 
 (tlc-deftest lisp-rust-conversion ()
@@ -1696,5 +1703,4 @@ short other_function(int arg)" (get-eldoc-msg)))
       (tlc--rust-start-server '("hello" "hello") 5000)))
   (assert-equal 8 (number-of-top-level-fails))
   (assert-equal 4 (number-of-non-local-exit))
-
   )
