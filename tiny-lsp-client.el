@@ -450,6 +450,10 @@ obvious that they happen."
      ;; bug case - bad return
      (t (error "bad return")))))
 
+;; TODO: It is tempting to write tlc--wait-for-response completely in Rust.
+;; However, that requires simpler abstractions for calling lisp functions
+;; in Rust, e.g. sit-for.
+
 ;; tlc--wait-for-response might be called from unexpected buffers due to async
 ;; completion, so can't call (tlc--root) inside, so pass server-key
 (defun tlc--wait-for-response (request-id server-key rust-timeout
