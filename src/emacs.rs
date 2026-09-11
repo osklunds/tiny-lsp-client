@@ -449,6 +449,7 @@ macro_rules! impl_from_lisp_for_integer {
 
 impl_from_lisp_for_integer!(i32);
 impl_from_lisp_for_integer!(i64);
+impl_from_lisp_for_integer!(u32);
 impl_from_lisp_for_integer!(u64);
 impl_from_lisp_for_integer!(usize);
 

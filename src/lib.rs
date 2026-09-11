@@ -30,6 +30,7 @@ mod servers;
 
 use crate::emacs::*;
 use crate::message::*;
+use crate::server::RecvResult;
 use crate::server::Server;
 use crate::servers::ServerKey;
 
@@ -83,8 +84,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     export_function(
         env,
-        2,
-        2,
+        3,
+        3,
         tlc__rust_recv_response,
         "tlc--rust-recv-response",
     );
@@ -410,32 +411,30 @@ unsafe extern "C" fn tlc__rust_recv_response(
         args,
         true,
         "tlc__rust_recv_response",
-        |(server_key, timeout): (ServerKey, u64)| {
+        |(server_key, id, timeout): (ServerKey, u32, u64)| {
             handle_call(server_key, |server| {
-                let timeout = if timeout == 0 {
-                    None
-                } else {
-                    Some(Duration::from_millis(timeout))
-                };
-                if let Some(recv_result) = server.recv_response(timeout) {
-                    let result = match recv_result {
-                        Some(response) => RustCallResult::Any(
-                            handle_response::<u32>(response),
-                        ),
-                        None => RustCallResult::Symbol("no-response"),
-                    };
-                    Some(result)
-                } else {
-                    None
+                let timeout = Duration::from_millis(timeout);
+                match server.recv_response(id, timeout) {
+                    RecvResult::Response(response) => {
+                        Some(handle_response(response))
+                    }
+                    RecvResult::Timeout => {
+                        Some(RustCallResult::Symbol("no-response"))
+                    }
+                    RecvResult::TooBigId => {
+                        Some(RustCallResult::Symbol("too-big-id"))
+                    }
+                    // todo: How to test this clause?
+                    RecvResult::Disconnected => None,
                 }
             })
         },
     )
 }
 
-fn handle_response<A: IntoLisp>(
+fn handle_response(
     response: Response,
-) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
+) -> RustCallResult<(u32, ResponseParams)> {
     if let Some(result) = response.result {
         match result {
             Result::Untyped(_) => {
@@ -443,47 +442,36 @@ fn handle_response<A: IntoLisp>(
                     "Non-supported response received: {:?}",
                     result
                 );
-                RustCallResult::Symbol("error-response")
+                RustCallResult::Symbol("")
             }
             Result::NullResult => {
                 // Happens e.g. when rust-analyzer doesn't send any completion result
-                RustCallResult::Any((
-                    RustCallResult::Symbol("response"),
-                    response.id,
-                    false,
-                    HandleResponse::NullResponse,
-                ))
+                RustCallResult::Any((2, ResponseParams::Null))
             }
             _ => {
-                let return_value = match result {
+                let params = match result {
                     Result::TextDocumentDefinitionResult(definition_result) => {
-                        HandleResponse::DefinitionResponse(
-                            handle_definition_response(definition_result),
-                        )
+                        ResponseParams::Definition(handle_definition_response(
+                            definition_result,
+                        ))
                     }
                     Result::TextDocumentCompletionResult(completion_result) => {
-                        HandleResponse::CompletionResponse(
-                            handle_completion_response(completion_result),
-                        )
+                        ResponseParams::Completion(handle_completion_response(
+                            completion_result,
+                        ))
                     }
                     Result::TextDocumentHoverResult(hover_result) => {
-                        HandleResponse::HoverResponse(handle_hover_response(
+                        ResponseParams::Hover(handle_hover_response(
                             hover_result,
                         ))
                     }
                     _ => panic!("case already handled"),
                 };
-                RustCallResult::Any((
-                    RustCallResult::<A>::Symbol("response"),
-                    response.id,
-                    true,
-                    return_value,
-                ))
+                RustCallResult::Any((1, params))
             }
         }
     } else {
-        // If we wanted to, could assert that response.error.is_some()
-        RustCallResult::Symbol("error-response")
+        RustCallResult::Any((3, ResponseParams::Error))
     }
 }
 
@@ -635,9 +623,9 @@ fn handle_call<T: IntoLisp, F: FnOnce(&mut Server) -> Option<T>>(
     )
 }
 
-// To handle these in a more elegant and generic way, could use "Either"
-// "Either3" and so on, to handle the union types. But the problem is FromLisp.
-// See the comment in FromLisp::from_lisp for SendNotificationParameters.
+// The fundamental issue is that you need strong pre-defined types, to not spread the
+// unsafe into lisp conversion everywhere. But with strong pre-defined types,
+// you need to, well, pre-define all possible values.
 enum RustCallResult<A: IntoLisp> {
     Symbol(&'static str),
     Any(A),
@@ -652,20 +640,22 @@ impl<A: IntoLisp> IntoLisp for RustCallResult<A> {
     }
 }
 
-enum HandleResponse {
-    DefinitionResponse(Vec<(String, usize, usize)>),
-    CompletionResponse(Vec<String>),
-    HoverResponse(String),
-    NullResponse,
+enum ResponseParams {
+    Definition(Vec<(String, usize, usize)>),
+    Completion(Vec<String>),
+    Hover(String),
+    Null,
+    Error,
 }
 
-impl IntoLisp for HandleResponse {
+impl IntoLisp for ResponseParams {
     unsafe fn into_lisp(self, env: *mut emacs_env) -> LispResult<emacs_value> {
         match self {
-            Self::DefinitionResponse(a) => a.into_lisp(env),
-            Self::CompletionResponse(a) => a.into_lisp(env),
-            Self::HoverResponse(a) => a.into_lisp(env),
-            Self::NullResponse => false.into_lisp(env),
+            Self::Definition(a) => a.into_lisp(env),
+            Self::Completion(a) => a.into_lisp(env),
+            Self::Hover(a) => a.into_lisp(env),
+            Self::Null => false.into_lisp(env),
+            Self::Error => false.into_lisp(env),
         }
     }
 }

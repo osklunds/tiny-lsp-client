@@ -954,7 +954,7 @@ void last_function() {
 
   ;; Act
   (assert-error "No definitions found for: other_function"
-   (non-interactive-xref-find-definitions))
+    (non-interactive-xref-find-definitions))
 
   ;; Assert
   (assert-equal 11 (line-number-at-pos))
@@ -1610,4 +1610,97 @@ short other_function(int arg)" (get-eldoc-msg)))
   ;; Best-effort attemt to let other tests have default value.
   ;; Some of them becamse unstable with lower value.
   (customize-set-variable 'tlc-server-start-timeout 5000)
+  )
+
+(tlc-deftest error-response ()
+  (let* ((server-cmd (file-name-concat default-directory "mode-test" "error-response.sh"))
+         (tlc-server-cmds `((c++-mode . ,server-cmd))))
+    (find-file (relative-repo-root "test" "clangd" "main.cpp")))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 5 (line-number-at-pos))
+  (assert-equal 10 (current-column))
+
+  ;; Need to call internal function so that response is ignored
+  ;; Simulates that user send xref, but server is slow, so user aborted,
+  ;; then an error response is available in the recv channel.
+  ;; For completion, probably this scenario is even more likely, due to
+  ;; "error modified"
+  (tlc--send-request
+   "textDocument/definition"
+   (list "uri" 5 10)
+   (tlc--server-key))
+
+  (non-interactive-xref-find-definitions)
+  (assert-equal 3 (line-number-at-pos))
+  (assert-equal 5 (current-column))
+
+  (assert-equal 1 (count-in-log-file "Old id. Looking for 3 got 2"))
+
+  (tlc--stop-server)
+
+  ;; Due to how sleep doesn't want to close stdout and stderr
+  (assert-equal 1 (count-in-log-file "Gave up on waiting for 'Some(\"stderr\")'"))
+  (assert-equal 1 (count-in-log-file "Gave up on waiting for 'Some(\"recv\")'"))
+  (assert-not (tlc-info) "hej")
+  )
+
+(tlc-deftest lisp-rust-conversion ()
+  ;; Note how both manually raised errors and errors in called lisp functions
+  ;; increase number-of-top-level-fails, but only the latter
+  ;; increases number-of-non-local-exit.
+  ;; Also, as of this commit, I was too lazy to test all error cases
+  (assert-equal 0 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
+    (tlc--rust-start-server 'hello 5000))
+  (sleep-for 1)
+  (assert-equal 1 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, but not a list"
+    (tlc--rust-start-server "hello" 5000))
+  (assert-equal 2 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, arity: 1"
+    (tlc--rust-start-server '("hello") 5000))
+  (assert-equal 3 (number-of-top-level-fails))
+  (assert-equal 0 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (assert-error 'stringp
+    (tlc--rust-start-server '("hello" hello) 5000))
+  (assert-equal 4 (number-of-top-level-fails))
+  (assert-equal 1 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (assert-error 'stringp
+    (tlc--rust-start-server '(hello "hello") 5000))
+  (assert-equal 5 (number-of-top-level-fails))
+  (assert-equal 2 (number-of-non-local-exit))
+
+  ;; FromLisp, manually raised error
+  (assert-error "In check_tuple, exp_arity: 2, arity: 3"
+    (tlc--rust-start-server '(hello "hello" "hello") 5000))
+  (assert-equal 6 (number-of-top-level-fails))
+  (assert-equal 2 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'nth) (lambda (&rest _) (error "error-in-nth"))))
+    (assert-error "error-in-nth" (tlc--rust-start-server '("hello" "hello") 5000)))
+  (assert-equal 7 (number-of-top-level-fails))
+  (assert-equal 3 (number-of-non-local-exit))
+
+  ;; FromLisp, error in called lisp function
+  (cl-letf* (((symbol-function 'symbol-name) (lambda (&rest _)
+                                               (error "error-in-symbol-name"))))
+    (assert-error "error-in-symbol-name"
+      (tlc--rust-start-server '("hello" "hello") 5000)))
+  (assert-equal 8 (number-of-top-level-fails))
+  (assert-equal 4 (number-of-non-local-exit))
   )
