@@ -416,7 +416,7 @@ unsafe extern "C" fn tlc__rust_recv_response(
                 let timeout = Duration::from_millis(timeout);
                 match server.recv_response(id, timeout) {
                     RecvResult::Response(response) => {
-                        Some(handle_response::<u32>(response))
+                        Some(handle_response(response))
                     },
                     RecvResult::Timeout => {
                         Some(RustCallResult::Symbol("no-response"))
@@ -434,9 +434,9 @@ unsafe extern "C" fn tlc__rust_recv_response(
     )
 }
 
-fn handle_response<A: IntoLisp>(
+fn handle_response(
     response: Response,
-) -> RustCallResult<(RustCallResult<A>, u32, bool, HandleResponse)> {
+) -> RustCallResult<(RustCallResult<u32>, u32, bool, HandleResponse)> {
     if let Some(result) = response.result {
         match result {
             Result::Untyped(_) => {
@@ -475,7 +475,7 @@ fn handle_response<A: IntoLisp>(
                     _ => panic!("case already handled"),
                 };
                 RustCallResult::Any((
-                    RustCallResult::<A>::Symbol("response"),
+                    RustCallResult::Symbol("response"),
                     response.id,
                     true,
                     return_value,
