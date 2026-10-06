@@ -5,6 +5,7 @@ RUN mkdir -p /etc/nix && \
     echo "experimental-features = nix-command flakes" \
     >> /etc/nix/nix.conf
 
+WORKDIR "/test"
+
 # RUN nix develop
 
-WORKDIR "/tiny-lsp-client/test"
