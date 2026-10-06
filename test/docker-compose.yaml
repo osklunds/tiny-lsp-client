@@ -7,6 +7,7 @@ services:
     # cpus: 0.5
     command: tail -F anything
     build:
+      # TODO: Why use .. as context?
       context: ..
       dockerfile: test/Dockerfile
     container_name: tiny-lsp-client-test
@@ -15,4 +16,5 @@ services:
       - ..:/tiny-lsp-client:rw
       # Mount separetely so that nix doesn't see the git repo. I run this repo
       # as a submodule, but the parent repo isn't seen inside the container
+      # Move to /test, remove flake.lock, then run "nix flake lock" to update it
       - .:/test:rw
