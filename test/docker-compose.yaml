@@ -7,9 +7,7 @@ services:
     # cpus: 0.5
     command: tail -F anything
     build:
-      # TODO: Why use .. as context?
-      context: ..
-      dockerfile: test/Dockerfile
+      dockerfile: Dockerfile
     container_name: tiny-lsp-client-test
     init: true
     volumes:
