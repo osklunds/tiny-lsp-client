@@ -13,3 +13,6 @@ services:
     init: true
     volumes:
       - ..:/tiny-lsp-client:rw
+      # Mount separetely so that nix doesn't see the git repo. I run this repo
+      # as a submodule, but the parent repo isn't seen inside the container
+      - .:/test:rw
