@@ -12,5 +12,10 @@ attach() {
            "cd /tiny-lsp-client/test && exec nix develop path:."
 }
 
+update_flake() {
+    docker exec -it tiny-lsp-client-test bash -c \
+           "cd /tiny-lsp-client/test && exec nix flake update --flake path:."
+}
+
 "$1"
 
