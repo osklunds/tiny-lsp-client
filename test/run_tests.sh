@@ -1,4 +1,4 @@
-#!/bin/bash
+# No shebang due to nix
 
 cargo build || exit 1
 
