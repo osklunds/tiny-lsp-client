@@ -5,8 +5,11 @@ build() {
 }
 
 attach() {
-    docker exec -it tiny-lsp-client-test nix develop \
-           --command bash -c 'cd /tiny-lsp-client && exec bash'
+    # Use bash -c as outer so that arrows and tab completion work inside
+    # the container.
+    # Use path:. to avoid complaints about missing git
+    docker exec -it tiny-lsp-client-test bash -c \
+           "cd /tiny-lsp-client/test && exec nix develop path:."
 }
 
 "$1"
