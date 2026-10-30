@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# If you update flake.nix and run attach without build, the "nix develop"
+# step is redone each time, which is time consuming, so keep that in mind.
+# Also after updating flake.nix need to run update_flake to update flake.lock
+
 build() {
     docker compose up --build --force-recreate --detach
 }
