@@ -271,4 +271,9 @@ this common file. Is used to differentiate log file names.")
   (customize-set-variable 'tlc-log-emacs-debug t)
   (customize-set-variable 'tlc-log-to-stdio nil)
   (customize-set-variable 'tlc-debug-on-error t)
+
+  ;; See https://wiki.nixos.org/wiki/C
+  (add-to-list 'tlc-server-cmds
+               '(c++-mode . "clangd --query-driver=/nix/store/*/bin/clang++"))
+
   )
