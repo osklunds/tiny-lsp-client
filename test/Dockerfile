@@ -11,3 +11,5 @@ WORKDIR "/tmp"
 
 RUN nix develop
 
+ENV CARGO_TARGET_DIR=/tiny-lsp-client/target_docker
+

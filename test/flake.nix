@@ -5,28 +5,38 @@
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
-    in {
-      devShells.${system}.default = pkgs.mkShell {
+      in {
+          devShells.${system}.default =
+      (pkgs.mkShell.override {
+          stdenv = pkgs.llvmPackages.stdenv;
+        }) {
         packages = with pkgs; [
           emacs
           rustc
           cargo
           rust-analyzer
 
-          clang-tools
+          # Clang compiler
+          llvmPackages.clang
+
+          # libclang.so, seemed to be needed
           llvmPackages.libclang
 
-          jdk
-          jdt-language-server
+          # clangd
+          clang-tools
 
-          beam29Packages.erlang
-          erlang-language-platform
+          # jdk
+          # jdt-language-server
 
-          ghc
-          haskell-language-server
+          # beam29Packages.erlang
+          # erlang-language-platform
+
+          # ghc
+          # haskell-language-server
         ];
 
         LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+        TLC_EMACS_MODULE_HEADER_PATH = "${pkgs.emacs}/include/emacs-module.h";
       };
     };
 }
