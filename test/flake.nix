@@ -33,8 +33,8 @@
           jdk
           jdt-language-server
 
-          # beam29Packages.erlang
-          # erlang-language-platform
+          beam29Packages.erlang
+          erlang-language-platform
 
           # ghc
           # haskell-language-server
