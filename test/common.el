@@ -26,6 +26,9 @@
 
 (setq load-prefer-newer t)
 
+;; See https://wiki.nixos.org/wiki/C
+(defconst clangd-cmd "clangd --query-driver=/nix/store/*/bin/clang++")
+
 (defun assert-equal (exp act &optional label)
   (when (not (equal exp act))
     (message "")
@@ -235,6 +238,14 @@ this common file. Is used to differentiate log file names.")
     ;; If Messages is killed, "Marker not found error" happens
     (unless (string-match-p "Messages" (with-current-buffer buffer (buffer-name)))
       (kill-buffer buffer)))
+
+  ;; Without this, jdtls fails to start. It is strange but the aim of this
+  ;; project is not to have a proper jdtls setup, just need to test the bare
+  ;; minimum.
+  (dolist (file '(".classpath" ".project" ".settings" "target"))
+    (let* ((path (relative-repo-root "test" "jdtls" "my-app" file)))
+      (ignore-errors (delete-file path))
+      (ignore-errors (delete-directory path))))
   )
 
 (cl-defmacro tlc-deftest (name () &rest body)
@@ -271,4 +282,8 @@ this common file. Is used to differentiate log file names.")
   (customize-set-variable 'tlc-log-emacs-debug t)
   (customize-set-variable 'tlc-log-to-stdio nil)
   (customize-set-variable 'tlc-debug-on-error t)
+
+  (add-to-list 'tlc-server-cmds
+               `(c++-mode . ,clangd-cmd))
+
   )

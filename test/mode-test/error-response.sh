@@ -1,4 +1,3 @@
-#!/bin/bash
 
 send() {
     local msg="$1"

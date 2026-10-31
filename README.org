@@ -131,7 +131,15 @@ For these reasons, =FromLisp= and =IntoLisp= return =pub type LispResult<T> = Re
 
 * Testing
 
-Tests are located in =test/=. Change directory to =test/= and use =run_tests.sh=:
+Tests are located in =test/=.
+
+** Docker container
+
+Since there are many test dependencies, a Docker container exists to make it easier to run the tests. Inside the =test/= directory, run =./docker_env.sh build= to start the test container. Then run =./docker_env.sh attach= to attach to the container.
+
+The entire repository is mounted in the container. So if you change source code and/or tests, there's no need to restart or rebuild the container. The source code is not copied to the container.
+
+** Running tests
 
 - =run_tests.sh= to run all tests
 - =run_tests.sh mode-test.el= to run all tests in the file =mode-test.el=
@@ -139,25 +147,15 @@ Tests are located in =test/=. Change directory to =test/= and use =run_tests.sh=
 
 Log files are stored in =test/logs=.
 
-Since the test cases use real LSP servers (=clangd=, =jdtls= etc), you need to have those programs installed. As an alternative, see [[Docker container]].
-
-** Docker container
-
-Since there are many test dependencies, a Docker container exists to make it easier to run the tests. Inside the =test/= directory, run =docker compose up --build= to start the test container. In another terminal, run =docker exec -it tiny-lsp-client-test bash= to attach to the container. Now you can use =run_tests.sh= as above and with all test dependencies available.
-
-The entire repository is mounted in the container. So if you change source code and/or tests, there's no need to restart or rebuild the container. The source code is not copied to the container.
-
-If you run =clangd= tests in Docker and bare-metal you might need to delete =CMakeCache.txt= and other generated files.
-
 ** Test strategy
 
-There are 4 types of test suites:
+There are 3 types of test suites:
 
 1. =*-test.el=
 2. =mode-test.el=
 3. Rust unit tests
 
-***    *-test.el
+*** *-test.el
 
 For each language server inside =tlc-server-cmds= there's one corresponding test file, e.g., =clangd-test.el= for =clangd=. Those language specific test files aim to test each LSP message type towards each language server. This typically means a few test cases that open a file, edit it, jump to defintion, and use completion. The idea is for the tests to act as a compatibility test towards the LSP server.
 
@@ -234,13 +232,12 @@ In general, there are probably many "leaky pipes" with bugs that can cause crash
 
 *** Low priority
 
-- [Test] Switch from Tumbleweed to Debian. Even if a commit hash is specified as image version, on old commits, that might still download packages later than the commit assumed, meaning tests won't pass if you checkout an old commit.
-      - But switching is not problematic. Compiling manually is not an option, it's time consuming and more error prone, and e.g. libgccjit version from the package manager still needs to match. Ubuntu might have more recent versions than Debian. But maybe still not the latest. And then Ubuntu might not be as stable as Debian. So, this requires some more consideration before going ahead.
 - [Functionality] Signature help in eldoc
 - [Functionality] If server can't be started, don't crash, so that major-mode still works.
 - [Code quality] Generalized FromLisp for union types. Maybe it's possible to check if the lisp value is of correct type. Maybe a can_from_lisp function on the FromLisp trait? Maybe emacs-module-rs does it in a smart way?
 - [Code quality] Clean up server.rs by having smaller functions (like read_header) and having a flatter sructure since break can return early.
 - [Performance] Remove duplicate completions in Rust code.
+- [Performance] Log async, to avoid IO hiccups on typing
 - [Robustness] Prevent crashes in rust code due to bad user settings, e.g. empty server cmd.
 - [Robustness] In general, ensure no bad args sent to rust. e.g. stop-server with "path" because doesn't start with /
 - [Robustness] Time out for all calls towards rust. Or at least, make sure all existing calls return quickly and can't freeze. Starting a new server can freeze if the server cmd never sends an initialize response.
