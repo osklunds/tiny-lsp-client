@@ -16,6 +16,9 @@
           cargo
           rust-analyzer
 
+          # utf-8 file names (system-wide)
+          glibcLocales
+
           cmake
 
           # Clang compiler
@@ -39,6 +42,9 @@
 
         LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         TLC_EMACS_MODULE_HEADER_PATH = "${pkgs.emacs}/include/emacs-module.h";
+
+        LANG = "en_US.UTF-8";
+        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
       };
     };
 }
