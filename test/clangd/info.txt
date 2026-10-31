@@ -1,0 +1,2 @@
+
+Deleting CMakeCache.txt and CMakeFiles can solve many strange build issues
