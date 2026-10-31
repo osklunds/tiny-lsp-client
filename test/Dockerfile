@@ -5,7 +5,7 @@ RUN mkdir -p /etc/nix && \
     echo "experimental-features = nix-command flakes" \
     >> /etc/nix/nix.conf
 
-COPY flake.nix /tmp
+COPY flake.nix flake.lock /tmp
 
 WORKDIR "/tmp"
 
