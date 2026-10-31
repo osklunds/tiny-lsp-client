@@ -26,6 +26,8 @@
 
 (setq load-prefer-newer t)
 
+(defconst clangd-cmd "clangd --query-driver=/nix/store/*/bin/clang++")
+
 (defun assert-equal (exp act &optional label)
   (when (not (equal exp act))
     (message "")
@@ -282,6 +284,6 @@ this common file. Is used to differentiate log file names.")
 
   ;; See https://wiki.nixos.org/wiki/C
   (add-to-list 'tlc-server-cmds
-               '(c++-mode . "clangd --query-driver=/nix/store/*/bin/clang++"))
+               `(c++-mode . ,clangd-cmd))
 
   )

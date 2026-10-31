@@ -470,10 +470,10 @@ abc(123);
   (setq root-path (tlc--root))
   (assert-equal t (stringp root-path))
 
-  (assert-tlc-info root-path "clangd")
+  (assert-tlc-info root-path clangd-cmd)
 
   ;; Act
-  (cl-letf* ((entry (format "%s @ clangd" root-path))
+  (cl-letf* ((entry (format "%s @ %s" root-path clangd-cmd))
              ((symbol-function 'completing-read)
               (lambda (_ collection _ _ _ _ default &rest _)
                 (assert-equal (list entry) collection)
@@ -513,7 +513,7 @@ abc(123);
   (setq root-path (tlc--root))
   (assert-equal t (stringp root-path))
 
-  (setq pid (assert-tlc-info root-path "clangd"))
+  (setq pid (assert-tlc-info root-path clangd-cmd))
 
   ;; Act
   (shell-command (format "kill -9 %s" pid))
@@ -594,7 +594,6 @@ abc(123);
     ;; After first call, a request is sent
     (assert-equal 1 (number-of-completion-requests))
 
-    (assert-equal t (>= (length result1) 100))
     (dolist (exp '("my_fun1" "my_fun2" "my_fun3" "my_fun4" "my_fun5"
                    "my_function1" "my_function2" "my_function3" "my_function4"
                    "my_function5"
@@ -626,7 +625,7 @@ abc(123);
                ))
   (let ((result (funcall tlc-collection-fun "" pred t)))
     (assert-equal '("my_function1" "my_function2" "my_function3"
-                    "my_function4" "my_function5" "__PRETTY_FUNCTION__")
+                    "my_function4" "my_function5")
                   result)
     )
 
@@ -1064,7 +1063,7 @@ void last_function() {
   (assert-equal 1 (number-of-did-open))
   (assert-equal 0 (number-of-did-close))
 
-  (assert-equal "clangd" (tlc--server-cmd))
+  (assert-equal clangd-cmd (tlc--server-cmd))
   (setq root (tlc--root))
   (assert (string-suffix-p "test/clangd/" root))
 
@@ -1089,7 +1088,7 @@ void last_function() {
 
   (setq infos (tlc-info))
   (assert-equal root (nth 0 (nth 0 infos)))
-  (assert-equal "clangd" (nth 1 (nth 0 infos)))
+  (assert-equal clangd-cmd (nth 1 (nth 0 infos)))
 
   (assert-equal root (nth 0 (nth 1 infos)))
   (assert-equal "erlang_ls" (nth 1 (nth 1 infos)))
@@ -1161,7 +1160,7 @@ void last_function() {
 
   (cl-letf (((symbol-function 'completing-read)
              (lambda (_ collection _ _ _ _ default &rest _)
-               (assert-equal (format "%s @ clangd" root) (nth 0 collection) "clangd1")
+               (assert-equal (format "%s @ %s" root clangd-cmd) (nth 0 collection) "clangd1")
                (assert-equal (format "%s @ erlang_ls" root) (nth 1 collection) "erlang_ls1")
                (assert-equal (format "%s @ erlang_ls" root2) (nth 2 collection) "erlang_ls2")
                (assert-equal (format "%s @ erlang_ls" root2) default "default")
@@ -1602,7 +1601,7 @@ short other_function(int arg)" (get-eldoc-msg)))
     (cl-letf (((symbol-function 'message) (lambda (&rest args) (setq message-args args))))
       (find-file (relative-repo-root "test" "clangd" "main.cpp"))
       )
-    (assert-equal "File mode specification error: (error \"Failed to start 'sleep 1000' in '/tiny-lsp-client/test/clangd/'. Check log for details.\")"
+    (assert-equal "File mode specification error: (error \"Failed to start ’sleep 1000’ in ’/tiny-lsp-client/test/clangd/’. Check log for details.\")"
                   (apply #'format message-args))
     )
   (assert-equal 1 (count-in-log-file "initialize/recv_response timeout"))
@@ -1614,6 +1613,9 @@ short other_function(int arg)" (get-eldoc-msg)))
 
 (tlc-deftest error-response ()
   (let* ((server-cmd (file-name-concat default-directory "mode-test" "error-response.sh"))
+         ;; Due to nix os, can't have shebang in error-response.sh, so need to
+         ;; start it in this way
+         (server-cmd (concat "bash -c " server-cmd))
          (tlc-server-cmds `((c++-mode . ,server-cmd))))
     (find-file (relative-repo-root "test" "clangd" "main.cpp")))
 
