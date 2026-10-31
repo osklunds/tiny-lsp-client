@@ -250,10 +250,12 @@ int main() {
   (re-search-forward "other_function" nil nil 2)
 
   (run-until 10 0.1
-             (assert-equal "function other_function
+    (assert-equal "function other_function
 
 → short
+
 Parameters:
+
 - int arg
 
 short other_function(int arg)" (get-eldoc-msg)))
