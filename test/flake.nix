@@ -36,8 +36,8 @@
           beam29Packages.erlang
           erlang-language-platform
 
-          # ghc
-          # haskell-language-server
+          ghc
+          haskell-language-server
         ];
 
         LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
