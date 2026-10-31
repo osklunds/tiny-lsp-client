@@ -8,6 +8,10 @@ build() {
     docker compose up --build --force-recreate --detach
 }
 
+stop() {
+    docker compose stop
+}
+
 attach() {
     # Use bash -c as outer so that arrows and tab completion work inside
     # the container.
