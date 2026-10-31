@@ -7,6 +7,12 @@ build() {
     docker compose up --build --force-recreate --detach
 }
 
+# As is visible, this cleans more than just tiny-lsp-client, so it's crude.
+clean() {
+    docker builder prune -a -f
+    docker image prune -a -f
+}
+
 stop() {
     docker compose stop
 }
