@@ -11,5 +11,9 @@ WORKDIR "/tmp"
 
 RUN nix develop
 
+RUN wget "https://github.com/erlang-ls/erlang_ls/releases/download/1.1.0/erlang_ls-linux-27.tar.gz" \
+    && tar -xzvf erlang_ls-linux-27.tar.gz \
+    && mv erlang_ls /root/.nix-profile/bin/
+
 ENV CARGO_TARGET_DIR=/tiny-lsp-client/target_docker
 
