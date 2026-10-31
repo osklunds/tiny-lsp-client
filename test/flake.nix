@@ -30,8 +30,8 @@
           # clangd
           llvmPackages_23.clang-tools
 
-          # jdk
-          # jdt-language-server
+          jdk
+          jdt-language-server
 
           # beam29Packages.erlang
           # erlang-language-platform

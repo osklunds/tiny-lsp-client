@@ -235,6 +235,14 @@ this common file. Is used to differentiate log file names.")
     ;; If Messages is killed, "Marker not found error" happens
     (unless (string-match-p "Messages" (with-current-buffer buffer (buffer-name)))
       (kill-buffer buffer)))
+
+  ;; Without this, jdtls fails to start. It is strange but the aim of this
+  ;; project is not to have a proper jdtls setup, just need to test the bare
+  ;; minimum.
+  (dolist (file '(".classpath" ".project" ".settings" "target"))
+    (let* ((path (relative-repo-root "test" "jdtls" "my-app" file)))
+      (ignore-errors (delete-file path))
+      (ignore-errors (delete-directory path))))
   )
 
 (cl-defmacro tlc-deftest (name () &rest body)
