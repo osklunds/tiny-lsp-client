@@ -8,7 +8,7 @@
       in {
           devShells.${system}.default =
       (pkgs.mkShell.override {
-          stdenv = pkgs.llvmPackages.stdenv;
+          stdenv = pkgs.llvmPackages_23.stdenv;
         }) {
         packages = with pkgs; [
           emacs
@@ -22,13 +22,13 @@
           cmake
 
           # Clang compiler
-          llvmPackages.clang
+          llvmPackages_23.clang
 
           # libclang.so, seemed to be needed
-          llvmPackages.libclang
+          llvmPackages_23.libclang
 
           # clangd
-          clang-tools
+          llvmPackages_23.clang-tools
 
           # jdk
           # jdt-language-server
