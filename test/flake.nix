@@ -16,6 +16,8 @@
           cargo
           rust-analyzer
 
+          cmake
+
           # Clang compiler
           llvmPackages.clang
 
