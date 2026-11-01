@@ -22,6 +22,7 @@ mod tests;
 
 use crate::logger;
 use crate::message::*;
+use crate::spawn_named_thread;
 
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -36,7 +37,7 @@ use std::sync::mpsc::{
 };
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use std::thread::{Builder, JoinHandle};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
@@ -174,7 +175,7 @@ impl Server {
 
         // Sender of messages to application
         // Receiving from stdout from lsp server
-        let recv_thread = spawn_named_thread("recv", move || {
+        let recv_thread = crate::spawn_named_thread("recv", move || {
             let mut reader = BufReader::new(stdout);
 
             loop {
@@ -745,20 +746,6 @@ impl Drop for Server {
     fn drop(&mut self) {
         self.stop_server();
     }
-}
-
-fn spawn_named_thread<F, T, N: AsRef<str>>(name: N, f: F) -> JoinHandle<T>
-where
-    F: FnOnce() -> T + Send + 'static,
-    T: Send + 'static,
-{
-    Builder::new()
-        .name(name.as_ref().to_string())
-        .spawn(|| {
-            crate::set_panic_hook();
-            f()
-        })
-        .unwrap()
 }
 
 fn close_thread_actions(server_process: Arc<Mutex<Child>>, thread_name: &str) {

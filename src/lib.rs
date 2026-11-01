@@ -43,6 +43,7 @@ use std::process;
 use std::str;
 use std::sync::atomic::Ordering;
 use std::thread;
+use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -765,6 +766,20 @@ impl FromLisp for SetOptionValue {
             Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
         }
     }
+}
+
+pub fn spawn_named_thread<F, T, N: AsRef<str>>(name: N, f: F) -> JoinHandle<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    Builder::new()
+        .name(name.as_ref().to_string())
+        .spawn(|| {
+            crate::set_panic_hook();
+            f()
+        })
+        .unwrap()
 }
 
 pub fn set_panic_hook() {
