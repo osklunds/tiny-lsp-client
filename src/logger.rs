@@ -99,6 +99,9 @@ struct LogFileInfo {
     file: Option<File>,
 }
 
+// Log async, because on each keystroke, a didChange notification is sent,
+// which causes logging, which causes disk IO, which causes hiccups and very
+// noticable lag while typing
 pub fn start_thread() {
     let (tx, rx) = mpsc::channel();
     LOG_TX.set(tx).unwrap();
