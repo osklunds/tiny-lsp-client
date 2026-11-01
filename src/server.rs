@@ -22,7 +22,6 @@ mod tests;
 
 use crate::logger;
 use crate::message::*;
-use crate::spawn_named_thread;
 
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -376,9 +375,9 @@ impl Server {
         });
 
         let child_stderr_thread = Arc::clone(&child);
-        let stderr_thread = spawn_named_thread("stderr", move || {
+        let stderr_thread = crate::spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
-            let stderr_inner_thread = spawn_named_thread(
+            let stderr_inner_thread = crate::spawn_named_thread(
                 "stderr_inner",
                 move || {
                     loop {
