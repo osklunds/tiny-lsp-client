@@ -105,7 +105,7 @@ impl Server {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        let send_thread = spawn_named_thread("send", move || {
+        let send_thread = crate::spawn_named_thread("send", move || {
             loop {
                 if let Ok(maybe_msg) = stdin_rx.recv() {
                     if let Some(msg) = maybe_msg {

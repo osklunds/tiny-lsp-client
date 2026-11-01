@@ -32,7 +32,9 @@ use std::str;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::{self, Sender};
 use std::sync::Mutex;
+use std::sync::OnceLock;
 
 // todo: consider some rust-level automated tests for this module. At least
 // mode-test covers it partially. There are some subtle aspects, such as
@@ -90,9 +92,20 @@ pub static MAX_LOG_ENTRY_LEN_BYTES: AtomicUsize = AtomicUsize::new(2_000);
 
 const MAX_LOG_FILE_SIZE_BYTES: u64 = 10_000_000; // 10 MB
 
+static LOG_TX: OnceLock<Sender<String>> = OnceLock::new();
+
 struct LogFileInfo {
     log_file_name: String,
     file: Option<File>,
+}
+
+pub fn start_thread() {
+    let (tx, rx) = mpsc::channel();
+    LOG_TX.set(tx).unwrap();
+    crate::spawn_named_thread("logger", move || loop {
+        let msg = rx.recv().unwrap();
+        log_inner(msg);
+    });
 }
 
 pub fn set_log_file_name<S: AsRef<str>>(new_log_file_name: S) {
@@ -151,6 +164,10 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
         formatted
     };
 
+    LOG_TX.get().unwrap().send(truncated).unwrap();
+}
+
+fn log_inner(msg: String) {
     let mut locked_log_file_info = LOG_FILE_INFO.lock().unwrap();
     // todo: consider drop if None
     let log_file_info = locked_log_file_info.as_mut().unwrap();
@@ -170,14 +187,14 @@ fn log<L: AsRef<str>, M: AsRef<str>>(log_name: L, msg: M) {
     };
 
     let log_file = log_file_info.file.as_mut().unwrap();
-    write!(log_file, "{}", truncated).unwrap();
+    write!(log_file, "{}", msg).unwrap();
 
     if log_file.metadata().unwrap().len() > MAX_LOG_FILE_SIZE_BYTES {
         rotate_to_old_file(&log_file_info.log_file_name);
     }
 
     if is_log_enabled!(LOG_TO_STDIO) {
-        print!("{}", truncated);
+        print!("{}", msg);
     }
 }
 

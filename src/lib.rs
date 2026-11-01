@@ -114,6 +114,8 @@ pub unsafe extern "C" fn emacs_module_init(
 
     provide_tlc_rust(env);
 
+    logger::start_thread();
+
     0
 }
 
