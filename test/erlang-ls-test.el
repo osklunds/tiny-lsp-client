@@ -180,6 +180,9 @@ other_function_hej(Arg) ->
   (assert-equal 13 (current-column))
 
   (setq saved-point (point))
+  ;; Sleep to increase chance of first loop being successful
+  ;; Test sometimes gets stuck here
+  (sleep-for 1)
   (run-until 100 0.1
     (goto-char saved-point)
     (non-interactive-xref-find-definitions)

@@ -18,8 +18,30 @@
 use super::*;
 
 use regex::Regex;
+use std::time::Duration;
 
 const TEST_LOG_FILE_NAME: &str = "test/logs/logger_tests.rs.log";
+
+// So that tests initializes logger exactly once
+static TEST_INIT: OnceLock<()> = OnceLock::new();
+
+fn test_init() {
+    TEST_INIT.get_or_init(|| {
+        start_thread();
+        set_log_file_name(TEST_LOG_FILE_NAME);
+    });
+
+    // Clean up the file for each test
+    // TODO: Removing it causes issues. Is it a product bug?
+    // In general, need to have better end-to-end tests of the log file option.
+    let _ = std::fs::write(TEST_LOG_FILE_NAME, "");
+}
+
+fn read_log_file() -> String {
+    // Sleep so that file has been written
+    std::thread::sleep(Duration::from_millis(100));
+    fs::read_to_string(TEST_LOG_FILE_NAME).unwrap()
+}
 
 #[test]
 fn timestamp() {
@@ -65,13 +87,14 @@ fn millisecond_padding() {
 // log file, etc
 #[test]
 fn log() {
-    set_log_file_name(TEST_LOG_FILE_NAME);
+    test_init();
+
     log_io!("abc");
     log_stderr!("def");
     log_rust_debug!("hij");
     log_emacs_debug!("klm");
 
-    let log_file_content = fs::read_to_string(TEST_LOG_FILE_NAME).unwrap();
+    let log_file_content = read_log_file();
 
     match_regex(r"^IO - [0-9-]+ [0-9:.]+ - abc\n", &log_file_content);
     match_regex(r"\nSTDERR - [0-9-]+ [0-9:.]+ - def\n", &log_file_content);
@@ -92,7 +115,7 @@ fn log() {
 
 #[test]
 fn unicode_truncation() {
-    set_log_file_name(TEST_LOG_FILE_NAME);
+    test_init();
 
     // To force split at unicode boundary
     for i in 0..4 {
@@ -101,10 +124,10 @@ fn unicode_truncation() {
 
         log_io!("{}", log_entry);
 
-        let log_file_content = fs::read_to_string(TEST_LOG_FILE_NAME).unwrap();
+        let log_file_content = read_log_file();
 
         match_regex(r"a+あ+\.\.\.TRUNCATED\n$", &log_file_content);
-        assert_eq!(i+1, log_file_content.matches("TRUNCATED").count());
+        assert_eq!(i + 1, log_file_content.matches("TRUNCATED").count());
     }
 }
 

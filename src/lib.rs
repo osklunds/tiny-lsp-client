@@ -43,6 +43,7 @@ use std::process;
 use std::str;
 use std::sync::atomic::Ordering;
 use std::thread;
+use std::thread::{Builder, JoinHandle};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -112,6 +113,8 @@ pub unsafe extern "C" fn emacs_module_init(
     export_function(env, 1, 1, tlc__rust_stop_server, "tlc--rust-stop-server");
 
     provide_tlc_rust(env);
+
+    logger::start_thread();
 
     0
 }
@@ -765,6 +768,20 @@ impl FromLisp for SetOptionValue {
             Ok(Self::Bool(FromLisp::from_lisp(env, value)?))
         }
     }
+}
+
+pub fn spawn_named_thread<F, T, N: AsRef<str>>(name: N, f: F) -> JoinHandle<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    Builder::new()
+        .name(name.as_ref().to_string())
+        .spawn(|| {
+            crate::set_panic_hook();
+            f()
+        })
+        .unwrap()
 }
 
 pub fn set_panic_hook() {

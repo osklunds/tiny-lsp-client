@@ -36,7 +36,7 @@ use std::sync::mpsc::{
 };
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use std::thread::{Builder, JoinHandle};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 pub static STOP_SERVER_ON_STDERR: AtomicBool = AtomicBool::new(false);
@@ -104,7 +104,7 @@ impl Server {
 
         // Receiver of messages from application
         // Sending over stdin to lsp server
-        let send_thread = spawn_named_thread("send", move || {
+        let send_thread = crate::spawn_named_thread("send", move || {
             loop {
                 if let Ok(maybe_msg) = stdin_rx.recv() {
                     if let Some(msg) = maybe_msg {
@@ -174,7 +174,7 @@ impl Server {
 
         // Sender of messages to application
         // Receiving from stdout from lsp server
-        let recv_thread = spawn_named_thread("recv", move || {
+        let recv_thread = crate::spawn_named_thread("recv", move || {
             let mut reader = BufReader::new(stdout);
 
             loop {
@@ -375,9 +375,9 @@ impl Server {
         });
 
         let child_stderr_thread = Arc::clone(&child);
-        let stderr_thread = spawn_named_thread("stderr", move || {
+        let stderr_thread = crate::spawn_named_thread("stderr", move || {
             let (stderr_tx, stderr_rx) = mpsc::channel();
-            let stderr_inner_thread = spawn_named_thread(
+            let stderr_inner_thread = crate::spawn_named_thread(
                 "stderr_inner",
                 move || {
                     loop {
@@ -745,20 +745,6 @@ impl Drop for Server {
     fn drop(&mut self) {
         self.stop_server();
     }
-}
-
-fn spawn_named_thread<F, T, N: AsRef<str>>(name: N, f: F) -> JoinHandle<T>
-where
-    F: FnOnce() -> T + Send + 'static,
-    T: Send + 'static,
-{
-    Builder::new()
-        .name(name.as_ref().to_string())
-        .spawn(|| {
-            crate::set_panic_hook();
-            f()
-        })
-        .unwrap()
 }
 
 fn close_thread_actions(server_process: Arc<Mutex<Child>>, thread_name: &str) {
